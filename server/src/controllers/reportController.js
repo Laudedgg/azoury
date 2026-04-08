@@ -1,0 +1,328 @@
+const { PrismaClient } = require('@prisma/client');
+const { getMarginAnalysis } = require('../services/pricingEngine');
+
+const prisma = new PrismaClient();
+
+async function getDashboardKPIs(req, res, next) {
+  try {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+
+    const [
+      todaysRevenue,
+      activeOrders,
+      pendingDispatches,
+      activeClients,
+      inventoryValue,
+      monthlyWaste,
+      monthlyRevenue,
+    ] = await Promise.all([
+      prisma.clientOrder.aggregate({
+        where: {
+          status: 'DELIVERED',
+          updatedAt: { gte: todayStart, lt: tomorrowStart },
+        },
+        _sum: { totalAmount: true },
+      }),
+      prisma.clientOrder.count({
+        where: { status: { in: ['PENDING', 'CONFIRMED', 'PREPARING', 'DISPATCHED'] } },
+      }),
+      prisma.dispatch.count({
+        where: { status: { in: ['PLANNING', 'LOADING'] } },
+      }),
+      prisma.client.count({ where: { isApproved: true } }),
+      prisma.qualityGrade.aggregate({
+        _sum: { currentStock: true },
+      }),
+      prisma.wasteEntry.aggregate({
+        where: {
+          createdAt: { gte: new Date(now.getFullYear(), now.getMonth(), 1) },
+        },
+        _sum: { cost: true },
+      }),
+      prisma.clientOrder.aggregate({
+        where: {
+          status: 'DELIVERED',
+          updatedAt: { gte: new Date(now.getFullYear(), now.getMonth(), 1) },
+        },
+        _sum: { totalAmount: true },
+      }),
+    ]);
+
+    // Calculate inventory value
+    const grades = await prisma.qualityGrade.findMany({
+      select: { currentStock: true, price: true },
+    });
+    const totalInventoryValue = grades.reduce(
+      (sum, g) => sum + g.currentStock * g.price,
+      0
+    );
+
+    const monthRev = monthlyRevenue._sum.totalAmount || 1;
+    const wastePercent =
+      ((monthlyWaste._sum.cost || 0) / monthRev) * 100;
+
+    res.json({
+      todaysRevenue: todaysRevenue._sum.totalAmount || 0,
+      activeOrders,
+      pendingDispatches,
+      activeClients,
+      inventoryValue: Math.round(totalInventoryValue * 100) / 100,
+      wastePercent: Math.round(wastePercent * 100) / 100,
+      monthlyRevenue: monthlyRevenue._sum.totalAmount || 0,
+      monthlyWasteCost: monthlyWaste._sum.cost || 0,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function revenueByPeriod(req, res, next) {
+  try {
+    const { period = 'daily', days = 30 } = req.query;
+    const since = new Date();
+    since.setDate(since.getDate() - parseInt(days));
+
+    const orders = await prisma.clientOrder.findMany({
+      where: {
+        status: 'DELIVERED',
+        updatedAt: { gte: since },
+      },
+      select: { totalAmount: true, updatedAt: true },
+      orderBy: { updatedAt: 'asc' },
+    });
+
+    const grouped = {};
+    for (const order of orders) {
+      let key;
+      const d = order.updatedAt;
+      if (period === 'daily') {
+        key = d.toISOString().split('T')[0];
+      } else if (period === 'weekly') {
+        const weekStart = new Date(d);
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+        key = weekStart.toISOString().split('T')[0];
+      } else {
+        key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      }
+
+      if (!grouped[key]) {
+        grouped[key] = { period: key, revenue: 0, orderCount: 0 };
+      }
+      grouped[key].revenue += order.totalAmount;
+      grouped[key].orderCount += 1;
+    }
+
+    const result = Object.values(grouped).map((g) => ({
+      ...g,
+      revenue: Math.round(g.revenue * 100) / 100,
+    }));
+
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function costVsRevenueByGrade(req, res, next) {
+  try {
+    const since = new Date();
+    since.setDate(since.getDate() - 30);
+
+    const salesByGrade = await prisma.orderItem.groupBy({
+      by: ['qualityGradeId'],
+      where: {
+        clientOrder: {
+          status: 'DELIVERED',
+          updatedAt: { gte: since },
+        },
+      },
+      _sum: { quantity: true },
+    });
+
+    const grades = await prisma.qualityGrade.findMany({
+      include: { product: { select: { name: true } } },
+    });
+    const gradeMap = new Map(grades.map((g) => [g.id, g]));
+
+    const purchaseCosts = await prisma.purchaseItem.findMany({
+      where: { createdAt: { gte: since } },
+      select: { productId: true, unitPrice: true, quantity: true },
+    });
+
+    // Average cost per product
+    const costByProduct = {};
+    for (const p of purchaseCosts) {
+      if (!costByProduct[p.productId]) {
+        costByProduct[p.productId] = { totalCost: 0, totalQty: 0 };
+      }
+      costByProduct[p.productId].totalCost += p.unitPrice * p.quantity;
+      costByProduct[p.productId].totalQty += p.quantity;
+    }
+
+    const result = salesByGrade.map((s) => {
+      const grade = gradeMap.get(s.qualityGradeId);
+      if (!grade) return null;
+
+      const costData = costByProduct[grade.productId];
+      const avgCost = costData ? costData.totalCost / costData.totalQty : 0;
+      const revenue = (s._sum.quantity || 0) * grade.price;
+      const cost = (s._sum.quantity || 0) * avgCost;
+
+      return {
+        gradeId: s.qualityGradeId,
+        grade: grade.grade,
+        clientFacingGrade: grade.clientFacingGrade,
+        productName: grade.product.name,
+        quantitySold: s._sum.quantity || 0,
+        revenue: Math.round(revenue * 100) / 100,
+        cost: Math.round(cost * 100) / 100,
+        profit: Math.round((revenue - cost) * 100) / 100,
+        marginPercent: revenue > 0 ? Math.round(((revenue - cost) / revenue) * 10000) / 100 : 0,
+      };
+    }).filter(Boolean);
+
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function topClients(req, res, next) {
+  try {
+    const { days = 30, limit = 10 } = req.query;
+    const since = new Date();
+    since.setDate(since.getDate() - parseInt(days));
+
+    const clientRevenue = await prisma.clientOrder.groupBy({
+      by: ['clientId'],
+      where: {
+        status: 'DELIVERED',
+        updatedAt: { gte: since },
+      },
+      _sum: { totalAmount: true },
+      _count: { id: true },
+      orderBy: { _sum: { totalAmount: 'desc' } },
+      take: parseInt(limit),
+    });
+
+    const clientIds = clientRevenue.map((c) => c.clientId);
+    const clients = await prisma.client.findMany({
+      where: { id: { in: clientIds } },
+      select: { id: true, businessName: true, businessType: true },
+    });
+    const clientMap = new Map(clients.map((c) => [c.id, c]));
+
+    const result = clientRevenue.map((c) => ({
+      client: clientMap.get(c.clientId),
+      totalRevenue: Math.round((c._sum.totalAmount || 0) * 100) / 100,
+      orderCount: c._count.id,
+    }));
+
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function deliveryPerformance(req, res, next) {
+  try {
+    const { days = 30 } = req.query;
+    const since = new Date();
+    since.setDate(since.getDate() - parseInt(days));
+
+    const [totalDispatches, completedDispatches, deliveredOrders, returnedItems] =
+      await Promise.all([
+        prisma.dispatch.count({
+          where: { createdAt: { gte: since } },
+        }),
+        prisma.dispatch.count({
+          where: { status: 'COMPLETED', createdAt: { gte: since } },
+        }),
+        prisma.dispatchItem.count({
+          where: { status: 'DELIVERED', createdAt: { gte: since } },
+        }),
+        prisma.dispatchItem.count({
+          where: { status: 'RETURNED', createdAt: { gte: since } },
+        }),
+      ]);
+
+    const completionRate =
+      totalDispatches > 0 ? (completedDispatches / totalDispatches) * 100 : 0;
+
+    const deliveryRate =
+      deliveredOrders + returnedItems > 0
+        ? (deliveredOrders / (deliveredOrders + returnedItems)) * 100
+        : 0;
+
+    // Average dispatch duration for completed
+    const completedWithTimes = await prisma.dispatch.findMany({
+      where: {
+        status: 'COMPLETED',
+        departedAt: { not: null },
+        completedAt: { not: null },
+        createdAt: { gte: since },
+      },
+      select: { departedAt: true, completedAt: true },
+    });
+
+    let avgDurationMinutes = 0;
+    if (completedWithTimes.length > 0) {
+      const totalMs = completedWithTimes.reduce(
+        (sum, d) => sum + (d.completedAt.getTime() - d.departedAt.getTime()),
+        0
+      );
+      avgDurationMinutes = Math.round(totalMs / completedWithTimes.length / 60000);
+    }
+
+    res.json({
+      totalDispatches,
+      completedDispatches,
+      completionRate: Math.round(completionRate * 100) / 100,
+      deliveredOrders,
+      returnedItems,
+      deliveryRate: Math.round(deliveryRate * 100) / 100,
+      avgDurationMinutes,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function marginAnalysis(req, res, next) {
+  try {
+    const { productId } = req.query;
+
+    if (productId) {
+      const analysis = await getMarginAnalysis(productId);
+      return res.json(analysis);
+    }
+
+    // Get top products by sales volume
+    const topProducts = await prisma.orderItem.groupBy({
+      by: ['productId'],
+      _sum: { quantity: true },
+      orderBy: { _sum: { quantity: 'desc' } },
+      take: 20,
+    });
+
+    const analyses = await Promise.all(
+      topProducts.map((p) => getMarginAnalysis(p.productId))
+    );
+
+    res.json(analyses.filter((a) => a.grades.length > 0));
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = {
+  getDashboardKPIs,
+  revenueByPeriod,
+  costVsRevenueByGrade,
+  topClients,
+  deliveryPerformance,
+  marginAnalysis,
+};

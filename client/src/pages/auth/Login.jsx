@@ -1,0 +1,190 @@
+import React, { useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Mail, Lock, ArrowRight, Eye, EyeOff, Zap, Shield, BarChart3 } from 'lucide-react';
+import { toast } from 'sonner';
+import { useAuth } from '@/context/AuthContext';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
+
+const features = [
+  { icon: Zap, text: 'Real-time order tracking and dispatch management' },
+  { icon: Shield, text: 'Quality control with weight verification and grading' },
+  { icon: BarChart3, text: 'Advanced analytics and supplier performance insights' },
+];
+
+function Login() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const from = location.state?.from?.pathname || '/admin';
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const data = await login(email, password);
+      toast.success('Welcome back!');
+      const role = data.user?.role;
+      if (role === 'CLIENT_ADMIN' || role === 'CLIENT_STAFF') {
+        navigate('/portal');
+      } else if (role === 'DRIVER') {
+        navigate('/driver');
+      } else {
+        navigate(from);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Invalid credentials');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex">
+      {/* Left Panel */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.8 }}
+        className="hidden lg:flex lg:w-[60%] bg-brand-base relative overflow-hidden flex-col items-center justify-center px-16"
+      >
+        <div className="absolute inset-0 overflow-hidden">
+          <div
+            className="absolute w-[600px] h-[600px] rounded-full opacity-10 animate-mesh-move"
+            style={{ background: 'radial-gradient(circle, #4EECD3 0%, transparent 70%)', top: '-10%', left: '-10%' }}
+          />
+          <div
+            className="absolute w-[500px] h-[500px] rounded-full opacity-[0.08] animate-mesh-move-reverse"
+            style={{ background: 'radial-gradient(circle, #4EEC90 0%, transparent 70%)', bottom: '-15%', right: '-5%', animationDelay: '2s' }}
+          />
+          <div
+            className="absolute w-[400px] h-[400px] rounded-full opacity-5 animate-mesh-move"
+            style={{ background: 'radial-gradient(circle, #4EB8EC 0%, transparent 70%)', top: '40%', left: '50%', animationDelay: '4s' }}
+          />
+        </div>
+
+        <div className="relative z-10 text-center max-w-lg">
+          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.6, delay: 0.2 }}>
+            <svg width="200" height="200" viewBox="0 0 200 200" className="mx-auto mb-8">
+              <defs>
+                <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#4EECD3" />
+                  <stop offset="100%" stopColor="#4EEC90" />
+                </linearGradient>
+              </defs>
+              <circle cx="100" cy="100" r="85" fill="none" stroke="url(#logoGrad)" strokeWidth="3" />
+              <circle cx="100" cy="100" r="70" fill="none" stroke="url(#logoGrad)" strokeWidth="1.5" opacity="0.5" />
+              <path d="M60 130 L100 55 L140 130 L120 130 L100 90 L80 130 Z" fill="url(#logoGrad)" />
+              <circle cx="100" cy="135" r="4" fill="#4EECD3" />
+            </svg>
+          </motion.div>
+
+          <motion.h1 initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, delay: 0.4 }} className="text-4xl font-bold text-brand-primary tracking-tight mb-2">
+            Azoury
+          </motion.h1>
+          <motion.p initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, delay: 0.5 }} className="text-brand-accent text-lg font-medium mb-12">
+            End-to-End Supply Chain Intelligence
+          </motion.p>
+
+          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, delay: 0.6 }} className="space-y-6">
+            {features.map((f, i) => (
+              <div key={i} className="flex items-center gap-4 text-left">
+                <div className="w-10 h-10 rounded-lg bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
+                  <f.icon className="w-5 h-5 text-brand-accent" />
+                </div>
+                <p className="text-brand-secondary text-sm">{f.text}</p>
+              </div>
+            ))}
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Right Panel */}
+      <motion.div
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6, delay: 0.3 }}
+        className="w-full lg:w-[40%] bg-brand-surface flex items-center justify-center p-6 lg:p-12"
+      >
+        <div className="w-full max-w-md">
+          <div className="lg:hidden text-center mb-8">
+            <h1 className="text-3xl font-bold text-brand-primary">Azoury</h1>
+            <p className="text-brand-accent text-sm mt-1">Supply Chain Intelligence</p>
+          </div>
+
+          <div className="mt-8">
+            <h2 className="text-2xl font-bold text-brand-primary mb-2">Welcome back</h2>
+            <p className="text-brand-secondary text-sm mb-8">Sign in to your account to continue</p>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <Label className="block mb-2">Email Address</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
+                  <Input type="email" placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10" required />
+                </div>
+              </div>
+
+              <div>
+                <Label className="block mb-2">Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 pr-10"
+                    required
+                  />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-muted hover:text-brand-primary transition-colors">
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Link to="/forgot-password" className="text-sm text-brand-accent hover:text-brand-accent/80 transition-colors">
+                  Forgot Password?
+                </Link>
+              </div>
+
+              <Button type="submit" disabled={loading} className="w-full">
+                {loading ? 'Signing In...' : 'Sign In'}
+                {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
+              </Button>
+            </form>
+
+            <p className="text-brand-muted text-sm text-center mt-6">
+              Don&apos;t have an account?{' '}
+              <Link to="/register" className="text-brand-accent hover:underline font-medium">Register</Link>
+            </p>
+
+            <div className="mt-8 p-3 rounded-lg bg-brand-elevated/50 border border-brand-border">
+              <p className="text-brand-muted text-xs text-center">
+                Demo: <span className="text-brand-accent">admin@azoury.com</span> / <span className="text-brand-accent">password123</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      <style>{`
+        @keyframes mesh-move { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(30px, -50px) scale(1.1); } 66% { transform: translate(-20px, 20px) scale(0.9); } }
+        @keyframes mesh-move-reverse { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(-40px, 30px) scale(0.95); } 66% { transform: translate(25px, -35px) scale(1.05); } }
+        .animate-mesh-move { animation: mesh-move 20s ease-in-out infinite; }
+        .animate-mesh-move-reverse { animation: mesh-move-reverse 25s ease-in-out infinite; }
+      `}</style>
+    </div>
+  );
+}
+
+export { Login };
+export default Login;
