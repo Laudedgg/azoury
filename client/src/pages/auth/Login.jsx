@@ -182,12 +182,6 @@ function Login() {
               Don&apos;t have an account?{' '}
               <Link to="/register" className="text-brand-accent hover:underline font-medium">Register</Link>
             </p>
-
-            <div className="mt-6 sm:mt-8 p-3 rounded-lg bg-brand-elevated/50 border border-brand-border">
-              <p className="text-brand-muted text-xs text-center">
-                Demo: <span className="text-brand-accent">admin@azoury.com</span> / <span className="text-brand-accent">password123</span>
-              </p>
-            </div>
           </div>
         </div>
       </motion.div>
