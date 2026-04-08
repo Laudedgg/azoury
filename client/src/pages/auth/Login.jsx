@@ -14,6 +14,21 @@ const features = [
   { icon: BarChart3, text: 'Advanced analytics and supplier performance insights' },
 ];
 
+const Logo = ({ size = 200, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 200 200" className={className}>
+    <defs>
+      <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#4EECD3" />
+        <stop offset="100%" stopColor="#4EEC90" />
+      </linearGradient>
+    </defs>
+    <circle cx="100" cy="100" r="85" fill="none" stroke="url(#logoGrad)" strokeWidth="3" />
+    <circle cx="100" cy="100" r="70" fill="none" stroke="url(#logoGrad)" strokeWidth="1.5" opacity="0.5" />
+    <path d="M60 130 L100 55 L140 130 L120 130 L100 90 L80 130 Z" fill="url(#logoGrad)" />
+    <circle cx="100" cy="135" r="4" fill="#4EECD3" />
+  </svg>
+);
+
 function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,15 +55,15 @@ function Login() {
         navigate(from);
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Invalid credentials');
+      toast.error(err.response?.data?.message || err.response?.data?.error || 'Invalid credentials');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Panel */}
+    <div className="min-h-screen flex flex-col lg:flex-row">
+      {/* Desktop Left Panel */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -56,34 +71,14 @@ function Login() {
         className="hidden lg:flex lg:w-[60%] bg-brand-base relative overflow-hidden flex-col items-center justify-center px-16"
       >
         <div className="absolute inset-0 overflow-hidden">
-          <div
-            className="absolute w-[600px] h-[600px] rounded-full opacity-10 animate-mesh-move"
-            style={{ background: 'radial-gradient(circle, #4EECD3 0%, transparent 70%)', top: '-10%', left: '-10%' }}
-          />
-          <div
-            className="absolute w-[500px] h-[500px] rounded-full opacity-[0.08] animate-mesh-move-reverse"
-            style={{ background: 'radial-gradient(circle, #4EEC90 0%, transparent 70%)', bottom: '-15%', right: '-5%', animationDelay: '2s' }}
-          />
-          <div
-            className="absolute w-[400px] h-[400px] rounded-full opacity-5 animate-mesh-move"
-            style={{ background: 'radial-gradient(circle, #4EB8EC 0%, transparent 70%)', top: '40%', left: '50%', animationDelay: '4s' }}
-          />
+          <div className="absolute w-[600px] h-[600px] rounded-full opacity-10 animate-mesh-move" style={{ background: 'radial-gradient(circle, #4EECD3 0%, transparent 70%)', top: '-10%', left: '-10%' }} />
+          <div className="absolute w-[500px] h-[500px] rounded-full opacity-[0.08] animate-mesh-move-reverse" style={{ background: 'radial-gradient(circle, #4EEC90 0%, transparent 70%)', bottom: '-15%', right: '-5%', animationDelay: '2s' }} />
+          <div className="absolute w-[400px] h-[400px] rounded-full opacity-5 animate-mesh-move" style={{ background: 'radial-gradient(circle, #4EB8EC 0%, transparent 70%)', top: '40%', left: '50%', animationDelay: '4s' }} />
         </div>
 
         <div className="relative z-10 text-center max-w-lg">
           <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.6, delay: 0.2 }}>
-            <svg width="200" height="200" viewBox="0 0 200 200" className="mx-auto mb-8">
-              <defs>
-                <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#4EECD3" />
-                  <stop offset="100%" stopColor="#4EEC90" />
-                </linearGradient>
-              </defs>
-              <circle cx="100" cy="100" r="85" fill="none" stroke="url(#logoGrad)" strokeWidth="3" />
-              <circle cx="100" cy="100" r="70" fill="none" stroke="url(#logoGrad)" strokeWidth="1.5" opacity="0.5" />
-              <path d="M60 130 L100 55 L140 130 L120 130 L100 90 L80 130 Z" fill="url(#logoGrad)" />
-              <circle cx="100" cy="135" r="4" fill="#4EECD3" />
-            </svg>
+            <Logo size={200} className="mx-auto mb-8" />
           </motion.div>
 
           <motion.h1 initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, delay: 0.4 }} className="text-4xl font-bold text-brand-primary tracking-tight mb-2">
@@ -106,34 +101,55 @@ function Login() {
         </div>
       </motion.div>
 
-      {/* Right Panel */}
+      {/* Mobile Brand Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="lg:hidden relative overflow-hidden bg-brand-base"
+      >
+        {/* Mobile mesh background */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute w-[300px] h-[300px] rounded-full opacity-[0.12] animate-mesh-move" style={{ background: 'radial-gradient(circle, #4EECD3 0%, transparent 70%)', top: '-40%', right: '-20%' }} />
+          <div className="absolute w-[250px] h-[250px] rounded-full opacity-[0.08] animate-mesh-move-reverse" style={{ background: 'radial-gradient(circle, #4EEC90 0%, transparent 70%)', bottom: '-30%', left: '-15%' }} />
+        </div>
+
+        <div className="relative z-10 flex flex-col items-center pt-10 pb-8 px-6">
+          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5, delay: 0.1 }}>
+            <Logo size={80} className="mb-4" />
+          </motion.div>
+          <motion.h1 initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.4, delay: 0.2 }} className="text-2xl font-bold text-brand-primary tracking-tight">
+            Azoury
+          </motion.h1>
+          <motion.p initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.4, delay: 0.3 }} className="text-brand-accent text-xs font-medium mt-1">
+            End-to-End Supply Chain Intelligence
+          </motion.p>
+        </div>
+      </motion.div>
+
+      {/* Form Panel */}
       <motion.div
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6, delay: 0.3 }}
-        className="w-full lg:w-[40%] bg-brand-surface flex items-center justify-center p-6 lg:p-12"
+        className="flex-1 bg-brand-surface flex items-start lg:items-center justify-center px-5 py-8 sm:px-8 lg:p-12"
       >
         <div className="w-full max-w-md">
-          <div className="lg:hidden text-center mb-8">
-            <h1 className="text-3xl font-bold text-brand-primary">Azoury</h1>
-            <p className="text-brand-accent text-sm mt-1">Supply Chain Intelligence</p>
-          </div>
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold text-brand-primary mb-1">Welcome back</h2>
+            <p className="text-brand-secondary text-sm mb-6 sm:mb-8">Sign in to your account to continue</p>
 
-          <div className="mt-8">
-            <h2 className="text-2xl font-bold text-brand-primary mb-2">Welcome back</h2>
-            <p className="text-brand-secondary text-sm mb-8">Sign in to your account to continue</p>
-
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
               <div>
-                <Label className="block mb-2">Email Address</Label>
+                <Label className="block mb-1.5 sm:mb-2 text-sm">Email Address</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
-                  <Input type="email" placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10" required />
+                  <Input type="email" placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10 h-11" required />
                 </div>
               </div>
 
               <div>
-                <Label className="block mb-2">Password</Label>
+                <Label className="block mb-1.5 sm:mb-2 text-sm">Password</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
                   <Input
@@ -141,10 +157,10 @@ function Login() {
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10"
+                    className="pl-10 pr-10 h-11"
                     required
                   />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-muted hover:text-brand-primary transition-colors">
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-muted hover:text-brand-primary transition-colors p-1">
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
@@ -156,7 +172,7 @@ function Login() {
                 </Link>
               </div>
 
-              <Button type="submit" disabled={loading} className="w-full">
+              <Button type="submit" disabled={loading} className="w-full h-11">
                 {loading ? 'Signing In...' : 'Sign In'}
                 {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
               </Button>
@@ -167,7 +183,7 @@ function Login() {
               <Link to="/register" className="text-brand-accent hover:underline font-medium">Register</Link>
             </p>
 
-            <div className="mt-8 p-3 rounded-lg bg-brand-elevated/50 border border-brand-border">
+            <div className="mt-6 sm:mt-8 p-3 rounded-lg bg-brand-elevated/50 border border-brand-border">
               <p className="text-brand-muted text-xs text-center">
                 Demo: <span className="text-brand-accent">admin@azoury.com</span> / <span className="text-brand-accent">password123</span>
               </p>
