@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ShoppingBag, TrendingUp, ClipboardList, Receipt, Upload, Plus } from 'lucide-react';
+import { ShoppingBag, TrendingUp, ClipboardList, Receipt, Upload, Plus, FileText, Check, Printer, Download, X } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, Legend,
@@ -14,23 +14,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { DataTable } from '@/components/tables/DataTable';
 import { ChartCard } from '@/components/dashboard/ChartCard';
+import { Checkbox } from '@/components/ui/Checkbox';
+import { Separator } from '@/components/ui/Separator';
 import { CHART_COLORS } from '@/utils/constants';
 import { formatCurrency, formatDate } from '@/utils/helpers';
 import { useFetch } from '@/hooks/useFetch';
+import { toast } from 'sonner';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
 const mockCombinedOrders = [
-  { id: 1, product: 'Roma Tomatoes', totalOrdered: 450, currentStock: 120, netToPurchase: 330, supplier: 'Farm Fresh Co.', lastPrice: 2.80 },
-  { id: 2, product: 'Iceberg Lettuce', totalOrdered: 280, currentStock: 350, netToPurchase: 0, supplier: 'Green Valley', lastPrice: 1.50 },
-  { id: 3, product: 'Cucumbers', totalOrdered: 380, currentStock: 200, netToPurchase: 180, supplier: 'Farm Fresh Co.', lastPrice: 1.90 },
-  { id: 4, product: 'Bell Peppers', totalOrdered: 220, currentStock: 90, netToPurchase: 130, supplier: 'Bekaa Farms', lastPrice: 3.20 },
-  { id: 5, product: 'Bananas', totalOrdered: 500, currentStock: 600, netToPurchase: 0, supplier: 'Tropical Imports', lastPrice: 1.20 },
-  { id: 6, product: 'Potatoes', totalOrdered: 800, currentStock: 450, netToPurchase: 350, supplier: 'Mountain Produce', lastPrice: 0.90 },
-  { id: 7, product: 'Onions', totalOrdered: 600, currentStock: 380, netToPurchase: 220, supplier: 'Bekaa Farms', lastPrice: 0.75 },
-  { id: 8, product: 'Carrots', totalOrdered: 340, currentStock: 400, netToPurchase: 0, supplier: 'Farm Fresh Co.', lastPrice: 1.10 },
-  { id: 9, product: 'Avocados', totalOrdered: 150, currentStock: 40, netToPurchase: 110, supplier: 'Tropical Imports', lastPrice: 4.50 },
-  { id: 10, product: 'Lemons', totalOrdered: 260, currentStock: 180, netToPurchase: 80, supplier: 'South Coast Citrus', lastPrice: 2.00 },
+  { id: 1, product: 'Roma Tomatoes', totalOrdered: 450, currentStock: 120, netToPurchase: 330, supplier: 'Farm Fresh Co.', lastPrice: 2.80, unit: 'kg' },
+  { id: 2, product: 'Iceberg Lettuce', totalOrdered: 280, currentStock: 350, netToPurchase: 0, supplier: 'Green Valley', lastPrice: 1.50, unit: 'kg' },
+  { id: 3, product: 'Cucumbers', totalOrdered: 380, currentStock: 200, netToPurchase: 180, supplier: 'Farm Fresh Co.', lastPrice: 1.90, unit: 'kg' },
+  { id: 4, product: 'Bell Peppers', totalOrdered: 220, currentStock: 90, netToPurchase: 130, supplier: 'Bekaa Farms', lastPrice: 3.20, unit: 'kg' },
+  { id: 5, product: 'Bananas', totalOrdered: 500, currentStock: 600, netToPurchase: 0, supplier: 'Tropical Imports', lastPrice: 1.20, unit: 'kg' },
+  { id: 6, product: 'Potatoes', totalOrdered: 800, currentStock: 450, netToPurchase: 350, supplier: 'Mountain Produce', lastPrice: 0.90, unit: 'kg' },
+  { id: 7, product: 'Onions', totalOrdered: 600, currentStock: 380, netToPurchase: 220, supplier: 'Bekaa Farms', lastPrice: 0.75, unit: 'kg' },
+  { id: 8, product: 'Carrots', totalOrdered: 340, currentStock: 400, netToPurchase: 0, supplier: 'Farm Fresh Co.', lastPrice: 1.10, unit: 'kg' },
+  { id: 9, product: 'Avocados', totalOrdered: 150, currentStock: 40, netToPurchase: 110, supplier: 'Tropical Imports', lastPrice: 4.50, unit: 'kg' },
+  { id: 10, product: 'Lemons', totalOrdered: 260, currentStock: 180, netToPurchase: 80, supplier: 'South Coast Citrus', lastPrice: 2.00, unit: 'kg' },
 ];
 
 const mockSupplierComparison = [
@@ -76,56 +79,156 @@ const mockReceipts = [
   { id: 6, date: '2026-04-03', supplier: 'South Coast Citrus', total: 1560 },
 ];
 
-const combinedColumns = [
-  { accessorKey: 'product', header: 'Product' },
-  { accessorKey: 'totalOrdered', header: 'Total Ordered (kg)' },
-  { accessorKey: 'currentStock', header: 'Current Stock (kg)' },
-  {
-    accessorKey: 'netToPurchase',
-    header: 'Net to Purchase (kg)',
-    cell: ({ row }) => {
-      const v = row.original.netToPurchase;
-      return <span className={v > 0 ? 'text-brand-error font-semibold' : 'text-brand-success font-semibold'}>{v > 0 ? v : 'Sufficient'}</span>;
-    },
-  },
-  { accessorKey: 'supplier', header: 'Suggested Supplier' },
-  { accessorKey: 'lastPrice', header: 'Last Price', cell: ({ row }) => formatCurrency(row.original.lastPrice) },
-];
-
-const comparisonColumns = [
-  { accessorKey: 'name', header: 'Supplier' },
-  { accessorKey: 'currentPrice', header: 'Current', cell: ({ row }) => formatCurrency(row.original.currentPrice) },
-  { accessorKey: 'avg7', header: '7-Day Avg', cell: ({ row }) => formatCurrency(row.original.avg7) },
-  { accessorKey: 'avg30', header: '30-Day Avg', cell: ({ row }) => formatCurrency(row.original.avg30) },
-  { accessorKey: 'ytd', header: 'YTD', cell: ({ row }) => formatCurrency(row.original.ytd) },
-  { accessorKey: 'lastYear', header: 'Last Year', cell: ({ row }) => formatCurrency(row.original.lastYear) },
-  {
-    accessorKey: 'trend',
-    header: 'Trend',
-    cell: ({ row }) => {
-      const t = row.original.trend;
-      return <Badge variant={t === 'Rising' ? 'error' : t === 'Falling' ? 'success' : 'default'}>{t}</Badge>;
-    },
-  },
-];
-
-const surveyColumns = [
-  { accessorKey: 'date', header: 'Date' },
-  { accessorKey: 'supplier', header: 'Supplier' },
-  { accessorKey: 'product', header: 'Product' },
-  { accessorKey: 'price', header: 'Price/kg', cell: ({ row }) => formatCurrency(row.original.price) },
-];
-
 const products = ['Roma Tomatoes', 'Cucumbers', 'Potatoes', 'Bell Peppers', 'Avocados'];
 const suppliers = ['Farm Fresh Co.', 'Bekaa Farms', 'Green Valley', 'Mountain Produce', 'Tropical Imports', 'South Coast Citrus'];
 
 function Purchasing() {
   const [selectedProduct, setSelectedProduct] = useState('Roma Tomatoes');
   const [receiptDialog, setReceiptDialog] = useState(null);
-  const [selectedRows, setSelectedRows] = useState([]);
+  const [selectedItems, setSelectedItems] = useState({});
+  const [poDialogOpen, setPODialogOpen] = useState(false);
+  const [poQuantities, setPOQuantities] = useState({});
+  const [poSuppliers, setPOSuppliers] = useState({});
+  const [poNotes, setPONotes] = useState('');
+  const [generatedPOs, setGeneratedPOs] = useState([]);
+  const [viewPO, setViewPO] = useState(null);
 
   const { data: apiData } = useFetch('/purchasing/orders');
-  const priceHistory = generatePriceHistory();
+  const priceHistory = useMemo(() => generatePriceHistory(), []);
+
+  const itemsNeedingPurchase = mockCombinedOrders.filter((o) => o.netToPurchase > 0);
+
+  const toggleItem = (id) => {
+    setSelectedItems((prev) => {
+      const next = { ...prev };
+      if (next[id]) delete next[id];
+      else next[id] = true;
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (Object.keys(selectedItems).length === itemsNeedingPurchase.length) {
+      setSelectedItems({});
+    } else {
+      const all = {};
+      itemsNeedingPurchase.forEach((item) => { all[item.id] = true; });
+      setSelectedItems(all);
+    }
+  };
+
+  const selectedCount = Object.keys(selectedItems).length;
+
+  const openPODialog = () => {
+    const initQty = {};
+    const initSupp = {};
+    itemsNeedingPurchase.filter((i) => selectedItems[i.id]).forEach((item) => {
+      initQty[item.id] = item.netToPurchase;
+      initSupp[item.id] = item.supplier;
+    });
+    setPOQuantities(initQty);
+    setPOSuppliers(initSupp);
+    setPONotes('');
+    setPODialogOpen(true);
+  };
+
+  const selectedPOItems = itemsNeedingPurchase.filter((i) => selectedItems[i.id]);
+
+  const poTotal = selectedPOItems.reduce((sum, item) => {
+    const qty = poQuantities[item.id] || item.netToPurchase;
+    return sum + qty * item.lastPrice;
+  }, 0);
+
+  // Group selected items by supplier for PO generation
+  const groupedBySupplier = useMemo(() => {
+    const groups = {};
+    selectedPOItems.forEach((item) => {
+      const supp = poSuppliers[item.id] || item.supplier;
+      if (!groups[supp]) groups[supp] = [];
+      groups[supp].push({ ...item, orderQty: poQuantities[item.id] || item.netToPurchase });
+    });
+    return groups;
+  }, [selectedPOItems, poSuppliers, poQuantities]);
+
+  const generatePO = () => {
+    const now = new Date();
+    const newPOs = Object.entries(groupedBySupplier).map(([supplier, items], idx) => ({
+      id: `PO-${String(generatedPOs.length + idx + 1).padStart(4, '0')}`,
+      supplier,
+      date: now.toISOString().split('T')[0],
+      time: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+      items: items.map((i) => ({
+        product: i.product,
+        quantity: i.orderQty,
+        unit: i.unit,
+        unitPrice: i.lastPrice,
+        total: i.orderQty * i.lastPrice,
+      })),
+      total: items.reduce((s, i) => s + i.orderQty * i.lastPrice, 0),
+      notes: poNotes,
+      status: 'DRAFT',
+    }));
+
+    setGeneratedPOs((prev) => [...newPOs, ...prev]);
+    setPODialogOpen(false);
+    setSelectedItems({});
+    toast.success(`${newPOs.length} Purchase Order${newPOs.length > 1 ? 's' : ''} generated successfully`);
+  };
+
+  const combinedColumns = [
+    {
+      id: 'select',
+      header: () => (
+        <Checkbox
+          checked={selectedCount === itemsNeedingPurchase.length && itemsNeedingPurchase.length > 0}
+          onCheckedChange={toggleAll}
+        />
+      ),
+      cell: ({ row }) => {
+        const item = row.original;
+        if (item.netToPurchase <= 0) return null;
+        return <Checkbox checked={!!selectedItems[item.id]} onCheckedChange={() => toggleItem(item.id)} />;
+      },
+      size: 40,
+    },
+    { accessorKey: 'product', header: 'Product' },
+    { accessorKey: 'totalOrdered', header: 'Total Ordered (kg)' },
+    { accessorKey: 'currentStock', header: 'Current Stock (kg)' },
+    {
+      accessorKey: 'netToPurchase',
+      header: 'Net to Purchase (kg)',
+      cell: ({ row }) => {
+        const v = row.original.netToPurchase;
+        return <span className={v > 0 ? 'text-brand-error font-semibold' : 'text-brand-success font-semibold'}>{v > 0 ? v : 'Sufficient'}</span>;
+      },
+    },
+    { accessorKey: 'supplier', header: 'Suggested Supplier' },
+    { accessorKey: 'lastPrice', header: 'Last Price', cell: ({ row }) => formatCurrency(row.original.lastPrice) },
+  ];
+
+  const comparisonColumns = [
+    { accessorKey: 'name', header: 'Supplier' },
+    { accessorKey: 'currentPrice', header: 'Current', cell: ({ row }) => formatCurrency(row.original.currentPrice) },
+    { accessorKey: 'avg7', header: '7-Day Avg', cell: ({ row }) => formatCurrency(row.original.avg7) },
+    { accessorKey: 'avg30', header: '30-Day Avg', cell: ({ row }) => formatCurrency(row.original.avg30) },
+    { accessorKey: 'ytd', header: 'YTD', cell: ({ row }) => formatCurrency(row.original.ytd) },
+    { accessorKey: 'lastYear', header: 'Last Year', cell: ({ row }) => formatCurrency(row.original.lastYear) },
+    {
+      accessorKey: 'trend',
+      header: 'Trend',
+      cell: ({ row }) => {
+        const t = row.original.trend;
+        return <Badge variant={t === 'Rising' ? 'error' : t === 'Falling' ? 'success' : 'default'}>{t}</Badge>;
+      },
+    },
+  ];
+
+  const surveyColumns = [
+    { accessorKey: 'date', header: 'Date' },
+    { accessorKey: 'supplier', header: 'Supplier' },
+    { accessorKey: 'product', header: 'Product' },
+    { accessorKey: 'price', header: 'Price/kg', cell: ({ row }) => formatCurrency(row.original.price) },
+  ];
 
   return (
     <motion.div initial="initial" animate="animate" variants={{ animate: { transition: { staggerChildren: 0.08 } } }} className="space-y-6">
@@ -145,12 +248,13 @@ function Purchasing() {
 
           {/* Tab 1: Combined Orders */}
           <TabsContent value="combined" className="mt-6 space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <p className="text-brand-secondary text-sm">Aggregated product needs across all pending orders</p>
-              <Button disabled={selectedRows.length === 0}>
-                <Plus className="w-4 h-4 mr-2" /> Generate PO ({selectedRows.length})
+              <Button onClick={openPODialog} disabled={selectedCount === 0}>
+                <FileText className="w-4 h-4 mr-2" /> Generate PO ({selectedCount})
               </Button>
             </div>
+
             <Card>
               <CardContent className="p-6">
                 <DataTable
@@ -161,6 +265,35 @@ function Purchasing() {
                 />
               </CardContent>
             </Card>
+
+            {/* Generated POs section */}
+            {generatedPOs.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-brand-primary font-semibold flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-brand-accent" />
+                  Generated Purchase Orders ({generatedPOs.length})
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {generatedPOs.map((po) => (
+                    <Card key={po.id} className="hover:border-brand-accent/40 transition-colors cursor-pointer" onClick={() => setViewPO(po)}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="font-mono text-brand-accent font-semibold text-sm">{po.id}</span>
+                          <Badge variant={po.status === 'DRAFT' ? 'warning' : 'success'}>{po.status}</Badge>
+                        </div>
+                        <p className="text-brand-primary font-medium text-sm">{po.supplier}</p>
+                        <p className="text-brand-muted text-xs mt-0.5">{po.date} at {po.time}</p>
+                        <Separator className="my-3" />
+                        <div className="flex items-center justify-between">
+                          <span className="text-brand-secondary text-xs">{po.items.length} item{po.items.length > 1 ? 's' : ''}</span>
+                          <span className="text-brand-accent font-bold">{formatCurrency(po.total)}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           {/* Tab 2: Supplier Comparison */}
@@ -223,7 +356,7 @@ function Purchasing() {
                   </div>
                   <div>
                     <label className="block text-brand-secondary text-xs mb-1">Date</label>
-                    <Input type="date" defaultValue="2026-04-08" />
+                    <Input type="date" defaultValue="2026-04-09" />
                   </div>
                   <div className="flex items-end">
                     <Button className="w-full"><Plus className="w-4 h-4 mr-1" /> Add Survey</Button>
@@ -296,6 +429,180 @@ function Purchasing() {
           </TabsContent>
         </Tabs>
       </motion.div>
+
+      {/* Generate PO Dialog */}
+      <Dialog open={poDialogOpen} onOpenChange={setPODialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-brand-accent" />
+              Generate Purchase Order
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-5 mt-2">
+            {/* Info */}
+            <p className="text-brand-secondary text-sm">
+              {Object.keys(groupedBySupplier).length > 1
+                ? `Items will be split into ${Object.keys(groupedBySupplier).length} separate POs by supplier.`
+                : 'Review items and adjust quantities before generating.'}
+            </p>
+
+            {/* Items grouped by supplier */}
+            {Object.entries(groupedBySupplier).map(([supplier, items]) => (
+              <div key={supplier} className="border border-brand-border rounded-lg overflow-hidden">
+                <div className="bg-brand-elevated px-4 py-2.5 flex items-center justify-between">
+                  <span className="text-brand-primary font-medium text-sm">{supplier}</span>
+                  <span className="text-brand-accent text-sm font-semibold">
+                    {formatCurrency(items.reduce((s, i) => s + (poQuantities[i.id] || i.netToPurchase) * i.lastPrice, 0))}
+                  </span>
+                </div>
+                <div className="divide-y divide-brand-border">
+                  {items.map((item) => (
+                    <div key={item.id} className="px-4 py-3 flex items-center gap-4">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-brand-primary text-sm font-medium">{item.product}</p>
+                        <p className="text-brand-muted text-xs">{formatCurrency(item.lastPrice)} / {item.unit}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-24">
+                          <Input
+                            type="number"
+                            value={poQuantities[item.id] || item.netToPurchase}
+                            onChange={(e) => setPOQuantities((prev) => ({ ...prev, [item.id]: Number(e.target.value) }))}
+                            className="text-center h-9 text-sm"
+                            min={1}
+                          />
+                        </div>
+                        <span className="text-brand-secondary text-xs w-6">{item.unit}</span>
+                        <span className="text-brand-primary text-sm font-semibold w-20 text-right">
+                          {formatCurrency((poQuantities[item.id] || item.netToPurchase) * item.lastPrice)}
+                        </span>
+                        <Select
+                          value={poSuppliers[item.id] || item.supplier}
+                          onValueChange={(val) => setPOSuppliers((prev) => ({ ...prev, [item.id]: val }))}
+                        >
+                          <SelectTrigger className="w-40 h-9 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {suppliers.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {/* Notes */}
+            <div>
+              <label className="block text-brand-secondary text-sm font-medium mb-1.5">Notes (optional)</label>
+              <textarea
+                value={poNotes}
+                onChange={(e) => setPONotes(e.target.value)}
+                rows={2}
+                placeholder="Special instructions for this purchase order..."
+                className="w-full bg-brand-elevated border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-primary placeholder:text-brand-muted focus:outline-none focus:ring-2 focus:ring-brand-accent/40 resize-none"
+              />
+            </div>
+
+            <Separator />
+
+            {/* Total + Actions */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-brand-muted text-xs">Grand Total</p>
+                <p className="text-brand-accent text-2xl font-bold">{formatCurrency(poTotal)}</p>
+              </div>
+              <div className="flex gap-3">
+                <Button variant="secondary" onClick={() => setPODialogOpen(false)}>Cancel</Button>
+                <Button onClick={generatePO}>
+                  <Check className="w-4 h-4 mr-2" />
+                  Generate {Object.keys(groupedBySupplier).length > 1 ? `${Object.keys(groupedBySupplier).length} POs` : 'PO'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* View PO Dialog */}
+      {viewPO && (
+        <Dialog open onOpenChange={() => setViewPO(null)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-brand-accent" />
+                  {viewPO.id}
+                </span>
+                <Badge variant={viewPO.status === 'DRAFT' ? 'warning' : 'success'}>{viewPO.status}</Badge>
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 mt-2">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-brand-muted text-xs">Supplier</p>
+                  <p className="text-brand-primary font-medium">{viewPO.supplier}</p>
+                </div>
+                <div>
+                  <p className="text-brand-muted text-xs">Date</p>
+                  <p className="text-brand-primary font-medium">{viewPO.date} {viewPO.time}</p>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Line items */}
+              <div className="border border-brand-border rounded-lg overflow-hidden">
+                <div className="bg-brand-elevated px-4 py-2 grid grid-cols-12 gap-2 text-xs text-brand-muted font-medium">
+                  <span className="col-span-5">Product</span>
+                  <span className="col-span-2 text-right">Qty</span>
+                  <span className="col-span-2 text-right">Price</span>
+                  <span className="col-span-3 text-right">Total</span>
+                </div>
+                <div className="divide-y divide-brand-border">
+                  {viewPO.items.map((item, i) => (
+                    <div key={i} className="px-4 py-2.5 grid grid-cols-12 gap-2 text-sm">
+                      <span className="col-span-5 text-brand-primary">{item.product}</span>
+                      <span className="col-span-2 text-right text-brand-secondary">{item.quantity} {item.unit}</span>
+                      <span className="col-span-2 text-right text-brand-secondary">{formatCurrency(item.unitPrice)}</span>
+                      <span className="col-span-3 text-right text-brand-primary font-medium">{formatCurrency(item.total)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="bg-brand-elevated px-4 py-2.5 flex items-center justify-between border-t border-brand-border">
+                  <span className="text-brand-secondary text-sm font-medium">Total</span>
+                  <span className="text-brand-accent text-lg font-bold">{formatCurrency(viewPO.total)}</span>
+                </div>
+              </div>
+
+              {viewPO.notes && (
+                <div>
+                  <p className="text-brand-muted text-xs mb-1">Notes</p>
+                  <p className="text-brand-secondary text-sm">{viewPO.notes}</p>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <Button variant="secondary" className="flex-1" onClick={() => { toast.success('PO sent to supplier'); setViewPO(null); }}>
+                  <Printer className="w-4 h-4 mr-2" /> Print
+                </Button>
+                <Button className="flex-1" onClick={() => {
+                  setGeneratedPOs((prev) => prev.map((p) => p.id === viewPO.id ? { ...p, status: 'SENT' } : p));
+                  toast.success(`${viewPO.id} sent to ${viewPO.supplier}`);
+                  setViewPO(null);
+                }}>
+                  <Check className="w-4 h-4 mr-2" /> Send to Supplier
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </motion.div>
   );
 }
