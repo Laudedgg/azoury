@@ -12,8 +12,8 @@ async function main() {
     await prisma.$connect();
     console.log('[Database] Connected to PostgreSQL');
 
-    server.listen(PORT, () => {
-      console.log(`[Server] Azoury API running on http://localhost:${PORT}`);
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log(`[Server] Azoury API running on http://0.0.0.0:${PORT}`);
       console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`[Server] Health check: http://localhost:${PORT}/api/health`);
     });
