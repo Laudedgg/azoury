@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Truck, MapPin, DollarSign, RotateCcw, AlertTriangle, Package, Check, X,
@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { DataTable } from '@/components/tables/DataTable';
 import { useFetch } from '@/hooks/useFetch';
+import api from '@/services/api';
+import { toast } from 'sonner';
 import { formatCurrency } from '@/utils/helpers';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
@@ -69,12 +71,23 @@ const mockUrgent = [
 
 const statusVariant = (s) => ({ Pending: 'warning', Preparing: 'accent', Ready: 'success', Dispatched: 'accent', 'In Transit': 'accent', Planned: 'default', 'Under Review': 'warning', Approved: 'success', Rejected: 'error' }[s] || 'default');
 
-const orderColumns = [
+const makeOrderColumns = (onStatusUpdate) => [
   { accessorKey: 'client', header: 'Client' },
   { accessorKey: 'orderNum', header: 'Order #' },
   { accessorKey: 'items', header: 'Items' },
   { accessorKey: 'status', header: 'Status', cell: ({ row }) => <Badge variant={statusVariant(row.original.status)}>{row.original.status}</Badge> },
   { accessorKey: 'priority', header: 'Priority', cell: ({ row }) => <Badge variant={row.original.priority === 'High' ? 'error' : row.original.priority === 'Medium' ? 'warning' : 'default'}>{row.original.priority}</Badge> },
+  {
+    id: 'action',
+    header: 'Action',
+    cell: ({ row }) => {
+      const s = row.original.status;
+      if (s === 'Pending') return <Button size="sm" onClick={() => onStatusUpdate(row.original.id, 'CONFIRMED')}>Confirm</Button>;
+      if (s === 'Confirmed') return <Button size="sm" onClick={() => onStatusUpdate(row.original.id, 'PREPARING')}>Prepare</Button>;
+      if (s === 'Preparing') return <Button size="sm" onClick={() => onStatusUpdate(row.original.id, 'READY')}>Mark Ready</Button>;
+      return null;
+    },
+  },
 ];
 
 const routeColumns = [
@@ -98,12 +111,17 @@ const pricingColumns = [
   { accessorKey: 'margin', header: 'Margin %', cell: ({ row }) => <span className={row.original.margin >= 30 ? 'text-brand-success font-semibold' : 'text-brand-warning font-semibold'}>{row.original.margin}%</span> },
 ];
 
-const returnColumns = [
+const makeReturnColumns = (onReview) => [
   { accessorKey: 'client', header: 'Client' },
   { accessorKey: 'orderNum', header: 'Order #' },
   { accessorKey: 'type', header: 'Type', cell: ({ row }) => <Badge variant={row.original.type === 'Return' ? 'error' : 'warning'}>{row.original.type}</Badge> },
   { accessorKey: 'reason', header: 'Reason' },
   { accessorKey: 'status', header: 'Status', cell: ({ row }) => <Badge variant={statusVariant(row.original.status)}>{row.original.status}</Badge> },
+  {
+    id: 'action',
+    header: 'Action',
+    cell: ({ row }) => row.original.status === 'Pending' ? <Button size="sm" variant="outline" onClick={() => onReview(row.original)}>Review</Button> : null,
+  },
 ];
 
 const urgentColumns = [
@@ -120,7 +138,118 @@ function Operations() {
   const [returnDialog, setReturnDialog] = useState(null);
   const [returnComment, setReturnComment] = useState('');
 
-  const { data: apiData } = useFetch('/orders?status=IN_PROGRESS');
+  // Fetch orders for dispatch center
+  const { data: ordersData, refetch: refetchOrders } = useFetch('/orders?status=PENDING,CONFIRMED,PREPARING');
+  // Fetch dispatches for route planning
+  const { data: dispatchesData } = useFetch('/dispatches');
+  // Fetch fleet for truck list
+  const { data: fleetData } = useFetch('/fleet');
+  // Fetch products with grades for pricing
+  const { data: productsData } = useFetch('/products');
+  // Fetch returns
+  const { data: returnsData, refetch: refetchReturns } = useFetch('/orders/returns');
+
+  // Map orders API data to display shape
+  const ordersItems = useMemo(() => {
+    const raw = ordersData?.data || ordersData || [];
+    if (raw.length === 0) return mockOrders;
+    return raw.map((o) => ({
+      id: o.id,
+      client: o.client?.name || o.client || '',
+      orderNum: `#${o.id}`,
+      items: o._count?.items || o.items?.length || 0,
+      status: o.status ? o.status.charAt(0) + o.status.slice(1).toLowerCase() : 'Pending',
+      priority: o.priority || 'Medium',
+    }));
+  }, [ordersData]);
+
+  // Map dispatches to routes shape
+  const routesItems = useMemo(() => {
+    const raw = dispatchesData?.data || dispatchesData || [];
+    if (raw.length === 0) return mockRoutes;
+    return raw.map((d) => ({
+      id: d.id,
+      truck: d.truck?.plateNumber || d.truck || '',
+      driver: d.driver?.name || d.driver || '',
+      clients: d.routeOrder || '',
+      stops: d._count?.items || 0,
+      status: d.status ? d.status.charAt(0) + d.status.slice(1).toLowerCase() : 'Planned',
+    }));
+  }, [dispatchesData]);
+
+  // Map fleet to truck cards
+  const truckCards = useMemo(() => {
+    const raw = fleetData?.data || fleetData || [];
+    if (raw.length === 0) return [{ plate: 'B 234 567', model: 'Isuzu NPR', status: 'Available' }, { plate: 'B 345 678', model: 'Mitsubishi Canter', status: 'Available' }, { plate: 'B 456 789', model: 'Isuzu NPR', status: 'In Use' }];
+    return raw.map((v) => ({
+      plate: v.plateNumber || v.plate || '',
+      model: v.model || '',
+      status: v.status ? v.status.charAt(0) + v.status.slice(1).toLowerCase().replace('_', ' ') : 'Available',
+    }));
+  }, [fleetData]);
+
+  // Map products to pricing shape
+  const pricingItems = useMemo(() => {
+    const raw = productsData?.data || productsData || [];
+    if (raw.length === 0) return mockPricing;
+    return raw.map((p) => {
+      const grades = p.qualityGrades || [];
+      const extraGrade = grades.find((g) => g.name === 'Extra' || g.grade === 'Extra');
+      const qualityAGrade = grades.find((g) => g.name === 'Quality A' || g.grade === 'A');
+      const qualityCGrade = grades.find((g) => g.name === 'Quality C' || g.grade === 'C');
+      return {
+        id: p.id,
+        product: p.name,
+        extraPrice: extraGrade?.price || 0,
+        qualityAPrice: qualityAGrade?.price || 0,
+        qualityCPrice: qualityCGrade?.price || 0,
+        margin: 0,
+      };
+    });
+  }, [productsData]);
+
+  // Map returns data
+  const returnsItems = useMemo(() => {
+    const raw = returnsData?.data || returnsData || [];
+    if (raw.length === 0) return mockReturns;
+    return raw.map((r) => ({
+      id: r.id,
+      client: r.clientOrder?.client?.name || '',
+      orderNum: r.clientOrderId ? `#${r.clientOrderId}` : '',
+      type: r.type || 'Return',
+      reason: r.reason || '',
+      status: r.opsManagerApproval === 'APPROVED' ? 'Approved' : r.opsManagerApproval === 'REJECTED' ? 'Rejected' : 'Pending',
+    }));
+  }, [returnsData]);
+
+  const handleStatusUpdate = async (orderId, status) => {
+    try {
+      await api.patch(`/orders/${orderId}/status`, { status });
+      toast.success(`Order status updated to ${status}`);
+      refetchOrders();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update status');
+    }
+  };
+
+  const handleReturnAction = async (returnId, approval) => {
+    if (!returnComment.trim()) return;
+    try {
+      await api.patch(`/orders/returns/${returnId}`, {
+        opsManagerApproval: approval,
+        opsManagerComment: returnComment,
+      });
+      toast.success(`Return ${approval.toLowerCase()} successfully`);
+      setReturnDialog(null);
+      setReturnComment('');
+      refetchReturns();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update return');
+    }
+  };
+
+  const orderColumns = useMemo(() => makeOrderColumns(handleStatusUpdate), []);
+  const returnColumns = useMemo(() => makeReturnColumns(setReturnDialog), []);
 
   const togglePick = (id) => setChecklist((prev) => prev.map((i) => i.id === id ? { ...i, picked: !i.picked } : i));
 
@@ -154,7 +283,7 @@ function Operations() {
 
             <Card>
               <CardContent className="p-6">
-                <DataTable columns={orderColumns} data={apiData?.orders || mockOrders} searchPlaceholder="Search orders..." searchColumn="client" />
+                <DataTable columns={orderColumns} data={ordersItems} searchPlaceholder="Search orders..." searchColumn="client" />
               </CardContent>
             </Card>
 
@@ -191,7 +320,7 @@ function Operations() {
           {/* Tab 2: Routes */}
           <TabsContent value="routes" className="mt-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[{ plate: 'B 234 567', model: 'Isuzu NPR', status: 'Available' }, { plate: 'B 345 678', model: 'Mitsubishi Canter', status: 'Available' }, { plate: 'B 456 789', model: 'Isuzu NPR', status: 'In Use' }].map((t) => (
+              {truckCards.map((t) => (
                 <Card key={t.plate}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-2">
@@ -204,7 +333,7 @@ function Operations() {
                 </Card>
               ))}
             </div>
-            <Card><CardContent className="p-6"><DataTable columns={routeColumns} data={mockRoutes} /></CardContent></Card>
+            <Card><CardContent className="p-6"><DataTable columns={routeColumns} data={routesItems} /></CardContent></Card>
           </TabsContent>
 
           {/* Tab 3: Pricing */}
@@ -212,7 +341,7 @@ function Operations() {
             <Card>
               <CardContent className="p-6">
                 <p className="text-brand-secondary text-sm mb-4">Margin is calculated from cost vs. selling price.</p>
-                <DataTable columns={pricingColumns} data={mockPricing} searchPlaceholder="Search products..." searchColumn="product" />
+                <DataTable columns={pricingColumns} data={pricingItems} searchPlaceholder="Search products..." searchColumn="product" />
               </CardContent>
             </Card>
           </TabsContent>
@@ -221,7 +350,7 @@ function Operations() {
           <TabsContent value="returns" className="mt-6">
             <Card>
               <CardContent className="p-6">
-                <DataTable columns={returnColumns} data={mockReturns} searchPlaceholder="Search returns..." searchColumn="client" />
+                <DataTable columns={returnColumns} data={returnsItems} searchPlaceholder="Search returns..." searchColumn="client" />
               </CardContent>
             </Card>
 
@@ -240,8 +369,8 @@ function Operations() {
                       <textarea className="w-full bg-brand-elevated border border-brand-border rounded-lg p-3 text-brand-primary text-sm focus:outline-none focus:ring-1 focus:ring-brand-accent resize-none" rows={3} value={returnComment} onChange={(e) => setReturnComment(e.target.value)} />
                     </div>
                     <div className="flex gap-3">
-                      <Button variant="outline" className="flex-1 text-brand-success" disabled={!returnComment.trim()}><Check className="w-4 h-4 mr-1" /> Approve</Button>
-                      <Button variant="outline" className="flex-1 text-brand-error" disabled={!returnComment.trim()}><X className="w-4 h-4 mr-1" /> Reject</Button>
+                      <Button variant="outline" className="flex-1 text-brand-success" disabled={!returnComment.trim()} onClick={() => handleReturnAction(returnDialog.id, 'APPROVED')}><Check className="w-4 h-4 mr-1" /> Approve</Button>
+                      <Button variant="outline" className="flex-1 text-brand-error" disabled={!returnComment.trim()} onClick={() => handleReturnAction(returnDialog.id, 'REJECTED')}><X className="w-4 h-4 mr-1" /> Reject</Button>
                     </div>
                   </div>
                 </DialogContent>

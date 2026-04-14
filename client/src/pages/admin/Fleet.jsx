@@ -17,6 +17,8 @@ import { DataTable } from '@/components/tables/DataTable';
 import { CHART_COLORS } from '@/utils/constants';
 import { formatCurrency } from '@/utils/helpers';
 import { useFetch } from '@/hooks/useFetch';
+import api from '@/services/api';
+import { toast } from 'sonner';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
@@ -98,13 +100,91 @@ function Fleet() {
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [addVehicleDialog, setAddVehicleDialog] = useState(false);
   const [maintenanceDialog, setMaintenanceDialog] = useState(false);
+  const [vehicleForm, setVehicleForm] = useState({ plateNumber: '', model: '', mileage: '' });
+  const [maintenanceForm, setMaintenanceForm] = useState({ vehicleId: '', type: '', cost: '', description: '' });
+  const [submitting, setSubmitting] = useState(false);
 
-  const { data: apiData } = useFetch('/fleet/vehicles');
-  const vehicles = apiData?.vehicles || mockVehicles;
+  const { data: fleetData, refetch: refetchFleet } = useFetch('/fleet');
+  const { data: statsData } = useFetch('/fleet/stats');
+  const { data: vehicleDetail, refetch: refetchDetail } = useFetch(selectedVehicle ? `/fleet/${selectedVehicle.id}` : null);
 
-  const totalMileage = vehicles.reduce((s, v) => s + v.mileage, 0);
-  const activeCount = vehicles.filter((v) => v.status === 'Active').length;
-  const maintenanceCount = vehicles.filter((v) => v.status === 'Maintenance').length;
+  const vehicles = fleetData?.data
+    ? fleetData.data.map((v) => ({
+        id: v.id,
+        plate: v.plateNumber,
+        model: v.model,
+        status: v.status === 'ACTIVE' ? 'Active' : v.status === 'MAINTENANCE' ? 'Maintenance' : v.status,
+        mileage: v.mileage || 0,
+        fuelLevel: v.fuelConsumption || 0,
+        nextMaintenance: '',
+        _count: v._count,
+      }))
+    : mockVehicles;
+
+  const stats = statsData || {};
+  const totalMileage = stats.avgMileage ? stats.avgMileage * (stats.totalVehicles || 1) : vehicles.reduce((s, v) => s + v.mileage, 0);
+  const activeCount = stats.byStatus?.ACTIVE ?? vehicles.filter((v) => v.status === 'Active').length;
+  const maintenanceCount = stats.byStatus?.MAINTENANCE ?? vehicles.filter((v) => v.status === 'Maintenance').length;
+
+  const handleAddVehicle = async () => {
+    if (!vehicleForm.plateNumber || !vehicleForm.model) {
+      toast.error('Please fill in plate number and model');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await api.post('/fleet', {
+        plateNumber: vehicleForm.plateNumber,
+        model: vehicleForm.model,
+        mileage: Number(vehicleForm.mileage) || 0,
+      });
+      toast.success('Vehicle added successfully');
+      setAddVehicleDialog(false);
+      setVehicleForm({ plateNumber: '', model: '', mileage: '' });
+      refetchFleet();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to add vehicle');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleLogMaintenance = async () => {
+    if (!maintenanceForm.vehicleId || !maintenanceForm.type) {
+      toast.error('Please select a vehicle and service type');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await api.post(`/fleet/${maintenanceForm.vehicleId}/maintenance`, {
+        type: maintenanceForm.type,
+        description: maintenanceForm.description,
+        cost: Number(maintenanceForm.cost) || 0,
+        date: new Date().toISOString(),
+      });
+      toast.success('Maintenance record saved');
+      setMaintenanceDialog(false);
+      setMaintenanceForm({ vehicleId: '', type: '', cost: '', description: '' });
+      refetchFleet();
+      if (selectedVehicle) refetchDetail();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to log maintenance');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const detailMaintenance = vehicleDetail?.maintenance
+    ? vehicleDetail.maintenance.map((m) => ({
+        id: m.id,
+        vehicle: selectedVehicle?.plate || '',
+        type: m.type,
+        date: m.date ? m.date.split('T')[0] : '',
+        cost: m.cost || 0,
+        status: 'Completed',
+        mileage: 0,
+      }))
+    : mockMaintenanceHistory.filter((m) => m.vehicle === selectedVehicle?.plate);
 
   return (
     <motion.div
@@ -130,7 +210,7 @@ function Fleet() {
 
       {/* KPI Cards */}
       <motion.div variants={fadeInUp} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard title="Total Vehicles" value={vehicles.length} icon={Truck} />
+        <KPICard title="Total Vehicles" value={stats.totalVehicles ?? vehicles.length} icon={Truck} />
         <KPICard title="Active" value={activeCount} icon={Activity} trend="up" trendValue={0} />
         <KPICard title="In Maintenance" value={maintenanceCount} icon={Wrench} />
         <KPICard title="Total Mileage (Month)" value={`${(totalMileage / 1000).toFixed(1)}k km`} icon={Fuel} trend="up" trendValue={5.2} />
@@ -210,7 +290,7 @@ function Fleet() {
             <h4 className="text-brand-primary font-semibold mb-3">Maintenance History</h4>
             <DataTable
               columns={maintenanceColumns}
-              data={mockMaintenanceHistory.filter((m) => m.vehicle === selectedVehicle.plate)}
+              data={detailMaintenance}
               searchPlaceholder="Search maintenance..."
               searchColumn="type"
             />
@@ -245,17 +325,19 @@ function Fleet() {
           <div className="space-y-4">
             <div>
               <label className="block text-brand-secondary text-sm mb-1">Plate Number</label>
-              <Input placeholder="B XXX XXX" />
+              <Input placeholder="B XXX XXX" value={vehicleForm.plateNumber} onChange={(e) => setVehicleForm((f) => ({ ...f, plateNumber: e.target.value }))} />
             </div>
             <div>
               <label className="block text-brand-secondary text-sm mb-1">Model</label>
-              <Input placeholder="e.g. Isuzu NPR" />
+              <Input placeholder="e.g. Isuzu NPR" value={vehicleForm.model} onChange={(e) => setVehicleForm((f) => ({ ...f, model: e.target.value }))} />
             </div>
             <div>
               <label className="block text-brand-secondary text-sm mb-1">Current Mileage</label>
-              <Input type="number" placeholder="0" />
+              <Input type="number" placeholder="0" value={vehicleForm.mileage} onChange={(e) => setVehicleForm((f) => ({ ...f, mileage: e.target.value }))} />
             </div>
-            <Button className="w-full">Add Vehicle</Button>
+            <Button className="w-full" onClick={handleAddVehicle} disabled={submitting}>
+              {submitting ? 'Adding...' : 'Add Vehicle'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -269,28 +351,30 @@ function Fleet() {
           <div className="space-y-4">
             <div>
               <label className="block text-brand-secondary text-sm mb-1">Vehicle</label>
-              <Select>
+              <Select value={maintenanceForm.vehicleId} onValueChange={(v) => setMaintenanceForm((f) => ({ ...f, vehicleId: v }))}>
                 <SelectTrigger><SelectValue placeholder="Select vehicle..." /></SelectTrigger>
                 <SelectContent>
-                  {mockVehicles.map((v) => (
-                    <SelectItem key={v.id} value={v.plate}>{v.plate} - {v.model}</SelectItem>
+                  {vehicles.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>{v.plate} - {v.model}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <label className="block text-brand-secondary text-sm mb-1">Service Type</label>
-              <Input placeholder="e.g. Oil Change" />
+              <Input placeholder="e.g. Oil Change" value={maintenanceForm.type} onChange={(e) => setMaintenanceForm((f) => ({ ...f, type: e.target.value }))} />
             </div>
             <div>
               <label className="block text-brand-secondary text-sm mb-1">Cost</label>
-              <Input type="number" placeholder="0.00" />
+              <Input type="number" placeholder="0.00" value={maintenanceForm.cost} onChange={(e) => setMaintenanceForm((f) => ({ ...f, cost: e.target.value }))} />
             </div>
             <div>
               <label className="block text-brand-secondary text-sm mb-1">Notes</label>
-              <textarea className="w-full bg-brand-elevated border border-brand-border rounded-lg p-3 text-brand-primary text-sm focus:outline-none focus:ring-1 focus:ring-brand-accent resize-none" rows={3} placeholder="Optional notes..." />
+              <textarea className="w-full bg-brand-elevated border border-brand-border rounded-lg p-3 text-brand-primary text-sm focus:outline-none focus:ring-1 focus:ring-brand-accent resize-none" rows={3} placeholder="Optional notes..." value={maintenanceForm.description} onChange={(e) => setMaintenanceForm((f) => ({ ...f, description: e.target.value }))} />
             </div>
-            <Button className="w-full">Save Maintenance Record</Button>
+            <Button className="w-full" onClick={handleLogMaintenance} disabled={submitting}>
+              {submitting ? 'Saving...' : 'Save Maintenance Record'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

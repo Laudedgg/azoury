@@ -35,9 +35,45 @@ const mockDeliveries = [
 
 function Portal() {
   const { user } = useAuth();
-  const { data } = useFetch('/portal/summary');
+  const { data: ordersData } = useFetch('/orders?page=1&limit=10');
 
-  const businessName = user?.company || data?.businessName || 'Your Business';
+  const orders = ordersData?.data || [];
+
+  // Compute KPIs from real orders
+  const activeOrders = orders.filter((o) => !['DELIVERED', 'CANCELLED'].includes(o.status)).length;
+  const pendingDeliveries = orders.filter((o) => o.status === 'DISPATCHED').length;
+  const now = new Date();
+  const monthlySpend = orders
+    .filter((o) => o.status === 'DELIVERED' && new Date(o.createdAt).getMonth() === now.getMonth() && new Date(o.createdAt).getFullYear() === now.getFullYear())
+    .reduce((sum, o) => sum + (o.total || 0), 0);
+
+  // Map orders to display format for recent orders list
+  const recentOrders = orders.length > 0
+    ? orders.map((o) => ({
+        id: o.id,
+        orderRef: `#${o.orderNumber || o.id}`,
+        date: formatDate(o.createdAt),
+        items: o._count?.items || 0,
+        total: o.total || 0,
+        status: o.status,
+      }))
+    : mockRecentOrders;
+
+  // Upcoming deliveries from orders with dispatch-related statuses
+  const upcomingDeliveries = orders.length > 0
+    ? orders
+        .filter((o) => ['DISPATCHED', 'CONFIRMED'].includes(o.status))
+        .map((o) => ({
+          id: o.id,
+          orderRef: `#${o.orderNumber || o.id}`,
+          date: formatDate(o.deliveryDate || o.createdAt),
+          timeSlot: 'TBD',
+          status: o.status,
+          driver: 'TBD',
+        }))
+    : mockDeliveries;
+
+  const businessName = user?.client?.businessName || user?.company || 'Your Business';
 
   return (
     <motion.div
@@ -60,10 +96,10 @@ function Portal() {
 
       {/* KPI Cards */}
       <motion.div variants={fadeInUp} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard title="Active Orders" value={data?.activeOrders || 2} icon={ShoppingBag} trend="up" trendValue={5} />
-        <KPICard title="Pending Deliveries" value={data?.pendingDeliveries || 3} icon={Truck} />
-        <KPICard title="This Month's Spend" value={formatCurrency(data?.monthlySpend || 22540)} icon={DollarSign} trend="up" trendValue={8.3} />
-        <KPICard title="Last Invoice" value={formatCurrency(data?.lastInvoice || 12480)} icon={FileText} />
+        <KPICard title="Active Orders" value={activeOrders || 2} icon={ShoppingBag} trend="up" trendValue={5} />
+        <KPICard title="Pending Deliveries" value={pendingDeliveries || 3} icon={Truck} />
+        <KPICard title="This Month's Spend" value={formatCurrency(monthlySpend || 22540)} icon={DollarSign} trend="up" trendValue={8.3} />
+        <KPICard title="Last Invoice" value={formatCurrency(orders[0]?.total || 12480)} icon={FileText} />
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -78,7 +114,7 @@ function Portal() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {(data?.recentOrders || mockRecentOrders).map((order) => (
+                {recentOrders.map((order) => (
                   <div key={order.id} className="flex items-center justify-between p-3 rounded-lg border border-brand-border hover:bg-brand-elevated/50 transition-colors">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-lg bg-brand-elevated flex items-center justify-center">
@@ -108,10 +144,10 @@ function Portal() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {mockDeliveries.map((delivery, i) => (
+                {upcomingDeliveries.map((delivery, i) => (
                   <div key={delivery.id} className="relative pl-6">
                     {/* Timeline line */}
-                    {i < mockDeliveries.length - 1 && (
+                    {i < upcomingDeliveries.length - 1 && (
                       <div className="absolute left-[9px] top-6 w-0.5 h-full bg-brand-border" />
                     )}
                     {/* Timeline dot */}

@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShoppingCart, Truck, Trash2, PackageCheck, AlertTriangle,
   UserPlus, Settings2,
 } from 'lucide-react';
 import { useSocket } from '@/hooks/useSocket';
+import { useFetch } from '@/hooks/useFetch';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { ScrollArea } from '@/components/ui/ScrollArea';
 import { cn, relativeTime } from '@/utils/helpers';
@@ -19,10 +20,37 @@ const typeConfig = {
   system: { icon: Settings2, color: 'border-brand-muted', bg: 'bg-brand-surface', iconColor: 'text-brand-muted' },
 };
 
+function mapApiActivity(item) {
+  const actionMap = { CREATE: 'order', UPDATE: 'order', DISPATCH: 'dispatch', WASTE: 'waste', RECEIVE: 'receiving', ALERT: 'alert' };
+  const entityMap = { ORDER: 'order', DISPATCH: 'dispatch', WASTE: 'waste', INVENTORY: 'receiving', USER: 'user' };
+  const type = actionMap[item.action] || entityMap[item.entityType] || 'system';
+  const userName = item.user ? `${item.user.firstName} ${item.user.lastName}` : 'System';
+  return {
+    id: item.id,
+    type,
+    description: `${userName} - ${item.action} ${item.entityType} #${item.entityId}`,
+    user: userName,
+    timestamp: item.createdAt,
+  };
+}
+
 function ActivityFeed({ initialActivities = [] }) {
-  const [activities, setActivities] = useState(initialActivities);
+  const { data: apiActivities } = useFetch('/reports/activity?limit=30');
+
+  const resolvedInitial = useMemo(() => {
+    if (apiActivities && apiActivities.length > 0) {
+      return apiActivities.map(mapApiActivity);
+    }
+    return initialActivities;
+  }, [apiActivities, initialActivities]);
+
+  const [activities, setActivities] = useState(resolvedInitial);
   const socket = useSocket();
   const scrollRef = useRef(null);
+
+  useEffect(() => {
+    setActivities(resolvedInitial);
+  }, [resolvedInitial]);
 
   useEffect(() => {
     if (!socket) return;

@@ -11,6 +11,9 @@ import { Badge } from '@/components/ui/Badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { useFetch } from '@/hooks/useFetch';
+import { useAuth } from '@/context/AuthContext';
+import api from '@/services/api';
+import { toast } from 'sonner';
 import { getStatusColor } from '@/utils/helpers';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
@@ -76,6 +79,7 @@ const mockCompleted = [
 const deliveryStatusOrder = { 'In Progress': 0, 'Pending': 1, 'Delivered': 2 };
 
 function Deliveries() {
+  const { user } = useAuth();
   const [expandedId, setExpandedId] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [issueDialog, setIssueDialog] = useState(null);
@@ -83,13 +87,82 @@ function Deliveries() {
   const [notes, setNotes] = useState('');
   const [issueType, setIssueType] = useState('');
   const [issueNotes, setIssueNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const canvasRef = useRef(null);
 
-  const { data: apiData } = useFetch('/dispatches/my');
-  const deliveries = apiData?.dispatches || mockDeliveries;
+  const { data: apiData, refetch } = useFetch('/dispatches?page=1&limit=20');
+
+  // Map API dispatches to the shape the UI expects, fallback to mock
+  const rawDispatches = apiData?.data || [];
+  const deliveries = rawDispatches.length > 0
+    ? rawDispatches.map((d) => ({
+        id: d.id,
+        client: d.items?.[0]?.clientOrder?.client?.businessName || 'Client',
+        address: d.items?.[0]?.clientOrder?.client?.address || '',
+        orderRef: `#${d.id}`,
+        itemsCount: d._count?.items || d.items?.length || 0,
+        timeWindow: 'TBD',
+        status: d.status === 'IN_TRANSIT' ? 'In Progress' : d.status === 'COMPLETED' ? 'Delivered' : 'Pending',
+        phone: d.items?.[0]?.clientOrder?.client?.phone || '',
+        instructions: d.items?.[0]?.clientOrder?.specialInstructions || '',
+        items: (d.items || []).map((item) => ({
+          id: item.id,
+          product: item.clientOrder?.items?.map((oi) => oi.product?.name).join(', ') || 'Items',
+          qty: `${item.quantity || ''} kg`,
+        })),
+        dispatchItemIds: (d.items || []).map((item) => item.id),
+      }))
+    : mockDeliveries;
 
   const activeDeliveries = deliveries.filter((d) => d.status !== 'Delivered');
-  const completedDeliveries = [...(apiData?.completed || mockCompleted)];
+  const completedDeliveries = deliveries.filter((d) => d.status === 'Delivered').length > 0
+    ? deliveries.filter((d) => d.status === 'Delivered')
+    : mockCompleted;
+
+  const handleConfirmDelivery = async () => {
+    if (!confirmDialog) return;
+    setSubmitting(true);
+    try {
+      // Confirm each dispatch item
+      const dispatchItemIds = confirmDialog.dispatchItemIds || [confirmDialog.id];
+      for (const dispatchItemId of dispatchItemIds) {
+        await api.post('/dispatches/confirm-delivery', {
+          dispatchItemId,
+          deliveryNotes: notes,
+          signature: signature ? 'captured' : '',
+        });
+      }
+      toast.success('Delivery confirmed');
+      setConfirmDialog(null);
+      setNotes('');
+      setSignature(false);
+      refetch();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to confirm delivery');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleReportIssue = async () => {
+    if (!issueDialog) return;
+    setSubmitting(true);
+    try {
+      // Find the raw dispatch to get its real ID
+      const rawDispatch = rawDispatches.find((d) => d.id === issueDialog.id);
+      const dispatchId = rawDispatch?.id || issueDialog.id;
+      await api.patch(`/dispatches/${dispatchId}/status`, { status: 'COMPLETED' });
+      toast.success('Issue reported');
+      setIssueDialog(null);
+      setIssueType('');
+      setIssueNotes('');
+      refetch();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to report issue');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const totalStops = deliveries.length;
   const estimatedTime = `${Math.round(totalStops * 0.75)}h ${Math.round((totalStops * 0.75 % 1) * 60)}m`;
@@ -336,8 +409,8 @@ function Deliveries() {
                 />
               </div>
 
-              <Button className="w-full">
-                <CheckCircle className="w-4 h-4 mr-2" /> Confirm Delivery
+              <Button className="w-full" onClick={handleConfirmDelivery} disabled={submitting}>
+                <CheckCircle className="w-4 h-4 mr-2" /> {submitting ? 'Confirming...' : 'Confirm Delivery'}
               </Button>
             </div>
           </DialogContent>
@@ -376,8 +449,8 @@ function Deliveries() {
                   onChange={(e) => setIssueNotes(e.target.value)}
                 />
               </div>
-              <Button variant="destructive" className="w-full">
-                <AlertTriangle className="w-4 h-4 mr-2" /> Submit Issue Report
+              <Button variant="destructive" className="w-full" onClick={handleReportIssue} disabled={submitting}>
+                <AlertTriangle className="w-4 h-4 mr-2" /> {submitting ? 'Submitting...' : 'Submit Issue Report'}
               </Button>
             </div>
           </DialogContent>

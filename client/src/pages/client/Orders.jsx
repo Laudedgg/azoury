@@ -12,9 +12,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { DataTable } from '@/components/tables/DataTable';
 import { OrderForm } from '@/components/forms/OrderForm';
 import { useFetch } from '@/hooks/useFetch';
+import { useAuth } from '@/context/AuthContext';
+import api from '@/services/api';
 import { formatCurrency, formatDate, getStatusColor } from '@/utils/helpers';
 import { toast } from 'sonner';
-import * as orderService from '@/services/orderService';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
@@ -50,19 +51,19 @@ const mockOrderHistory = [
 ];
 
 const activeOrderColumns = [
-  { accessorKey: 'orderRef', header: 'Order #' },
-  { accessorKey: 'items', header: 'Items', cell: ({ row }) => `${row.original.items} items` },
+  { accessorKey: 'orderRef', header: 'Order #', cell: ({ row }) => `#${row.original.orderNumber || row.original.orderRef || row.original.id}` },
+  { accessorKey: 'items', header: 'Items', cell: ({ row }) => `${row.original._count?.items ?? row.original.items ?? 0} items` },
   { accessorKey: 'total', header: 'Total', cell: ({ row }) => formatCurrency(row.original.total) },
-  { accessorKey: 'deliveryDate', header: 'Delivery Date' },
+  { accessorKey: 'deliveryDate', header: 'Delivery Date', cell: ({ row }) => formatDate(row.original.deliveryDate) },
   { accessorKey: 'status', header: 'Status', cell: ({ row }) => <Badge variant={getStatusColor(row.original.status)}>{row.original.status}</Badge> },
 ];
 
 const historyColumns = [
-  { accessorKey: 'orderRef', header: 'Order #' },
-  { accessorKey: 'items', header: 'Items', cell: ({ row }) => `${row.original.items} items` },
+  { accessorKey: 'orderRef', header: 'Order #', cell: ({ row }) => `#${row.original.orderNumber || row.original.orderRef || row.original.id}` },
+  { accessorKey: 'items', header: 'Items', cell: ({ row }) => `${row.original._count?.items ?? row.original.items ?? 0} items` },
   { accessorKey: 'total', header: 'Total', cell: ({ row }) => formatCurrency(row.original.total) },
-  { accessorKey: 'deliveryDate', header: 'Delivered' },
-  { accessorKey: 'createdAt', header: 'Placed' },
+  { accessorKey: 'deliveryDate', header: 'Delivered', cell: ({ row }) => formatDate(row.original.deliveryDate) },
+  { accessorKey: 'createdAt', header: 'Placed', cell: ({ row }) => formatDate(row.original.createdAt) },
   { accessorKey: 'status', header: 'Status', cell: ({ row }) => <Badge variant="success">{row.original.status}</Badge> },
   {
     accessorKey: 'id',
@@ -76,15 +77,32 @@ const historyColumns = [
 ];
 
 function Orders() {
+  const { user } = useAuth();
+  const clientId = user?.clientId;
   const [cart, setCart] = useState([]);
   const [deliveryDate, setDeliveryDate] = useState('');
   const [instructions, setInstructions] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const { data: apiData, refetch } = useFetch('/orders/my');
-  const { data: productsData } = useFetch('/products');
+  const { data: productsData } = useFetch('/products?page=1&limit=100');
+  const { data: activeOrdersData, refetch: refetchActive } = useFetch('/orders?status=PENDING,CONFIRMED,PREPARING,DISPATCHED');
+  const { data: historyData, refetch: refetchHistory } = useFetch('/orders?page=1&limit=50');
 
-  const products = productsData?.products || mockProducts;
+  const refetch = () => { refetchActive(); refetchHistory(); };
+
+  // Map API products to the shape the UI expects, fallback to mock
+  const products = productsData?.data
+    ? productsData.data.map((p) => ({
+        id: p.id,
+        name: p.name,
+        image: p.image || null,
+        tiers: (p.qualityGrades || []).map((qg) => ({
+          grade: qg.clientFacingGrade || qg.grade,
+          price: qg.price,
+          qualityGradeId: qg.id,
+        })),
+      }))
+    : mockProducts;
 
   const addToCart = (product, tier) => {
     const key = `${product.id}-${tier.grade}`;
@@ -93,7 +111,7 @@ function Orders() {
       if (existing) {
         return prev.map((c) => c.key === key ? { ...c, qty: c.qty + 1 } : c);
       }
-      return [...prev, { key, productId: product.id, name: product.name, grade: tier.grade, price: tier.price, qty: 1 }];
+      return [...prev, { key, productId: product.id, qualityGradeId: tier.qualityGradeId, name: product.name, grade: tier.grade, price: tier.price, qty: 1 }];
     });
   };
 
@@ -115,7 +133,18 @@ function Orders() {
     if (cart.length === 0) return;
     setSubmitting(true);
     try {
-      await orderService.createOrder({ items: cart, deliveryDate, instructions });
+      const items = cart.map((c) => ({
+        productId: c.productId,
+        qualityGradeId: c.qualityGradeId,
+        quantity: c.qty,
+        unitPrice: c.price,
+      }));
+      await api.post('/orders', {
+        clientId,
+        deliveryDate,
+        specialInstructions: instructions,
+        items,
+      });
       toast.success('Order placed successfully!');
       setCart([]);
       setDeliveryDate('');
@@ -125,6 +154,16 @@ function Orders() {
       toast.error(err?.response?.data?.message || 'Failed to place order');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleCancelOrder = async (orderId) => {
+    try {
+      await api.patch(`/orders/${orderId}/cancel`);
+      toast.success('Order cancelled successfully');
+      refetch();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to cancel order');
     }
   };
 
@@ -274,8 +313,14 @@ function Orders() {
             <Card>
               <CardContent className="p-6">
                 <DataTable
-                  columns={activeOrderColumns}
-                  data={apiData?.orders?.filter((o) => o.status !== 'Delivered') || mockActiveOrders}
+                  columns={[...activeOrderColumns, {
+                    accessorKey: 'actions',
+                    header: '',
+                    cell: ({ row }) => ['PENDING', 'CONFIRMED'].includes(row.original.status) ? (
+                      <Button variant="outline" size="sm" onClick={() => handleCancelOrder(row.original.id)}>Cancel</Button>
+                    ) : null,
+                  }]}
+                  data={activeOrdersData?.data || mockActiveOrders}
                   searchPlaceholder="Search orders..."
                   searchColumn="orderRef"
                 />
@@ -289,7 +334,7 @@ function Orders() {
               <CardContent className="p-6">
                 <DataTable
                   columns={historyColumns}
-                  data={apiData?.orders?.filter((o) => o.status === 'Delivered') || mockOrderHistory}
+                  data={historyData?.data || mockOrderHistory}
                   searchPlaceholder="Search order history..."
                   searchColumn="orderRef"
                 />

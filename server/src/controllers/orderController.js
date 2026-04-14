@@ -346,6 +346,191 @@ async function getCombinedOrdersView(req, res, next) {
   }
 }
 
+async function getReturnAmendments(req, res, next) {
+  try {
+    const { status, type, page = 1, limit = 20 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const where = {};
+    if (status) where.status = status;
+    if (type) where.type = type;
+
+    const [items, total] = await Promise.all([
+      prisma.returnAmendment.findMany({
+        where,
+        skip,
+        take: parseInt(limit),
+        orderBy: { createdAt: 'desc' },
+        include: {
+          clientOrder: {
+            select: {
+              id: true,
+              totalAmount: true,
+              status: true,
+              client: { select: { id: true, businessName: true } },
+            },
+          },
+          requestedBy: { select: { id: true, firstName: true, lastName: true } },
+        },
+      }),
+      prisma.returnAmendment.count({ where }),
+    ]);
+
+    res.json({
+      data: items,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit)),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function createReturnAmendment(req, res, next) {
+  try {
+    const { clientOrderId, type, reason } = req.body;
+
+    if (!clientOrderId || !type || !reason) {
+      return res.status(400).json({ error: 'clientOrderId, type, and reason are required' });
+    }
+
+    if (!['RETURN', 'AMENDMENT'].includes(type)) {
+      return res.status(400).json({ error: 'type must be RETURN or AMENDMENT' });
+    }
+
+    const order = await prisma.clientOrder.findUnique({
+      where: { id: clientOrderId },
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Client order not found' });
+    }
+
+    const returnAmendment = await prisma.returnAmendment.create({
+      data: {
+        clientOrderId,
+        type,
+        reason,
+        status: 'PENDING',
+        requestedById: req.user.id,
+      },
+      include: {
+        clientOrder: {
+          select: {
+            id: true,
+            totalAmount: true,
+            status: true,
+            client: { select: { id: true, businessName: true } },
+          },
+        },
+        requestedBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'CREATE_RETURN_AMENDMENT',
+        entityType: 'ReturnAmendment',
+        entityId: returnAmendment.id,
+        metadata: { type, clientOrderId },
+      },
+    });
+
+    res.status(201).json(returnAmendment);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function updateReturnAmendment(req, res, next) {
+  try {
+    const { opsManagerApproval, qcApproval, opsManagerComment, qcComment } = req.body;
+
+    const existing = await prisma.returnAmendment.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Return/amendment not found' });
+    }
+
+    if (existing.status !== 'PENDING') {
+      return res.status(400).json({ error: 'Can only update pending return/amendments' });
+    }
+
+    const data = {};
+
+    // Only OPERATIONS_MANAGER can set ops manager fields
+    if (req.user.role === 'OPERATIONS_MANAGER') {
+      if (opsManagerApproval !== undefined) data.opsManagerApproval = opsManagerApproval;
+      if (opsManagerComment !== undefined) data.opsManagerComment = opsManagerComment;
+    }
+
+    // Only QUALITY_COST_CONTROL can set QC fields
+    if (req.user.role === 'QUALITY_COST_CONTROL') {
+      if (qcApproval !== undefined) data.qcApproval = qcApproval;
+      if (qcComment !== undefined) data.qcComment = qcComment;
+    }
+
+    // SUPER_ADMIN can set any field
+    if (req.user.role === 'SUPER_ADMIN') {
+      if (opsManagerApproval !== undefined) data.opsManagerApproval = opsManagerApproval;
+      if (opsManagerComment !== undefined) data.opsManagerComment = opsManagerComment;
+      if (qcApproval !== undefined) data.qcApproval = qcApproval;
+      if (qcComment !== undefined) data.qcComment = qcComment;
+    }
+
+    if (Object.keys(data).length === 0) {
+      return res.status(403).json({ error: 'You do not have permission to update these fields' });
+    }
+
+    // Determine final status based on merged approvals
+    const mergedOps = data.opsManagerApproval !== undefined ? data.opsManagerApproval : existing.opsManagerApproval;
+    const mergedQc = data.qcApproval !== undefined ? data.qcApproval : existing.qcApproval;
+
+    if (mergedOps === false || mergedQc === false) {
+      data.status = 'REJECTED';
+    } else if (mergedOps === true && mergedQc === true) {
+      data.status = 'APPROVED';
+    }
+
+    const updated = await prisma.returnAmendment.update({
+      where: { id: req.params.id },
+      data,
+      include: {
+        clientOrder: {
+          select: {
+            id: true,
+            totalAmount: true,
+            status: true,
+            client: { select: { id: true, businessName: true } },
+          },
+        },
+        requestedBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'UPDATE_RETURN_AMENDMENT',
+        entityType: 'ReturnAmendment',
+        entityId: updated.id,
+        metadata: { status: updated.status },
+      },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   createOrder,
   listOrders,
@@ -353,4 +538,7 @@ module.exports = {
   updateStatus,
   cancelOrder,
   getCombinedOrdersView,
+  getReturnAmendments,
+  createReturnAmendment,
+  updateReturnAmendment,
 };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Scale, Star, Award, Trash2, Truck, ClipboardCheck, PackageCheck,
@@ -21,6 +21,8 @@ import { DataTable } from '@/components/tables/DataTable';
 import { CHART_COLORS } from '@/utils/constants';
 import { formatCurrency } from '@/utils/helpers';
 import { useFetch } from '@/hooks/useFetch';
+import api from '@/services/api';
+import { toast } from 'sonner';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
@@ -142,8 +144,70 @@ function QualityControl() {
   const [ratingDialog, setRatingDialog] = useState(false);
   const [wasteDialog, setWasteDialog] = useState(false);
   const [dispatchChecklist, setDispatchChecklist] = useState(mockDispatchItems);
+  const [ratingSupplier, setRatingSupplier] = useState('');
+  const [ratingValue, setRatingValue] = useState(0);
+  const [ratingNotes, setRatingNotes] = useState('');
+  const [spotProduct, setSpotProduct] = useState('');
+  const [spotGrade, setSpotGrade] = useState('');
+  const [spotSystem, setSpotSystem] = useState('');
+  const [spotPhysical, setSpotPhysical] = useState('');
+  const [wasteProduct, setWasteProduct] = useState('');
+  const [wasteGrade, setWasteGrade] = useState('');
+  const [wasteQty, setWasteQty] = useState('');
+  const [wasteType, setWasteType] = useState('');
+  const [wasteReason, setWasteReason] = useState('');
+  const [wasteCost, setWasteCost] = useState('');
+  const [spotCheckDialog, setSpotCheckDialog] = useState(false);
+  const [wasteLogDialog, setWasteLogDialog] = useState(false);
 
-  const { data: apiData } = useFetch('/quality/inspections');
+  // Fetch suppliers for ratings
+  const { data: suppliersData } = useFetch('/suppliers');
+  // Fetch waste data
+  const { data: wasteData, refetch: refetchWaste } = useFetch('/waste');
+  // Fetch waste analytics
+  const { data: wasteAnalytics } = useFetch('/waste/analytics');
+  // Fetch fleet
+  const { data: fleetData } = useFetch('/fleet');
+  // Fetch fleet stats
+  const { data: fleetStats } = useFetch('/fleet/stats');
+  // Fetch spot checks
+  const { data: spotChecksData, refetch: refetchSpotChecks } = useFetch('/inventory/spot-checks');
+  // Fetch products for dropdowns
+  const { data: productsData } = useFetch('/products');
+  // Fetch inventory stock for weight verification
+  const { data: stockData } = useFetch('/inventory/stock');
+
+  const suppliersList = suppliersData?.data || suppliersData || [];
+  const productsList = productsData?.data || productsData || [];
+  const wasteItems = wasteData?.data || wasteData || [];
+  const spotCheckItems = spotChecksData?.data || spotChecksData || mockSpotChecks;
+
+  // Map fleet data
+  const vehicleItems = useMemo(() => {
+    const raw = fleetData?.data || fleetData || [];
+    if (raw.length === 0) return mockVehicles;
+    return raw.map((v) => ({
+      id: v.id,
+      plate: v.plateNumber || v.plate || '',
+      model: v.model || '',
+      status: v.status ? v.status.charAt(0) + v.status.slice(1).toLowerCase().replace('_', ' ') : 'Active',
+      mileage: v.mileage || 0,
+      next: v.nextMaintenanceDate || v.next || '',
+    }));
+  }, [fleetData]);
+
+  // Map supplier ratings from supplier list
+  const ratingItems = useMemo(() => {
+    if (suppliersList.length === 0) return mockRatings;
+    return suppliersList.map((s) => ({
+      id: s.id,
+      supplier: s.name,
+      avgRating: s.averageRating || 0,
+      trend: 'Stable',
+      deliveries: s._count?.purchaseOrders || 0,
+      issues: 0,
+    }));
+  }, [suppliersData]);
 
   const toggleVerify = (id) => setDispatchChecklist((prev) => prev.map((i) => i.id === id ? { ...i, verified: !i.verified } : i));
   const allVerified = dispatchChecklist.every((i) => i.verified);
@@ -175,7 +239,7 @@ function QualityControl() {
           {/* Supplier Ratings */}
           <TabsContent value="ratings" className="mt-6 space-y-6">
             <div className="flex justify-end"><Button onClick={() => setRatingDialog(true)}><Star className="w-4 h-4 mr-2" /> Rate Supplier</Button></div>
-            <Card><CardContent className="p-6"><DataTable columns={ratingColumns} data={mockRatings} searchPlaceholder="Search..." searchColumn="supplier" /></CardContent></Card>
+            <Card><CardContent className="p-6"><DataTable columns={ratingColumns} data={ratingItems} searchPlaceholder="Search..." searchColumn="supplier" /></CardContent></Card>
             <ChartCard title="Rating Trends" subtitle="Last 12 months">
               <ResponsiveContainer width="100%" height={280}>
                 <LineChart data={mockRatingHistory}>
@@ -190,17 +254,39 @@ function QualityControl() {
                 </LineChart>
               </ResponsiveContainer>
             </ChartCard>
-            <Dialog open={ratingDialog} onOpenChange={setRatingDialog}>
+            <Dialog open={ratingDialog} onOpenChange={(open) => { setRatingDialog(open); if (!open) { setRatingSupplier(''); setRatingValue(0); setRatingNotes(''); } }}>
               <DialogContent>
                 <DialogHeader><DialogTitle>Rate Supplier</DialogTitle></DialogHeader>
                 <div className="space-y-4">
                   <div><label className="block text-brand-secondary text-sm mb-1">Supplier</label>
-                    <Select><SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                      <SelectContent>{mockRatings.map((s) => <SelectItem key={s.id} value={s.supplier}>{s.supplier}</SelectItem>)}</SelectContent></Select>
+                    <Select value={ratingSupplier} onValueChange={setRatingSupplier}><SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                      <SelectContent>
+                        {suppliersList.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                        {suppliersList.length === 0 && mockRatings.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.supplier}</SelectItem>)}
+                      </SelectContent></Select>
                   </div>
-                  <div><label className="block text-brand-secondary text-sm mb-1">Rating</label><div className="flex gap-1">{[1,2,3,4,5].map((s) => <button key={s} className="p-1"><Star className="w-8 h-8 text-brand-border hover:fill-brand-warning hover:text-brand-warning" /></button>)}</div></div>
-                  <div><label className="block text-brand-secondary text-sm mb-1">Notes</label><textarea className="w-full bg-brand-elevated border border-brand-border rounded-lg p-3 text-brand-primary text-sm focus:outline-none focus:ring-1 focus:ring-brand-accent resize-none" rows={3} /></div>
-                  <Button className="w-full">Submit Rating</Button>
+                  <div><label className="block text-brand-secondary text-sm mb-1">Rating</label><div className="flex gap-1">{[1,2,3,4,5].map((s) => <button key={s} className="p-1" onClick={() => setRatingValue(s)}><Star className={`w-8 h-8 ${s <= ratingValue ? 'fill-brand-warning text-brand-warning' : 'text-brand-border hover:fill-brand-warning hover:text-brand-warning'}`} /></button>)}</div></div>
+                  <div><label className="block text-brand-secondary text-sm mb-1">Notes</label><textarea className="w-full bg-brand-elevated border border-brand-border rounded-lg p-3 text-brand-primary text-sm focus:outline-none focus:ring-1 focus:ring-brand-accent resize-none" rows={3} value={ratingNotes} onChange={(e) => setRatingNotes(e.target.value)} /></div>
+                  <Button className="w-full" onClick={async () => {
+                    if (!ratingSupplier || !ratingValue) {
+                      toast.error('Please select a supplier and rating');
+                      return;
+                    }
+                    try {
+                      await api.post(`/suppliers/${ratingSupplier}/ratings`, {
+                        rating: ratingValue,
+                        notes: ratingNotes,
+                        date: new Date().toISOString().split('T')[0],
+                      });
+                      toast.success('Rating submitted successfully');
+                      setRatingDialog(false);
+                      setRatingSupplier('');
+                      setRatingValue(0);
+                      setRatingNotes('');
+                    } catch (err) {
+                      toast.error(err.response?.data?.message || 'Failed to submit rating');
+                    }
+                  }}>Submit Rating</Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -224,12 +310,52 @@ function QualityControl() {
           {/* Waste */}
           <TabsContent value="waste" className="mt-6 space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <KPICard title="Waste Cost This Week" value={formatCurrency(284)} icon={Trash2} trend="down" trendValue={12} />
-              <KPICard title="Waste % of Inventory" value="2.1%" icon={AlertTriangle} trend="down" trendValue={0.3} />
+              <KPICard title="Waste Cost This Week" value={formatCurrency(wasteAnalytics?.weekly?.totalCost || 284)} icon={Trash2} trend="down" trendValue={12} />
+              <KPICard title="Waste % of Inventory" value={wasteAnalytics?.weekly?.wastePercentage ? `${wasteAnalytics.weekly.wastePercentage}%` : '2.1%'} icon={AlertTriangle} trend="down" trendValue={0.3} />
             </div>
+
+            <div className="flex justify-end">
+              <Button onClick={() => setWasteLogDialog(true)}><Plus className="w-4 h-4 mr-2" /> Log Waste</Button>
+            </div>
+
+            {wasteItems.length > 0 && (
+              <Card>
+                <CardContent className="p-6">
+                  <DataTable
+                    columns={[
+                      { accessorKey: 'product', header: 'Product', cell: ({ row }) => row.original.product?.name || row.original.productName || '' },
+                      { accessorKey: 'quantity', header: 'Qty (kg)' },
+                      { accessorKey: 'wasteType', header: 'Type', cell: ({ row }) => <Badge variant="warning">{(row.original.wasteType || '').replace('_', ' ')}</Badge> },
+                      { accessorKey: 'reason', header: 'Reason' },
+                      { accessorKey: 'cost', header: 'Cost', cell: ({ row }) => formatCurrency(row.original.cost || 0) },
+                      { accessorKey: 'authorized', header: 'Status', cell: ({ row }) => row.original.authorizedAt ? <Badge variant="success">Authorized</Badge> : <Badge variant="warning">Pending</Badge> },
+                      {
+                        id: 'action',
+                        header: 'Action',
+                        cell: ({ row }) => !row.original.authorizedAt ? (
+                          <Button size="sm" variant="outline" onClick={async () => {
+                            try {
+                              await api.patch(`/waste/${row.original.id}/authorize`, {});
+                              toast.success('Waste entry authorized');
+                              refetchWaste();
+                            } catch (err) {
+                              toast.error(err.response?.data?.message || 'Failed to authorize');
+                            }
+                          }}>Authorize</Button>
+                        ) : null,
+                      },
+                    ]}
+                    data={wasteItems}
+                    searchPlaceholder="Search waste..."
+                    searchColumn="reason"
+                  />
+                </CardContent>
+              </Card>
+            )}
+
             <ChartCard title="Daily Waste Cost" subtitle="Last 14 days">
               <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={mockWasteTrend}>
+                <BarChart data={wasteAnalytics?.daily || mockWasteTrend}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1A3F3F" />
                   <XAxis dataKey="date" tick={{ fill: '#5A7A75', fontSize: 11 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fill: '#5A7A75', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
@@ -240,17 +366,78 @@ function QualityControl() {
                 </BarChart>
               </ResponsiveContainer>
             </ChartCard>
+
+            {/* Log Waste Dialog */}
+            <Dialog open={wasteLogDialog} onOpenChange={(open) => { setWasteLogDialog(open); if (!open) { setWasteProduct(''); setWasteGrade(''); setWasteQty(''); setWasteType(''); setWasteReason(''); setWasteCost(''); } }}>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Log Waste Entry</DialogTitle></DialogHeader>
+                <div className="space-y-4">
+                  <div><label className="block text-brand-secondary text-sm mb-1">Product</label>
+                    <Select value={wasteProduct} onValueChange={(v) => { setWasteProduct(v); setWasteGrade(''); }}>
+                      <SelectTrigger><SelectValue placeholder="Select product..." /></SelectTrigger>
+                      <SelectContent>{productsList.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div><label className="block text-brand-secondary text-sm mb-1">Quality Grade</label>
+                    <Select value={wasteGrade} onValueChange={setWasteGrade}>
+                      <SelectTrigger><SelectValue placeholder="Select grade..." /></SelectTrigger>
+                      <SelectContent>{(productsList.find((p) => String(p.id) === wasteProduct)?.qualityGrades || []).map((g) => <SelectItem key={g.id} value={String(g.id)}>{g.name || g.grade}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div><label className="block text-brand-secondary text-sm mb-1">Quantity (kg)</label><Input type="number" value={wasteQty} onChange={(e) => setWasteQty(e.target.value)} /></div>
+                  <div><label className="block text-brand-secondary text-sm mb-1">Waste Type</label>
+                    <Select value={wasteType} onValueChange={setWasteType}>
+                      <SelectTrigger><SelectValue placeholder="Select type..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="RECEIVING_WASTE">Receiving Waste</SelectItem>
+                        <SelectItem value="AGING_WASTE">Aging Waste</SelectItem>
+                        <SelectItem value="PROCESSING_WASTE">Processing Waste</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div><label className="block text-brand-secondary text-sm mb-1">Reason</label><Input value={wasteReason} onChange={(e) => setWasteReason(e.target.value)} /></div>
+                  <div><label className="block text-brand-secondary text-sm mb-1">Cost</label><Input type="number" step="0.01" value={wasteCost} onChange={(e) => setWasteCost(e.target.value)} /></div>
+                  <Button className="w-full" onClick={async () => {
+                    if (!wasteProduct || !wasteQty || !wasteType) {
+                      toast.error('Please fill required fields');
+                      return;
+                    }
+                    try {
+                      await api.post('/waste', {
+                        productId: Number(wasteProduct),
+                        qualityGradeId: wasteGrade ? Number(wasteGrade) : undefined,
+                        quantity: Number(wasteQty),
+                        wasteType,
+                        reason: wasteReason,
+                        cost: wasteCost ? Number(wasteCost) : undefined,
+                      });
+                      toast.success('Waste entry logged');
+                      setWasteLogDialog(false);
+                      refetchWaste();
+                    } catch (err) {
+                      toast.error(err.response?.data?.message || 'Failed to log waste');
+                    }
+                  }}>Log Waste</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* Fleet */}
           <TabsContent value="fleet" className="mt-6 space-y-6">
+            {fleetStats && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <KPICard title="Total Vehicles" value={fleetStats.totalVehicles || vehicleItems.length} icon={Truck} />
+                {fleetStats.maintenanceCosts != null && <KPICard title="Maintenance Costs" value={formatCurrency(fleetStats.maintenanceCosts)} icon={Wrench} />}
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {mockVehicles.map((v) => (
+              {vehicleItems.map((v) => (
                 <Card key={v.id}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-3"><Truck className="w-6 h-6 text-brand-accent" /><Badge variant={v.status === 'Active' ? 'success' : 'warning'}>{v.status}</Badge></div>
                     <p className="text-brand-primary font-semibold">{v.plate}</p><p className="text-brand-muted text-sm">{v.model}</p>
-                    <div className="mt-3 pt-3 border-t border-brand-border text-xs text-brand-secondary space-y-1"><p>Mileage: {v.mileage.toLocaleString()} km</p><p>Next: {v.next}</p></div>
+                    <div className="mt-3 pt-3 border-t border-brand-border text-xs text-brand-secondary space-y-1"><p>Mileage: {(v.mileage || 0).toLocaleString()} km</p><p>Next: {v.next}</p></div>
                   </CardContent>
                 </Card>
               ))}
@@ -259,8 +446,53 @@ function QualityControl() {
 
           {/* Spot Checks */}
           <TabsContent value="spot" className="mt-6 space-y-4">
-            <div className="flex justify-end"><Button><ClipboardCheck className="w-4 h-4 mr-2" /> New Spot Check</Button></div>
-            <Card><CardContent className="p-6"><DataTable columns={spotCheckColumns} data={mockSpotChecks} /></CardContent></Card>
+            <div className="flex justify-end"><Button onClick={() => setSpotCheckDialog(true)}><ClipboardCheck className="w-4 h-4 mr-2" /> New Spot Check</Button></div>
+            <Card><CardContent className="p-6"><DataTable columns={spotCheckColumns} data={spotCheckItems} /></CardContent></Card>
+
+            <Dialog open={spotCheckDialog} onOpenChange={(open) => { setSpotCheckDialog(open); if (!open) { setSpotProduct(''); setSpotGrade(''); setSpotSystem(''); setSpotPhysical(''); } }}>
+              <DialogContent>
+                <DialogHeader><DialogTitle>New Spot Check</DialogTitle></DialogHeader>
+                <div className="space-y-4">
+                  <div><label className="block text-brand-secondary text-sm mb-1">Product</label>
+                    <Select value={spotProduct} onValueChange={(v) => { setSpotProduct(v); setSpotGrade(''); }}>
+                      <SelectTrigger><SelectValue placeholder="Select product..." /></SelectTrigger>
+                      <SelectContent>{productsList.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div><label className="block text-brand-secondary text-sm mb-1">Quality Grade</label>
+                    <Select value={spotGrade} onValueChange={setSpotGrade}>
+                      <SelectTrigger><SelectValue placeholder="Select grade..." /></SelectTrigger>
+                      <SelectContent>{(productsList.find((p) => String(p.id) === spotProduct)?.qualityGrades || []).map((g) => <SelectItem key={g.id} value={String(g.id)}>{g.name || g.grade}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div><label className="block text-brand-secondary text-sm mb-1">System Count (kg)</label><Input type="number" value={spotSystem} onChange={(e) => setSpotSystem(e.target.value)} /></div>
+                  <div><label className="block text-brand-secondary text-sm mb-1">Physical Count (kg)</label><Input type="number" value={spotPhysical} onChange={(e) => setSpotPhysical(e.target.value)} /></div>
+                  <Button className="w-full" onClick={async () => {
+                    if (!spotProduct || !spotSystem || !spotPhysical) {
+                      toast.error('Please fill all required fields');
+                      return;
+                    }
+                    try {
+                      await api.post('/inventory/spot-checks', {
+                        productId: Number(spotProduct),
+                        qualityGradeId: spotGrade ? Number(spotGrade) : undefined,
+                        systemCount: Number(spotSystem),
+                        physicalCount: Number(spotPhysical),
+                      });
+                      toast.success('Spot check recorded');
+                      setSpotCheckDialog(false);
+                      setSpotProduct('');
+                      setSpotGrade('');
+                      setSpotSystem('');
+                      setSpotPhysical('');
+                      refetchSpotChecks();
+                    } catch (err) {
+                      toast.error(err.response?.data?.message || 'Failed to record spot check');
+                    }
+                  }}>Submit Spot Check</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* Pre-Dispatch Checklist */}

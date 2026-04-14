@@ -318,6 +318,89 @@ async function marginAnalysis(req, res, next) {
   }
 }
 
+async function getActivityFeed(req, res, next) {
+  try {
+    const { limit = 50 } = req.query;
+
+    const logs = await prisma.activityLog.findMany({
+      take: parseInt(limit),
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: { select: { id: true, firstName: true, lastName: true, role: true } },
+      },
+    });
+
+    res.json(logs);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getInvoices(req, res, next) {
+  try {
+    const { status, clientId, page = 1, limit = 20 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const where = {};
+    if (status) where.status = status;
+    if (clientId) where.clientId = clientId;
+
+    const [invoices, total] = await Promise.all([
+      prisma.invoice.findMany({
+        where,
+        skip,
+        take: parseInt(limit),
+        orderBy: { createdAt: 'desc' },
+        include: {
+          client: { select: { id: true, businessName: true } },
+          clientOrder: { select: { id: true, totalAmount: true, status: true } },
+        },
+      }),
+      prisma.invoice.count({ where }),
+    ]);
+
+    res.json({
+      data: invoices,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit)),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function updateInvoiceStatus(req, res, next) {
+  try {
+    const { status } = req.body;
+
+    if (!['DRAFT', 'SENT', 'PAID', 'OVERDUE'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status. Must be DRAFT, SENT, PAID, or OVERDUE' });
+    }
+
+    const data = { status };
+    if (status === 'PAID') {
+      data.paidAt = new Date();
+    }
+
+    const invoice = await prisma.invoice.update({
+      where: { id: req.params.id },
+      data,
+      include: {
+        client: { select: { id: true, businessName: true } },
+        clientOrder: { select: { id: true, totalAmount: true, status: true } },
+      },
+    });
+
+    res.json(invoice);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getDashboardKPIs,
   revenueByPeriod,
@@ -325,4 +408,7 @@ module.exports = {
   topClients,
   deliveryPerformance,
   marginAnalysis,
+  getActivityFeed,
+  getInvoices,
+  updateInvoiceStatus,
 };

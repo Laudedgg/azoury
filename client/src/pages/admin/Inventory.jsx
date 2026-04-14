@@ -15,6 +15,8 @@ import { DataTable } from '@/components/tables/DataTable';
 import { CHART_COLORS } from '@/utils/constants';
 import { formatCurrency, formatDate } from '@/utils/helpers';
 import { useFetch } from '@/hooks/useFetch';
+import api from '@/services/api';
+import { toast } from 'sonner';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
@@ -96,14 +98,100 @@ const movementColumns = [
 
 function Inventory() {
   const [movementDialog, setMovementDialog] = useState(false);
+  const [movementForm, setMovementForm] = useState({ productId: '', qualityGradeId: '', type: '', quantity: '', notes: '' });
+  const [submitting, setSubmitting] = useState(false);
 
-  const { data: apiData } = useFetch('/inventory/stock');
-  const inventory = apiData?.stock || mockInventory;
+  const { data: stockData, refetch: refetchStock } = useFetch('/inventory/stock');
+  const { data: movementsData, refetch: refetchMovements } = useFetch('/inventory/movements?page=1&limit=50');
+  const { data: lowStockData, refetch: refetchLowStock } = useFetch('/inventory/low-stock');
+  const { data: productsData } = useFetch('/products');
 
-  const totalItems = inventory.length;
-  const totalValue = 182400;
-  const lowStockItems = inventory.filter((i) => i.status === 'Low').length;
-  const lowStockProducts = inventory.filter((i) => i.status === 'Low');
+  const stockItems = stockData || [];
+  const inventory = stockItems.length > 0
+    ? stockItems.flatMap((item) =>
+        (item.grades || []).map((g) => ({
+          id: `${item.product.id}-${g.id}`,
+          productId: item.product.id,
+          qualityGradeId: g.id,
+          product: item.product.name,
+          grade: g.clientFacingGrade || g.grade,
+          currentStock: g.currentStock,
+          reserved: 0,
+          available: g.currentStock,
+          minThreshold: 0,
+          price: g.price,
+          status: g.isLow ? 'Low' : 'OK',
+          lastMovement: '',
+        }))
+      )
+    : mockInventory;
+
+  const movements = movementsData?.data
+    ? movementsData.data.map((m) => ({
+        id: m.id,
+        product: m.product?.name || '',
+        grade: m.qualityGrade?.clientFacingGrade || m.qualityGrade?.grade || '',
+        type: m.type,
+        qty: m.quantity,
+        date: m.createdAt ? formatDate(m.createdAt) : '',
+        notes: m.notes || m.reference || '',
+        user: m.createdBy?.name || '',
+      }))
+    : mockMovements;
+
+  const lowStockAlerts = lowStockData || [];
+  const lowStockProducts = lowStockAlerts.length > 0
+    ? lowStockAlerts.map((g) => ({
+        id: g.id,
+        product: g.product?.name || '',
+        grade: g.clientFacingGrade || g.grade,
+        currentStock: g.currentStock,
+        minThreshold: 0,
+      }))
+    : inventory.filter((i) => i.status === 'Low');
+
+  const products = productsData?.data || productsData || [];
+
+  const totalItems = inventory.reduce((s, i) => s + (i.currentStock || 0), 0);
+  const totalValue = inventory.reduce((s, i) => s + (i.currentStock || 0) * (i.price || 0), 0) || 182400;
+  const lowStockItems = lowStockAlerts.length || inventory.filter((i) => i.status === 'Low').length;
+
+  // Build quality distribution from real data
+  const gradeCountMap = {};
+  inventory.forEach((i) => {
+    gradeCountMap[i.grade] = (gradeCountMap[i.grade] || 0) + (i.currentStock || 0);
+  });
+  const computedQualityDistribution = Object.entries(gradeCountMap).map(([name, value]) => ({ name, value }));
+  const qualityDist = computedQualityDistribution.length > 0 ? computedQualityDistribution : qualityDistribution;
+
+  const handleRecordMovement = async () => {
+    if (!movementForm.productId || !movementForm.qualityGradeId || !movementForm.type || !movementForm.quantity) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await api.post('/inventory/movements', {
+        productId: movementForm.productId,
+        qualityGradeId: movementForm.qualityGradeId,
+        type: movementForm.type,
+        quantity: Number(movementForm.quantity),
+        notes: movementForm.notes,
+      });
+      toast.success('Movement recorded successfully');
+      setMovementDialog(false);
+      setMovementForm({ productId: '', qualityGradeId: '', type: '', quantity: '', notes: '' });
+      refetchStock();
+      refetchMovements();
+      refetchLowStock();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to record movement');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const selectedProduct = products.find((p) => p.id === movementForm.productId);
 
   return (
     <motion.div
@@ -132,8 +220,8 @@ function Inventory() {
             <p className="text-brand-secondary text-xs font-medium mb-2">Quality Distribution</p>
             <ResponsiveContainer width="100%" height={80}>
               <PieChart>
-                <Pie data={qualityDistribution} cx="50%" cy="50%" innerRadius={20} outerRadius={35} dataKey="value" paddingAngle={3}>
-                  {qualityDistribution.map((entry, i) => (
+                <Pie data={qualityDist} cx="50%" cy="50%" innerRadius={20} outerRadius={35} dataKey="value" paddingAngle={3}>
+                  {qualityDist.map((entry, i) => (
                     <Cell key={entry.name} fill={CHART_COLORS[i]} />
                   ))}
                 </Pie>
@@ -141,7 +229,7 @@ function Inventory() {
               </PieChart>
             </ResponsiveContainer>
             <div className="flex justify-center gap-3 mt-1">
-              {qualityDistribution.map((d, i) => (
+              {qualityDist.map((d, i) => (
                 <div key={d.name} className="flex items-center gap-1 text-xs text-brand-secondary">
                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS[i] }} />
                   {d.name}
@@ -175,7 +263,7 @@ function Inventory() {
           <CardContent>
             <DataTable
               columns={movementColumns}
-              data={mockMovements}
+              data={movements}
               searchPlaceholder="Search movements..."
               searchColumn="product"
             />
@@ -221,48 +309,50 @@ function Inventory() {
           <div className="space-y-4">
             <div>
               <label className="block text-brand-secondary text-sm mb-1">Product</label>
-              <Select>
+              <Select value={movementForm.productId} onValueChange={(v) => setMovementForm((f) => ({ ...f, productId: v, qualityGradeId: '' }))}>
                 <SelectTrigger><SelectValue placeholder="Select product..." /></SelectTrigger>
                 <SelectContent>
-                  {['Roma Tomatoes', 'Cucumbers', 'Bell Peppers', 'Potatoes', 'Avocados', 'Bananas', 'Onions', 'Lemons'].map((p) => (
-                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  {products.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <label className="block text-brand-secondary text-sm mb-1">Grade</label>
-              <Select>
+              <Select value={movementForm.qualityGradeId} onValueChange={(v) => setMovementForm((f) => ({ ...f, qualityGradeId: v }))}>
                 <SelectTrigger><SelectValue placeholder="Select grade..." /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="extra">Extra</SelectItem>
-                  <SelectItem value="quality-a">Quality A</SelectItem>
-                  <SelectItem value="quality-c">Quality C</SelectItem>
+                  {(selectedProduct?.qualityGrades || []).map((g) => (
+                    <SelectItem key={g.id} value={g.id}>{g.clientFacingGrade || g.grade}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <label className="block text-brand-secondary text-sm mb-1">Type</label>
-              <Select>
+              <Select value={movementForm.type} onValueChange={(v) => setMovementForm((f) => ({ ...f, type: v }))}>
                 <SelectTrigger><SelectValue placeholder="Select type..." /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="purchase-in">Purchase In</SelectItem>
-                  <SelectItem value="sale-out">Sale Out</SelectItem>
-                  <SelectItem value="waste">Waste</SelectItem>
-                  <SelectItem value="adjustment">Adjustment</SelectItem>
-                  <SelectItem value="return">Return</SelectItem>
+                  <SelectItem value="PURCHASE_IN">Purchase In</SelectItem>
+                  <SelectItem value="SALE_OUT">Sale Out</SelectItem>
+                  <SelectItem value="WASTE">Waste</SelectItem>
+                  <SelectItem value="ADJUSTMENT">Adjustment</SelectItem>
+                  <SelectItem value="RETURN">Return</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
               <label className="block text-brand-secondary text-sm mb-1">Quantity (kg)</label>
-              <Input type="number" placeholder="0" />
+              <Input type="number" placeholder="0" value={movementForm.quantity} onChange={(e) => setMovementForm((f) => ({ ...f, quantity: e.target.value }))} />
             </div>
             <div>
               <label className="block text-brand-secondary text-sm mb-1">Notes</label>
-              <textarea className="w-full bg-brand-elevated border border-brand-border rounded-lg p-3 text-brand-primary text-sm focus:outline-none focus:ring-1 focus:ring-brand-accent resize-none" rows={2} placeholder="Optional notes..." />
+              <textarea className="w-full bg-brand-elevated border border-brand-border rounded-lg p-3 text-brand-primary text-sm focus:outline-none focus:ring-1 focus:ring-brand-accent resize-none" rows={2} placeholder="Optional notes..." value={movementForm.notes} onChange={(e) => setMovementForm((f) => ({ ...f, notes: e.target.value }))} />
             </div>
-            <Button className="w-full">Record Movement</Button>
+            <Button className="w-full" onClick={handleRecordMovement} disabled={submitting}>
+              {submitting ? 'Recording...' : 'Record Movement'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

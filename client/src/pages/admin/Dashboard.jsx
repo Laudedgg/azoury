@@ -13,6 +13,7 @@ import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { CHART_COLORS } from '@/utils/constants';
 import { formatCurrency } from '@/utils/helpers';
 import { useFetch } from '@/hooks/useFetch';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 const stagger = { animate: { transition: { staggerChildren: 0.08 } } };
@@ -71,8 +72,67 @@ const sampleActivities = [
 ];
 
 function Dashboard() {
-  const { data: kpis } = useFetch('/reports/kpis');
-  const orderTrend = useMemo(() => generateOrderTrend(), []);
+  const { data: kpis, loading: kpisLoading } = useFetch('/reports/dashboard');
+  const { data: revenueTrend } = useFetch('/reports/revenue?days=30');
+  const { data: apiTopClients } = useFetch('/reports/top-clients?limit=10');
+  const { data: deliveryPerf } = useFetch('/reports/delivery-performance');
+  const { data: activityData } = useFetch('/reports/activity?limit=20');
+
+  const orderTrend = useMemo(() => {
+    if (revenueTrend && revenueTrend.length > 0) {
+      return revenueTrend.map((item) => ({
+        date: item.period,
+        orders: item.orderCount,
+        revenue: item.revenue,
+      }));
+    }
+    return generateOrderTrend();
+  }, [revenueTrend]);
+
+  const topClientsData = useMemo(() => {
+    if (apiTopClients && apiTopClients.length > 0) {
+      return apiTopClients.map((item) => ({
+        name: item.client?.businessName || 'Unknown',
+        volume: item.totalRevenue,
+      }));
+    }
+    return topClients;
+  }, [apiTopClients]);
+
+  const deliveryData = useMemo(() => {
+    if (deliveryPerf && deliveryPerf.totalDispatches > 0) {
+      const completed = deliveryPerf.completedDispatches || 0;
+      const total = deliveryPerf.totalDispatches || 1;
+      const failed = total - completed;
+      const onTimeRate = deliveryPerf.completionRate || 0;
+      const lateRate = Math.max(0, 100 - onTimeRate - Math.round((failed / total) * 100));
+      return [
+        { name: 'On Time', value: onTimeRate, color: '#4EEC90' },
+        { name: 'Late', value: lateRate, color: '#ECD34E' },
+        { name: 'Failed', value: Math.round((failed / total) * 100), color: '#EC4E4E' },
+      ];
+    }
+    return deliveryPerformance;
+  }, [deliveryPerf]);
+
+  const activityFeedItems = useMemo(() => {
+    if (activityData && activityData.length > 0) {
+      return activityData.map((item) => {
+        const actionMap = { CREATE: 'order', UPDATE: 'order', DISPATCH: 'dispatch', WASTE: 'waste', RECEIVE: 'receiving', ALERT: 'alert' };
+        const entityMap = { ORDER: 'order', DISPATCH: 'dispatch', WASTE: 'waste', INVENTORY: 'receiving', USER: 'user' };
+        const type = actionMap[item.action] || entityMap[item.entityType] || 'system';
+        const userName = item.user ? `${item.user.firstName} ${item.user.lastName}` : 'System';
+        return {
+          id: item.id,
+          type,
+          description: `${userName} - ${item.action} ${item.entityType} #${item.entityId}`,
+          user: userName,
+          timestamp: item.createdAt,
+        };
+      });
+    }
+    return sampleActivities;
+  }, [activityData]);
 
   return (
     <motion.div initial="initial" animate="animate" variants={stagger} className="space-y-6">
@@ -83,12 +143,12 @@ function Dashboard() {
 
       {/* Row 1: KPI Cards */}
       <motion.div variants={fadeInUp} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <KPICard title="Total Active Orders" value={kpis?.activeOrders || 247} icon={ShoppingCart} trend="up" trendValue={12.5} />
-        <KPICard title="Revenue Today" value={formatCurrency(kpis?.revenue || 48250)} icon={DollarSign} trend="up" trendValue={8.3} />
-        <KPICard title="Pending Dispatches" value={kpis?.pendingDispatches || 34} icon={Truck} trend="down" trendValue={5.2} />
-        <KPICard title="Active Clients" value={89} icon={Users} trend="up" trendValue={3.1} />
-        <KPICard title="Inventory Value" value={formatCurrency(182400)} icon={Package} trend="up" trendValue={1.8} />
-        <KPICard title="Waste % Today" value="2.4%" icon={Trash2} trend="down" trendValue={0.6} />
+        <KPICard title="Total Active Orders" value={kpis?.activeOrders ?? 247} icon={ShoppingCart} trend="up" trendValue={12.5} loading={kpisLoading} />
+        <KPICard title="Revenue Today" value={formatCurrency(kpis?.todaysRevenue ?? 48250)} icon={DollarSign} trend="up" trendValue={8.3} loading={kpisLoading} />
+        <KPICard title="Pending Dispatches" value={kpis?.pendingDispatches ?? 34} icon={Truck} trend="down" trendValue={5.2} loading={kpisLoading} />
+        <KPICard title="Active Clients" value={kpis?.activeClients ?? 89} icon={Users} trend="up" trendValue={3.1} loading={kpisLoading} />
+        <KPICard title="Inventory Value" value={formatCurrency(kpis?.inventoryValue ?? 182400)} icon={Package} trend="up" trendValue={1.8} loading={kpisLoading} />
+        <KPICard title="Waste % Today" value={kpis?.wastePercent != null ? `${kpis.wastePercent}%` : '2.4%'} icon={Trash2} trend="down" trendValue={0.6} loading={kpisLoading} />
       </motion.div>
 
       {/* Row 2: Order Volume + Revenue by Grade */}
@@ -132,8 +192,8 @@ function Dashboard() {
         <ChartCard title="Delivery Performance" subtitle="This month">
           <ResponsiveContainer width="100%" height={280}>
             <PieChart>
-              <Pie data={deliveryPerformance} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={3} dataKey="value">
-                {deliveryPerformance.map((entry, i) => (
+              <Pie data={deliveryData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={3} dataKey="value">
+                {deliveryData.map((entry, i) => (
                   <Cell key={i} fill={entry.color} />
                 ))}
               </Pie>
@@ -145,7 +205,7 @@ function Dashboard() {
 
         <ChartCard title="Top 10 Clients by Volume" subtitle="Units ordered this month">
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={topClients} layout="vertical" margin={{ left: 20 }}>
+            <BarChart data={topClientsData} layout="vertical" margin={{ left: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1A3F3F" horizontal={false} />
               <XAxis type="number" tick={{ fill: '#5A7A75', fontSize: 11 }} tickLine={false} axisLine={false} />
               <YAxis type="category" dataKey="name" tick={{ fill: '#8AABA6', fontSize: 11 }} tickLine={false} axisLine={false} width={100} />
@@ -158,7 +218,7 @@ function Dashboard() {
 
       {/* Row 4: Activity Feed */}
       <motion.div variants={fadeInUp}>
-        <ActivityFeed initialActivities={sampleActivities} />
+        <ActivityFeed initialActivities={activityFeedItems} />
       </motion.div>
     </motion.div>
   );

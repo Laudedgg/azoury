@@ -19,6 +19,7 @@ import { Separator } from '@/components/ui/Separator';
 import { CHART_COLORS } from '@/utils/constants';
 import { formatCurrency, formatDate } from '@/utils/helpers';
 import { useFetch } from '@/hooks/useFetch';
+import api from '@/services/api';
 import { toast } from 'sonner';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
@@ -83,7 +84,7 @@ const products = ['Roma Tomatoes', 'Cucumbers', 'Potatoes', 'Bell Peppers', 'Avo
 const suppliers = ['Farm Fresh Co.', 'Bekaa Farms', 'Green Valley', 'Mountain Produce', 'Tropical Imports', 'South Coast Citrus'];
 
 function Purchasing() {
-  const [selectedProduct, setSelectedProduct] = useState('Roma Tomatoes');
+  const [selectedProduct, setSelectedProduct] = useState(null);
   const [receiptDialog, setReceiptDialog] = useState(null);
   const [selectedItems, setSelectedItems] = useState({});
   const [poDialogOpen, setPODialogOpen] = useState(false);
@@ -92,11 +93,61 @@ function Purchasing() {
   const [poNotes, setPONotes] = useState('');
   const [generatedPOs, setGeneratedPOs] = useState([]);
   const [viewPO, setViewPO] = useState(null);
+  const [surveySupplier, setSurveySupplier] = useState('');
+  const [surveyProduct, setSurveyProduct] = useState('');
+  const [surveyPrice, setSurveyPrice] = useState('');
+  const [surveyDate, setSurveyDate] = useState(new Date().toISOString().split('T')[0]);
 
-  const { data: apiData } = useFetch('/purchasing/orders');
+  // Fetch combined orders (bare array)
+  const { data: combinedData, refetch: refetchCombined } = useFetch('/orders/combined');
+  // Fetch products for dropdowns
+  const { data: productsData } = useFetch('/products');
+  // Fetch suppliers for dropdowns
+  const { data: suppliersData } = useFetch('/suppliers');
+  // Fetch price comparison when product selected
+  const { data: comparisonData } = useFetch(selectedProduct ? `/suppliers/price-comparison?productId=${selectedProduct}` : null);
+  // Fetch price surveys
+  const { data: surveysData, refetch: refetchSurveys } = useFetch('/suppliers/price-surveys');
+
+  const productsList = productsData?.data || productsData || [];
+  const suppliersList = suppliersData?.data || suppliersData || [];
+  const surveyItems = surveysData?.data || surveysData || mockSurveys;
+  const comparisonItems = comparisonData || mockSupplierComparison;
+
+  // Map combined orders API response to expected shape
+  const combinedOrders = useMemo(() => {
+    if (!combinedData) return mockCombinedOrders;
+    return combinedData.map((item, idx) => ({
+      id: item.productId || idx + 1,
+      product: item.productName,
+      totalOrdered: item.totalQuantityNeeded,
+      currentStock: item.currentStock,
+      netToPurchase: item.shortfall,
+      supplier: '',
+      lastPrice: 0,
+      unit: item.unit || 'kg',
+      productId: item.productId,
+      isCovered: item.isCovered,
+    }));
+  }, [combinedData]);
+
+  // Map comparison data to table shape
+  const comparisonTableData = useMemo(() => {
+    if (!comparisonData) return mockSupplierComparison;
+    return comparisonData.map((item) => ({
+      name: item.supplier?.name || item.supplier,
+      currentPrice: item.avgPrice,
+      avg7: item.avgPrice,
+      avg30: item.avgPrice,
+      ytd: item.minPrice,
+      lastYear: item.maxPrice,
+      trend: item.avgPrice > item.minPrice ? 'Rising' : item.avgPrice < item.maxPrice ? 'Falling' : 'Stable',
+    }));
+  }, [comparisonData]);
+
   const priceHistory = useMemo(() => generatePriceHistory(), []);
 
-  const itemsNeedingPurchase = mockCombinedOrders.filter((o) => o.netToPurchase > 0);
+  const itemsNeedingPurchase = combinedOrders.filter((o) => o.netToPurchase > 0);
 
   const toggleItem = (id) => {
     setSelectedItems((prev) => {
@@ -150,29 +201,50 @@ function Purchasing() {
     return groups;
   }, [selectedPOItems, poSuppliers, poQuantities]);
 
-  const generatePO = () => {
+  const generatePO = async () => {
     const now = new Date();
-    const newPOs = Object.entries(groupedBySupplier).map(([supplier, items], idx) => ({
-      id: `PO-${String(generatedPOs.length + idx + 1).padStart(4, '0')}`,
-      supplier,
-      date: now.toISOString().split('T')[0],
-      time: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-      items: items.map((i) => ({
-        product: i.product,
-        quantity: i.orderQty,
-        unit: i.unit,
-        unitPrice: i.lastPrice,
-        total: i.orderQty * i.lastPrice,
-      })),
-      total: items.reduce((s, i) => s + i.orderQty * i.lastPrice, 0),
-      notes: poNotes,
-      status: 'DRAFT',
-    }));
+    try {
+      const poPromises = Object.entries(groupedBySupplier).map(([supplier, items]) => {
+        // Find the supplier ID from our suppliers list
+        const supplierObj = suppliersList.find((s) => (s.name || s) === supplier);
+        const supplierId = supplierObj?.id;
+        return api.post('/suppliers/purchase-orders', {
+          supplierId,
+          items: items.map((i) => ({
+            productId: i.productId || i.id,
+            quantity: i.orderQty,
+            unitPrice: i.lastPrice,
+          })),
+          notes: poNotes,
+        });
+      });
+      const results = await Promise.all(poPromises);
 
-    setGeneratedPOs((prev) => [...newPOs, ...prev]);
-    setPODialogOpen(false);
-    setSelectedItems({});
-    toast.success(`${newPOs.length} Purchase Order${newPOs.length > 1 ? 's' : ''} generated successfully`);
+      const newPOs = Object.entries(groupedBySupplier).map(([supplier, items], idx) => ({
+        id: results[idx]?.data?.id || `PO-${String(generatedPOs.length + idx + 1).padStart(4, '0')}`,
+        supplier,
+        date: now.toISOString().split('T')[0],
+        time: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        items: items.map((i) => ({
+          product: i.product,
+          quantity: i.orderQty,
+          unit: i.unit,
+          unitPrice: i.lastPrice,
+          total: i.orderQty * i.lastPrice,
+        })),
+        total: items.reduce((s, i) => s + i.orderQty * i.lastPrice, 0),
+        notes: poNotes,
+        status: 'DRAFT',
+      }));
+
+      setGeneratedPOs((prev) => [...newPOs, ...prev]);
+      setPODialogOpen(false);
+      setSelectedItems({});
+      refetchCombined();
+      toast.success(`${newPOs.length} Purchase Order${newPOs.length > 1 ? 's' : ''} generated successfully`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to generate purchase orders');
+    }
   };
 
   const combinedColumns = [
@@ -259,7 +331,7 @@ function Purchasing() {
               <CardContent className="p-6">
                 <DataTable
                   columns={combinedColumns}
-                  data={apiData?.orders || mockCombinedOrders}
+                  data={combinedOrders}
                   searchPlaceholder="Search products..."
                   searchColumn="product"
                 />
@@ -300,17 +372,18 @@ function Purchasing() {
           <TabsContent value="comparison" className="mt-6 space-y-6">
             <div className="max-w-xs">
               <label className="block text-brand-secondary text-sm font-medium mb-2">Select Product</label>
-              <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={selectedProduct || ''} onValueChange={setSelectedProduct}>
+                <SelectTrigger><SelectValue placeholder="Select a product..." /></SelectTrigger>
                 <SelectContent>
-                  {products.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                  {productsList.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
+                  {productsList.length === 0 && products.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
 
             <Card>
               <CardContent className="p-6">
-                <DataTable columns={comparisonColumns} data={mockSupplierComparison} />
+                <DataTable columns={comparisonColumns} data={comparisonTableData} />
               </CardContent>
             </Card>
 
@@ -338,35 +411,61 @@ function Purchasing() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                   <div>
                     <label className="block text-brand-secondary text-xs mb-1">Supplier</label>
-                    <Select>
+                    <Select value={surveySupplier} onValueChange={setSurveySupplier}>
                       <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                      <SelectContent>{suppliers.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                      <SelectContent>
+                        {suppliersList.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                        {suppliersList.length === 0 && suppliers.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      </SelectContent>
                     </Select>
                   </div>
                   <div>
                     <label className="block text-brand-secondary text-xs mb-1">Product</label>
-                    <Select>
+                    <Select value={surveyProduct} onValueChange={setSurveyProduct}>
                       <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                      <SelectContent>{products.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                      <SelectContent>
+                        {productsList.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
+                        {productsList.length === 0 && products.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                      </SelectContent>
                     </Select>
                   </div>
                   <div>
                     <label className="block text-brand-secondary text-xs mb-1">Price per kg</label>
-                    <Input type="number" step="0.01" placeholder="0.00" />
+                    <Input type="number" step="0.01" placeholder="0.00" value={surveyPrice} onChange={(e) => setSurveyPrice(e.target.value)} />
                   </div>
                   <div>
                     <label className="block text-brand-secondary text-xs mb-1">Date</label>
-                    <Input type="date" defaultValue="2026-04-09" />
+                    <Input type="date" value={surveyDate} onChange={(e) => setSurveyDate(e.target.value)} />
                   </div>
                   <div className="flex items-end">
-                    <Button className="w-full"><Plus className="w-4 h-4 mr-1" /> Add Survey</Button>
+                    <Button className="w-full" onClick={async () => {
+                      if (!surveySupplier || !surveyProduct || !surveyPrice) {
+                        toast.error('Please fill in all fields');
+                        return;
+                      }
+                      try {
+                        await api.post('/suppliers/price-surveys', {
+                          supplierId: Number(surveySupplier),
+                          productId: Number(surveyProduct),
+                          price: Number(surveyPrice),
+                          surveyDate: surveyDate,
+                        });
+                        toast.success('Price survey added successfully');
+                        setSurveySupplier('');
+                        setSurveyProduct('');
+                        setSurveyPrice('');
+                        refetchSurveys();
+                      } catch (err) {
+                        toast.error(err.response?.data?.message || 'Failed to add survey');
+                      }
+                    }}><Plus className="w-4 h-4 mr-1" /> Add Survey</Button>
                   </div>
                 </div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-6">
-                <DataTable columns={surveyColumns} data={mockSurveys} searchPlaceholder="Search surveys..." searchColumn="supplier" />
+                <DataTable columns={surveyColumns} data={surveyItems} searchPlaceholder="Search surveys..." searchColumn="supplier" />
               </CardContent>
             </Card>
           </TabsContent>
@@ -486,7 +585,8 @@ function Purchasing() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {suppliers.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            {suppliersList.map((s) => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
+                            {suppliersList.length === 0 && suppliers.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>

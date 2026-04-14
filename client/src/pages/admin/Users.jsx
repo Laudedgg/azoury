@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { UserPlus, Shield, Building2, Check, X, ChevronDown } from 'lucide-react';
+import { UserPlus, Shield, Building2, Check, X, ChevronDown, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -13,6 +13,8 @@ import { DataTable } from '@/components/tables/DataTable';
 import { formatDate, getInitials } from '@/utils/helpers';
 import { ROLES } from '@/utils/constants';
 import { useFetch } from '@/hooks/useFetch';
+import api from '@/services/api';
+import { toast } from 'sonner';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
@@ -126,8 +128,115 @@ const clientColumns = [
 function Users() {
   const [addStaffDialog, setAddStaffDialog] = useState(false);
   const [expandedClient, setExpandedClient] = useState(null);
+  const [clientStaff, setClientStaff] = useState({});
+  const [loadingStaff, setLoadingStaff] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [approvingId, setApprovingId] = useState(null);
+  const [togglingId, setTogglingId] = useState(null);
 
-  const { data: apiData } = useFetch('/users');
+  // Form state for add staff dialog
+  const [staffForm, setStaffForm] = useState({ firstName: '', lastName: '', email: '', role: '', phone: '' });
+
+  const { data: usersData, loading: usersLoading, refetch: refetchUsers } = useFetch('/users?page=1&limit=50');
+  const { data: clientsData, loading: clientsLoading, refetch: refetchClients } = useFetch('/clients?page=1&limit=50');
+
+  // Map API users to table format
+  const staffList = (usersData?.data || []).map((u) => ({
+    id: u.id,
+    name: `${u.firstName} ${u.lastName}`,
+    email: u.email,
+    role: u.role,
+    status: u.isActive ? 'Active' : 'Inactive',
+    lastLogin: u.lastLogin || '-',
+    phone: u.phone || '-',
+  }));
+  const staff = staffList.length > 0 ? staffList : mockStaff;
+
+  // Map API clients to table format
+  const clientsList = (clientsData?.data || []).map((c) => ({
+    id: c.id,
+    businessName: c.businessName,
+    type: c.type || 'Business',
+    contact: c.contactName || '-',
+    email: c.email || '-',
+    status: c.isApproved ? 'Approved' : 'Pending',
+    staffCount: c._count?.users || 0,
+    staff: [],
+  }));
+  const clients = clientsList.length > 0 ? clientsList : mockClients;
+
+  // Fetch staff for expanded client
+  useEffect(() => {
+    if (expandedClient && !clientStaff[expandedClient] && !loadingStaff[expandedClient]) {
+      setLoadingStaff((prev) => ({ ...prev, [expandedClient]: true }));
+      api.get(`/clients/${expandedClient}/staff`)
+        .then((res) => {
+          setClientStaff((prev) => ({ ...prev, [expandedClient]: res.data }));
+        })
+        .catch(() => {
+          // Fall back to mock data if available
+          const mockClient = mockClients.find((c) => c.id === expandedClient);
+          if (mockClient) {
+            setClientStaff((prev) => ({ ...prev, [expandedClient]: mockClient.staff }));
+          }
+        })
+        .finally(() => {
+          setLoadingStaff((prev) => ({ ...prev, [expandedClient]: false }));
+        });
+    }
+  }, [expandedClient]);
+
+  const handleAddStaff = async () => {
+    if (!staffForm.firstName || !staffForm.email || !staffForm.role) {
+      toast.error('Please fill in required fields');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await api.post('/users', {
+        firstName: staffForm.firstName,
+        lastName: staffForm.lastName,
+        email: staffForm.email,
+        role: staffForm.role,
+        phone: staffForm.phone,
+      });
+      toast.success('Staff member added successfully');
+      setAddStaffDialog(false);
+      setStaffForm({ firstName: '', lastName: '', email: '', role: '', phone: '' });
+      refetchUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to add staff member');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleApproveClient = async (e, clientId) => {
+    e.stopPropagation();
+    setApprovingId(clientId);
+    try {
+      await api.patch(`/clients/${clientId}/approve`);
+      toast.success('Client approved successfully');
+      refetchClients();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to approve client');
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  const handleToggleActive = async (userId) => {
+    setTogglingId(userId);
+    try {
+      await api.patch(`/users/${userId}/toggle-active`);
+      toast.success('User status updated');
+      refetchUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update user status');
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   return (
     <motion.div
@@ -162,7 +271,7 @@ function Users() {
               <CardContent className="p-6">
                 <DataTable
                   columns={staffColumns}
-                  data={apiData?.users || mockStaff}
+                  data={staff}
                   searchPlaceholder="Search staff..."
                   searchColumn="name"
                 />
@@ -175,7 +284,7 @@ function Users() {
               <CardContent className="p-6">
                 <DataTable
                   columns={clientColumns}
-                  data={mockClients}
+                  data={clients}
                   searchPlaceholder="Search clients..."
                   searchColumn="businessName"
                 />
@@ -184,7 +293,7 @@ function Users() {
 
             {/* Expandable client detail */}
             <div className="space-y-3">
-              {mockClients.map((client) => (
+              {clients.map((client) => (
                 <Card key={client.id} className={client.status === 'Pending' ? 'border-brand-warning/30' : ''}>
                   <CardContent className="p-4">
                     <div
@@ -201,8 +310,8 @@ function Users() {
                       <div className="flex items-center gap-3">
                         <Badge variant={client.status === 'Approved' ? 'success' : 'warning'}>{client.status}</Badge>
                         {client.status === 'Pending' && (
-                          <Button size="sm" variant="outline">
-                            <Check className="w-3 h-3 mr-1" /> Approve
+                          <Button size="sm" variant="outline" disabled={approvingId === client.id} onClick={(e) => handleApproveClient(e, client.id)}>
+                            {approvingId === client.id ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Check className="w-3 h-3 mr-1" />} Approve
                           </Button>
                         )}
                         <ChevronDown className={`w-4 h-4 text-brand-muted transition-transform ${expandedClient === client.id ? 'rotate-180' : ''}`} />
@@ -215,23 +324,35 @@ function Users() {
                         animate={{ opacity: 1, height: 'auto' }}
                         className="mt-4 pt-4 border-t border-brand-border"
                       >
-                        <h4 className="text-brand-secondary text-sm font-medium mb-3">Staff Members ({client.staff.length})</h4>
-                        <div className="space-y-2">
-                          {client.staff.map((s) => (
-                            <div key={s.id} className="flex items-center justify-between p-2 bg-brand-elevated rounded-lg">
-                              <div className="flex items-center gap-2">
-                                <Avatar className="h-6 w-6">
-                                  <AvatarFallback className="text-xs">{getInitials(s.name)}</AvatarFallback>
-                                </Avatar>
-                                <span className="text-brand-primary text-sm">{s.name}</span>
-                                <Badge variant="outline" className="text-xs">{s.role}</Badge>
-                              </div>
-                              <Badge variant={s.canOrder ? 'success' : 'default'} className="text-xs">
-                                {s.canOrder ? 'Can Order' : 'View Only'}
-                              </Badge>
+                        {loadingStaff[client.id] ? (
+                          <div className="flex items-center gap-2 text-brand-muted text-sm py-4">
+                            <Loader2 className="w-4 h-4 animate-spin" /> Loading staff...
+                          </div>
+                        ) : (
+                          <>
+                            <h4 className="text-brand-secondary text-sm font-medium mb-3">Staff Members ({(clientStaff[client.id] || client.staff || []).length})</h4>
+                            <div className="space-y-2">
+                              {(clientStaff[client.id] || client.staff || []).map((s) => {
+                                const displayName = s.name || (s.firstName ? `${s.firstName} ${s.lastName}` : 'Unknown');
+                                const displayRole = s.role || '-';
+                                return (
+                                  <div key={s.id} className="flex items-center justify-between p-2 bg-brand-elevated rounded-lg">
+                                    <div className="flex items-center gap-2">
+                                      <Avatar className="h-6 w-6">
+                                        <AvatarFallback className="text-xs">{getInitials(displayName)}</AvatarFallback>
+                                      </Avatar>
+                                      <span className="text-brand-primary text-sm">{displayName}</span>
+                                      <Badge variant="outline" className="text-xs">{displayRole}</Badge>
+                                    </div>
+                                    <Badge variant={s.canOrder || s.isActive ? 'success' : 'default'} className="text-xs">
+                                      {s.canOrder ? 'Can Order' : s.isActive ? 'Active' : 'View Only'}
+                                    </Badge>
+                                  </div>
+                                );
+                              })}
                             </div>
-                          ))}
-                        </div>
+                          </>
+                        )}
                       </motion.div>
                     )}
                   </CardContent>
@@ -252,20 +373,20 @@ function Users() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-brand-secondary text-sm mb-1">First Name</label>
-                <Input placeholder="First name" />
+                <Input placeholder="First name" value={staffForm.firstName} onChange={(e) => setStaffForm((f) => ({ ...f, firstName: e.target.value }))} />
               </div>
               <div>
                 <label className="block text-brand-secondary text-sm mb-1">Last Name</label>
-                <Input placeholder="Last name" />
+                <Input placeholder="Last name" value={staffForm.lastName} onChange={(e) => setStaffForm((f) => ({ ...f, lastName: e.target.value }))} />
               </div>
             </div>
             <div>
               <label className="block text-brand-secondary text-sm mb-1">Email</label>
-              <Input type="email" placeholder="email@azoury.com" />
+              <Input type="email" placeholder="email@azoury.com" value={staffForm.email} onChange={(e) => setStaffForm((f) => ({ ...f, email: e.target.value }))} />
             </div>
             <div>
               <label className="block text-brand-secondary text-sm mb-1">Role</label>
-              <Select>
+              <Select value={staffForm.role} onValueChange={(val) => setStaffForm((f) => ({ ...f, role: val }))}>
                 <SelectTrigger><SelectValue placeholder="Select role..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
@@ -279,9 +400,11 @@ function Users() {
             </div>
             <div>
               <label className="block text-brand-secondary text-sm mb-1">Phone</label>
-              <Input placeholder="+961 X XXX XXX" />
+              <Input placeholder="+961 X XXX XXX" value={staffForm.phone} onChange={(e) => setStaffForm((f) => ({ ...f, phone: e.target.value }))} />
             </div>
-            <Button className="w-full">Add Staff Member</Button>
+            <Button className="w-full" onClick={handleAddStaff} disabled={submitting}>
+              {submitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Adding...</> : 'Add Staff Member'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

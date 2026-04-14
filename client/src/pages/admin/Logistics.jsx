@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { useFetch } from '@/hooks/useFetch';
+import api from '@/services/api';
+import { toast } from 'sonner';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
@@ -94,8 +96,48 @@ function Logistics() {
   const [selectedDispatch, setSelectedDispatch] = useState(null);
   const [photoModal, setPhotoModal] = useState(null);
 
-  const { data: apiData } = useFetch('/dispatches');
-  const dispatches = apiData?.dispatches || mockDispatches;
+  const { data: dispatchListData, refetch: refetchDispatches } = useFetch('/dispatches?status=LOADING,PLANNING');
+  const { data: dispatchDetail, refetch: refetchDetail } = useFetch(selectedDispatch ? `/dispatches/${selectedDispatch.id}` : null);
+
+  const dispatches = dispatchListData?.data
+    ? dispatchListData.data.map((d) => ({
+        id: d.id,
+        dispatchNum: `D-${d.id}`,
+        client: d.clientOrder?.client?.businessName || d.driver?.name || '',
+        itemsCount: d._count?.items || 0,
+        status: d.status === 'PLANNING' ? 'Preparing' : d.status === 'LOADING' ? 'Loading' : d.status === 'READY' ? 'Ready' : d.status,
+        items: [],
+      }))
+    : mockDispatches;
+
+  // When a dispatch is selected and detail loads, merge items into selectedDispatch for rendering
+  const activeDispatch = selectedDispatch
+    ? {
+        ...selectedDispatch,
+        items: dispatchDetail?.items
+          ? dispatchDetail.items.map((item) => ({
+              id: item.id,
+              product: item.productName || `Product ${item.productId}`,
+              qty: item.quantity || 0,
+              photos: item.photos || [],
+            }))
+          : selectedDispatch.items || [],
+      }
+    : null;
+
+  const handlePhotoUpload = async (dispatchId, file) => {
+    const formData = new FormData();
+    formData.append('photo', file);
+    try {
+      await api.post(`/dispatches/${dispatchId}/photos`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success('Photo uploaded');
+      refetchDetail();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to upload photo');
+    }
+  };
 
   return (
     <motion.div
@@ -130,7 +172,7 @@ function Logistics() {
                 <span className="text-brand-secondary text-sm">{dispatch.itemsCount} items</span>
                 <div className="flex items-center gap-1 text-brand-muted text-xs">
                   <Camera className="w-3 h-3" />
-                  {dispatch.items.reduce((sum, item) => sum + item.photos.length, 0)} photos
+                  {(dispatch.items || []).reduce((sum, item) => sum + (item.photos || []).length, 0)} photos
                 </div>
               </div>
             </CardContent>
@@ -139,16 +181,16 @@ function Logistics() {
       </motion.div>
 
       {/* Selected Dispatch Detail */}
-      {selectedDispatch && (
+      {activeDispatch && (
         <motion.div variants={fadeInUp}>
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h3 className="text-lg font-semibold text-brand-primary">
-                    {selectedDispatch.dispatchNum} - {selectedDispatch.client}
+                    {activeDispatch.dispatchNum} - {activeDispatch.client}
                   </h3>
-                  <p className="text-brand-secondary text-sm">{selectedDispatch.items.length} line items</p>
+                  <p className="text-brand-secondary text-sm">{activeDispatch.items.length} line items</p>
                 </div>
                 <Button variant="outline" onClick={() => setSelectedDispatch(null)}>
                   <X className="w-4 h-4" />
@@ -156,7 +198,7 @@ function Logistics() {
               </div>
 
               <div className="space-y-4">
-                {selectedDispatch.items.map((item) => (
+                {activeDispatch.items.map((item) => (
                   <div key={item.id} className="bg-brand-elevated rounded-lg p-4 border border-brand-border">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
@@ -164,14 +206,22 @@ function Logistics() {
                         <span className="text-brand-primary font-medium">{item.product}</span>
                         <span className="text-brand-secondary text-sm">{item.qty} kg</span>
                       </div>
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/*';
+                        input.onchange = (e) => {
+                          if (e.target.files[0]) handlePhotoUpload(activeDispatch.id, e.target.files[0]);
+                        };
+                        input.click();
+                      }}>
                         <Upload className="w-3 h-3 mr-1" /> Upload Photo
                       </Button>
                     </div>
 
-                    {item.photos.length > 0 && (
+                    {(item.photos || []).length > 0 && (
                       <div className="flex gap-2 flex-wrap">
-                        {item.photos.map((photo) => (
+                        {(item.photos || []).map((photo) => (
                           <div
                             key={photo.id}
                             className="relative w-20 h-20 bg-brand-base rounded-lg border border-brand-border cursor-pointer hover:border-brand-accent/50 transition-colors group"
@@ -189,7 +239,7 @@ function Logistics() {
                       </div>
                     )}
 
-                    {item.photos.length === 0 && (
+                    {(item.photos || []).length === 0 && (
                       <p className="text-brand-muted text-xs">No photos uploaded yet</p>
                     )}
                   </div>

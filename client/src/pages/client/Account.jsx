@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { User, Mail, Building2, Phone, Save, Lock, UserPlus, Shield, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
+import { useFetch } from '@/hooks/useFetch';
+import api from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -27,17 +29,21 @@ const staffColumns = [
   {
     accessorKey: 'name',
     header: 'Name',
-    cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        <Avatar className="h-7 w-7">
-          <AvatarFallback className="text-xs">{getInitials(row.original.name)}</AvatarFallback>
-        </Avatar>
-        <div>
-          <p className="text-brand-primary text-sm font-medium">{row.original.name}</p>
-          <p className="text-brand-muted text-xs">{row.original.email}</p>
+    cell: ({ row }) => {
+      const s = row.original;
+      const fullName = s.name || `${s.firstName || ''} ${s.lastName || ''}`.trim();
+      return (
+        <div className="flex items-center gap-2">
+          <Avatar className="h-7 w-7">
+            <AvatarFallback className="text-xs">{getInitials(fullName)}</AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="text-brand-primary text-sm font-medium">{fullName}</p>
+            <p className="text-brand-muted text-xs">{s.email}</p>
+          </div>
         </div>
-      </div>
-    ),
+      );
+    },
   },
   {
     accessorKey: 'role',
@@ -58,22 +64,75 @@ const staffColumns = [
 
 function Account() {
   const { user } = useAuth();
+  const clientId = user?.clientId;
+  const { data: clientData, refetch: refetchClient } = useFetch(clientId ? `/clients/${clientId}` : null);
+  const { data: staffData, refetch: refetchStaff } = useFetch(clientId ? `/clients/${clientId}/staff` : null);
+
+  const client = clientData || {};
+  const staff = Array.isArray(staffData) ? staffData : (staffData?.data || mockStaff);
+
   const [form, setForm] = useState({
-    name: user?.name || 'George Hanna',
-    email: user?.email || 'george@almandaloun.com',
-    company: user?.company || 'Al Mandaloun',
-    phone: user?.phone || '+961 3 123 456',
-    address: 'Hamra Street, Beirut, Lebanon',
+    name: user?.name || '',
+    email: user?.email || '',
+    company: '',
+    phone: '',
+    address: '',
     businessType: 'Restaurant',
   });
+  const [formInit, setFormInit] = useState(false);
   const [addStaffDialog, setAddStaffDialog] = useState(false);
+  const [newStaff, setNewStaff] = useState({ firstName: '', lastName: '', email: '', password: '', role: '', phone: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [passwords, setPasswords] = useState({ current: '', newPass: '', confirm: '' });
+  const [saving, setSaving] = useState(false);
+
+  // Initialize form from fetched client data
+  React.useEffect(() => {
+    if (client?.id && !formInit) {
+      setForm({
+        name: user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim(),
+        email: user?.email || '',
+        company: client.businessName || '',
+        phone: client.phone || '',
+        address: client.address || '',
+        businessType: client.businessType || 'Restaurant',
+      });
+      setFormInit(true);
+    }
+  }, [client, user, formInit]);
 
   const update = (field) => (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }));
 
-  const handleSave = () => {
-    toast.success('Profile updated successfully');
+  const handleSave = async () => {
+    if (!clientId) return;
+    setSaving(true);
+    try {
+      await api.put(`/clients/${clientId}`, {
+        businessName: form.company,
+        phone: form.phone,
+        address: form.address,
+        businessType: form.businessType,
+      });
+      toast.success('Profile updated successfully');
+      refetchClient();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddStaff = async () => {
+    if (!clientId) return;
+    try {
+      await api.post(`/clients/${clientId}/staff`, newStaff);
+      toast.success('Staff member added');
+      setAddStaffDialog(false);
+      setNewStaff({ firstName: '', lastName: '', email: '', password: '', role: '', phone: '' });
+      refetchStaff();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to add staff member');
+    }
   };
 
   const handlePasswordChange = () => {
@@ -169,8 +228,8 @@ function Account() {
             </div>
 
             <div className="flex justify-end">
-              <Button onClick={handleSave}>
-                <Save className="h-4 w-4 mr-2" /> Save Changes
+              <Button onClick={handleSave} disabled={saving}>
+                <Save className="h-4 w-4 mr-2" /> {saving ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </CardContent>
@@ -192,7 +251,7 @@ function Account() {
           <CardContent>
             <DataTable
               columns={staffColumns}
-              data={mockStaff}
+              data={staff}
               searchPlaceholder="Search staff..."
               searchColumn="name"
             />
@@ -262,30 +321,39 @@ function Account() {
             <DialogTitle>Add Staff Member</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label className="mb-1.5 block">Full Name</Label>
-              <Input placeholder="Full name" />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="mb-1.5 block">First Name</Label>
+                <Input placeholder="First name" value={newStaff.firstName} onChange={(e) => setNewStaff({ ...newStaff, firstName: e.target.value })} />
+              </div>
+              <div>
+                <Label className="mb-1.5 block">Last Name</Label>
+                <Input placeholder="Last name" value={newStaff.lastName} onChange={(e) => setNewStaff({ ...newStaff, lastName: e.target.value })} />
+              </div>
             </div>
             <div>
               <Label className="mb-1.5 block">Email</Label>
-              <Input type="email" placeholder="email@company.com" />
+              <Input type="email" placeholder="email@company.com" value={newStaff.email} onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })} />
+            </div>
+            <div>
+              <Label className="mb-1.5 block">Password</Label>
+              <Input type="password" placeholder="Temporary password" value={newStaff.password} onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })} />
+            </div>
+            <div>
+              <Label className="mb-1.5 block">Phone</Label>
+              <Input placeholder="+961 ..." value={newStaff.phone} onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })} />
             </div>
             <div>
               <Label className="mb-1.5 block">Role</Label>
-              <Select>
+              <Select value={newStaff.role} onValueChange={(v) => setNewStaff({ ...newStaff, role: v })}>
                 <SelectTrigger><SelectValue placeholder="Select role..." /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="chef">Chef</SelectItem>
-                  <SelectItem value="store-manager">Store Manager</SelectItem>
-                  <SelectItem value="procurement">Procurement Officer</SelectItem>
+                  <SelectItem value="CLIENT_STAFF">Staff</SelectItem>
+                  <SelectItem value="CLIENT_ADMIN">Admin</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center gap-3">
-              <input type="checkbox" className="w-4 h-4 rounded border-brand-border" defaultChecked />
-              <Label>Can place orders</Label>
-            </div>
-            <Button className="w-full">Add Staff Member</Button>
+            <Button className="w-full" onClick={handleAddStaff}>Add Staff Member</Button>
           </div>
         </DialogContent>
       </Dialog>

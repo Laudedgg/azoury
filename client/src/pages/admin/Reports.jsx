@@ -17,6 +17,8 @@ import { DataTable } from '@/components/tables/DataTable';
 import { CHART_COLORS } from '@/utils/constants';
 import { formatCurrency, formatDate } from '@/utils/helpers';
 import { useFetch } from '@/hooks/useFetch';
+import api from '@/services/api';
+import { toast } from 'sonner';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
@@ -120,12 +122,49 @@ const invoiceColumns = [
 function Reports() {
   const [dateRange, setDateRange] = useState('month');
 
-  const { data: apiData } = useFetch('/reports/kpis');
+  const { data: dashboardData } = useFetch('/reports/dashboard');
+  const { data: revenueData } = useFetch('/reports/revenue?days=30');
+  const { data: costVsRevenueData } = useFetch('/reports/cost-vs-revenue');
+  const { data: topClientsData } = useFetch('/reports/top-clients?limit=10');
+  const { data: invoicesData } = useFetch('/reports/invoices');
 
-  const totalRevenue = mockTransactions.reduce((s, t) => s + t.amount, 0);
-  const totalCost = mockTransactions.reduce((s, t) => s + t.cost, 0);
-  const grossMargin = ((totalRevenue - totalCost) / totalRevenue * 100).toFixed(1);
-  const invoicesOutstanding = mockInvoices.filter((i) => i.status !== 'Paid').reduce((s, i) => s + i.amount, 0);
+  const dashboard = dashboardData || {};
+
+  const revenueTrend = revenueData
+    ? revenueData.map((r) => ({
+        date: r.period,
+        revenue: r.revenue || 0,
+        cost: 0,
+      }))
+    : mockRevenueTrend;
+
+  const gradeRevenue = costVsRevenueData
+    ? costVsRevenueData
+    : mockGradeRevenue;
+
+  const topClients = topClientsData
+    ? topClientsData.map((c) => ({
+        name: c.client?.businessName || '',
+        revenue: c.totalRevenue || 0,
+      }))
+    : mockTopClients;
+
+  const invoices = invoicesData?.data
+    ? invoicesData.data.map((inv) => ({
+        id: inv.id,
+        invoiceNum: inv.invoiceNumber || `INV-${inv.id}`,
+        client: inv.client?.businessName || '',
+        amount: inv.totalAmount || 0,
+        date: inv.issueDate ? inv.issueDate.split('T')[0] : '',
+        dueDate: inv.dueDate ? inv.dueDate.split('T')[0] : '',
+        status: inv.status || 'Draft',
+      }))
+    : mockInvoices;
+
+  const totalRevenue = dashboard.totalRevenue ?? mockTransactions.reduce((s, t) => s + t.amount, 0);
+  const totalCost = dashboard.totalCost ?? mockTransactions.reduce((s, t) => s + t.cost, 0);
+  const grossMargin = dashboard.grossMargin ?? ((totalRevenue - totalCost) / totalRevenue * 100).toFixed(1);
+  const invoicesOutstanding = dashboard.invoicesOutstanding ?? invoices.filter((i) => i.status !== 'Paid').reduce((s, i) => s + i.amount, 0);
 
   return (
     <motion.div
@@ -164,8 +203,8 @@ function Reports() {
 
       {/* KPI Cards */}
       <motion.div variants={fadeInUp} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard title="Total Revenue" value={formatCurrency(155000)} icon={DollarSign} trend="up" trendValue={14.2} />
-        <KPICard title="Total Cost" value={formatCurrency(105000)} icon={DollarSign} trend="up" trendValue={8.5} />
+        <KPICard title="Total Revenue" value={formatCurrency(totalRevenue)} icon={DollarSign} trend="up" trendValue={14.2} />
+        <KPICard title="Total Cost" value={formatCurrency(totalCost)} icon={DollarSign} trend="up" trendValue={8.5} />
         <KPICard title="Gross Margin" value={`${grossMargin}%`} icon={TrendingUp} trend="up" trendValue={3.1} />
         <KPICard title="Invoices Outstanding" value={formatCurrency(invoicesOutstanding)} icon={FileText} trend="down" trendValue={5.2} />
       </motion.div>
@@ -174,7 +213,7 @@ function Reports() {
       <motion.div variants={fadeInUp} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard title="Revenue Trend" subtitle="Daily revenue for selected period">
           <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={mockRevenueTrend}>
+            <AreaChart data={revenueTrend}>
               <defs>
                 <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#4EECD3" stopOpacity={0.3} />
@@ -216,7 +255,7 @@ function Reports() {
       <motion.div variants={fadeInUp} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard title="Revenue by Quality Grade" subtitle="Weekly stacked breakdown">
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={mockGradeRevenue}>
+            <BarChart data={gradeRevenue}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1A3F3F" />
               <XAxis dataKey="week" tick={{ fill: '#5A7A75', fontSize: 11 }} tickLine={false} axisLine={false} />
               <YAxis tick={{ fill: '#5A7A75', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
@@ -231,7 +270,7 @@ function Reports() {
 
         <ChartCard title="Top Clients" subtitle="By revenue this month">
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={mockTopClients} layout="vertical" margin={{ left: 20 }}>
+            <BarChart data={topClients} layout="vertical" margin={{ left: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1A3F3F" horizontal={false} />
               <XAxis type="number" tick={{ fill: '#5A7A75', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
               <YAxis type="category" dataKey="name" tick={{ fill: '#8AABA6', fontSize: 11 }} tickLine={false} axisLine={false} width={100} />
@@ -250,6 +289,7 @@ function Reports() {
             <DataTable
               columns={transactionColumns}
               data={mockTransactions}
+
               searchPlaceholder="Search transactions..."
               searchColumn="client"
             />
@@ -264,7 +304,7 @@ function Reports() {
             <h3 className="text-lg font-semibold text-brand-primary mb-4">Invoices</h3>
             <DataTable
               columns={invoiceColumns}
-              data={mockInvoices}
+              data={invoices}
               searchPlaceholder="Search invoices..."
               searchColumn="client"
             />

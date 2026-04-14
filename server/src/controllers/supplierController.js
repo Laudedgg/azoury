@@ -378,6 +378,74 @@ async function updatePurchaseOrderStatus(req, res, next) {
   }
 }
 
+async function getPriceSurveys(req, res, next) {
+  try {
+    const { productId, supplierId, days = 30, page = 1, limit = 20 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const since = new Date();
+    since.setDate(since.getDate() - parseInt(days));
+
+    const where = { surveyDate: { gte: since } };
+    if (productId) where.productId = productId;
+    if (supplierId) where.supplierId = supplierId;
+
+    const [surveys, total] = await Promise.all([
+      prisma.priceSurvey.findMany({
+        where,
+        skip,
+        take: parseInt(limit),
+        orderBy: { surveyDate: 'desc' },
+        include: {
+          supplier: { select: { id: true, name: true, rating: true } },
+          product: { select: { id: true, name: true, unit: true } },
+        },
+      }),
+      prisma.priceSurvey.count({ where }),
+    ]);
+
+    res.json({
+      data: surveys,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit)),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function createPriceSurvey(req, res, next) {
+  try {
+    const { supplierId, productId, price, surveyDate } = req.body;
+
+    if (!supplierId || !productId || price == null) {
+      return res.status(400).json({ error: 'supplierId, productId, and price are required' });
+    }
+
+    const survey = await prisma.priceSurvey.create({
+      data: {
+        supplierId,
+        productId,
+        price,
+        surveyDate: surveyDate ? new Date(surveyDate) : new Date(),
+        createdById: req.user.id,
+      },
+      include: {
+        supplier: { select: { id: true, name: true, rating: true } },
+        product: { select: { id: true, name: true, unit: true } },
+      },
+    });
+
+    res.status(201).json(survey);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   listSuppliers,
   getSupplier,
@@ -390,4 +458,6 @@ module.exports = {
   createPurchaseOrder,
   listPurchaseOrders,
   updatePurchaseOrderStatus,
+  getPriceSurveys,
+  createPriceSurvey,
 };
