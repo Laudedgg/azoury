@@ -1,0 +1,590 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  PURCHASE_MANAGER
+  OPERATIONS_MANAGER
+  QUALITY_COST_CONTROL
+  RECEIVING
+  LOGISTICS_TEAM
+  DRIVER
+  ACCOUNTANT
+  CLIENT_ADMIN
+  CLIENT_STAFF
+}
+
+enum BusinessType {
+  RESTAURANT
+  SUPERMARKET
+  GROCERY
+  OTHER
+}
+
+enum ProductCategory {
+  FRUITS
+  VEGETABLES
+  MEATS
+  DAIRY
+  DRY_GOODS
+  BEVERAGES
+  FROZEN
+  OTHER
+}
+
+enum InternalGrade {
+  EXTRA
+  A
+  B
+  C_PLUS_PLUS
+  C
+}
+
+enum ClientFacingGrade {
+  EXTRA
+  QUALITY_A
+  QUALITY_C
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SENT
+  RECEIVED
+  VERIFIED
+}
+
+enum ClientOrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  DISPATCHED
+  DELIVERED
+  CANCELLED
+  RETURNED
+}
+
+enum InventoryMovementType {
+  PURCHASE_IN
+  SALE_OUT
+  WASTE
+  ADJUSTMENT
+  RETURN
+}
+
+enum DispatchStatus {
+  PLANNING
+  LOADING
+  IN_TRANSIT
+  COMPLETED
+}
+
+enum DispatchItemStatus {
+  PENDING
+  LOADED
+  DELIVERED
+  RETURNED
+}
+
+enum VehicleStatus {
+  ACTIVE
+  MAINTENANCE
+  INACTIVE
+}
+
+enum WasteType {
+  RECEIVING_WASTE
+  AGING_WASTE
+}
+
+enum ReturnAmendmentType {
+  RETURN
+  AMENDMENT
+}
+
+enum ReturnAmendmentStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  role      UserRole
+  isActive  Boolean  @default(true)
+  phone     String?
+  clientId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client             Client?             @relation(fields: [clientId], references: [id])
+  purchaseOrders     PurchaseOrder[]     @relation("CreatedByUser")
+  supplierReceipts   SupplierReceipt[]   @relation("UploadedByUser")
+  clientOrders       ClientOrder[]       @relation("PlacedByUser")
+  inventoryMovements InventoryMovement[] @relation("MovementCreatedBy")
+  dispatches         Dispatch[]          @relation("DriverDispatches")
+  dispatchPhotos     DispatchPhoto[]     @relation("PhotoUploadedBy")
+  wasteAuthorized    WasteEntry[]        @relation("WasteAuthorizedBy")
+  wasteCreated       WasteEntry[]        @relation("WasteCreatedBy")
+  supplierRatings    SupplierRating[]    @relation("RatedByUser")
+  priceSurveys       PriceSurvey[]       @relation("SurveyCreatedBy")
+  returnAmendments   ReturnAmendment[]   @relation("ReturnRequestedBy")
+  spotChecks         SpotCheck[]         @relation("SpotCheckedBy")
+  activityLogs       ActivityLog[]       @relation("ActivityUser")
+
+  @@index([email])
+  @@index([role])
+  @@index([clientId])
+  @@map("users")
+}
+
+model Client {
+  id            String       @id @default(uuid())
+  businessName  String
+  businessType  BusinessType
+  contactPerson String
+  email         String       @unique
+  phone         String
+  address       String
+  isApproved    Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  users    User[]
+  orders   ClientOrder[]
+  invoices Invoice[]
+
+  @@index([businessName])
+  @@index([isApproved])
+  @@map("clients")
+}
+
+model Product {
+  id          String          @id @default(uuid())
+  name        String
+  description String?
+  category    ProductCategory
+  unit        String
+  imageUrl    String?
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+
+  qualityGrades      QualityGrade[]
+  purchaseItems      PurchaseItem[]
+  orderItems         OrderItem[]
+  inventoryMovements InventoryMovement[]
+  wasteEntries       WasteEntry[]
+  priceSurveys       PriceSurvey[]
+  spotChecks         SpotCheck[]
+
+  @@index([category])
+  @@index([name])
+  @@map("products")
+}
+
+model QualityGrade {
+  id                String            @id @default(uuid())
+  productId         String
+  grade             InternalGrade
+  clientFacingGrade ClientFacingGrade
+  currentStock      Float             @default(0)
+  price             Float
+  createdAt         DateTime          @default(now())
+
+  product            Product             @relation(fields: [productId], references: [id])
+  orderItems         OrderItem[]
+  inventoryMovements InventoryMovement[]
+  wasteEntries       WasteEntry[]
+  spotChecks         SpotCheck[]
+
+  @@index([productId])
+  @@index([grade])
+  @@map("quality_grades")
+}
+
+model Supplier {
+  id            String   @id @default(uuid())
+  name          String
+  contactPerson String
+  email         String
+  phone         String
+  address       String
+  rating        Float    @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  purchaseOrders   PurchaseOrder[]
+  supplierReceipts SupplierReceipt[]
+  supplierRatings  SupplierRating[]
+  priceSurveys     PriceSurvey[]
+
+  @@index([name])
+  @@map("suppliers")
+}
+
+model PurchaseOrder {
+  id          String              @id @default(uuid())
+  supplierId  String
+  createdById String
+  status      PurchaseOrderStatus @default(DRAFT)
+  totalAmount Float               @default(0)
+  notes       String?
+  createdAt   DateTime            @default(now())
+
+  supplier         Supplier          @relation(fields: [supplierId], references: [id])
+  createdBy        User              @relation("CreatedByUser", fields: [createdById], references: [id])
+  items            PurchaseItem[]
+  supplierReceipts SupplierReceipt[]
+
+  @@index([supplierId])
+  @@index([createdById])
+  @@index([status])
+  @@map("purchase_orders")
+}
+
+model PurchaseItem {
+  id               String   @id @default(uuid())
+  purchaseOrderId  String
+  productId        String
+  quantity         Float
+  unitPrice        Float
+  receivedQuantity Float?
+  receivedWeight   Float?
+  createdAt        DateTime @default(now())
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product       Product       @relation(fields: [productId], references: [id])
+
+  @@index([purchaseOrderId])
+  @@index([productId])
+  @@map("purchase_items")
+}
+
+model SupplierReceipt {
+  id              String   @id @default(uuid())
+  purchaseOrderId String
+  supplierId      String
+  imageUrl        String
+  ocrData         Json?
+  totalAmount     Float
+  uploadedById    String
+  createdAt       DateTime @default(now())
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  supplier      Supplier      @relation(fields: [supplierId], references: [id])
+  uploadedBy    User          @relation("UploadedByUser", fields: [uploadedById], references: [id])
+
+  @@index([purchaseOrderId])
+  @@index([supplierId])
+  @@map("supplier_receipts")
+}
+
+model ClientOrder {
+  id                  String            @id @default(uuid())
+  clientId            String
+  placedById          String
+  status              ClientOrderStatus @default(PENDING)
+  totalAmount         Float             @default(0)
+  deliveryDate        DateTime
+  specialInstructions String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  client           Client            @relation(fields: [clientId], references: [id])
+  placedBy         User              @relation("PlacedByUser", fields: [placedById], references: [id])
+  items            OrderItem[]
+  dispatchItems    DispatchItem[]
+  returnAmendments ReturnAmendment[]
+  invoices         Invoice[]
+
+  @@index([clientId])
+  @@index([placedById])
+  @@index([status])
+  @@index([deliveryDate])
+  @@map("client_orders")
+}
+
+model OrderItem {
+  id                String   @id @default(uuid())
+  clientOrderId     String
+  productId         String
+  qualityGradeId    String
+  quantity          Float
+  unitPrice         Float
+  fulfilledQuantity Float    @default(0)
+  createdAt         DateTime @default(now())
+
+  clientOrder  ClientOrder  @relation(fields: [clientOrderId], references: [id], onDelete: Cascade)
+  product      Product      @relation(fields: [productId], references: [id])
+  qualityGrade QualityGrade @relation(fields: [qualityGradeId], references: [id])
+
+  @@index([clientOrderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+model InventoryMovement {
+  id             String                @id @default(uuid())
+  productId      String
+  qualityGradeId String
+  type           InventoryMovementType
+  quantity       Float
+  reference      String?
+  notes          String?
+  createdById    String
+  createdAt      DateTime              @default(now())
+
+  product      Product      @relation(fields: [productId], references: [id])
+  qualityGrade QualityGrade @relation(fields: [qualityGradeId], references: [id])
+  createdBy    User         @relation("MovementCreatedBy", fields: [createdById], references: [id])
+
+  @@index([productId])
+  @@index([qualityGradeId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("inventory_movements")
+}
+
+model Dispatch {
+  id          String         @id @default(uuid())
+  driverId    String
+  truckId     String
+  status      DispatchStatus @default(PLANNING)
+  routeOrder  Json?
+  departedAt  DateTime?
+  completedAt DateTime?
+  createdAt   DateTime       @default(now())
+
+  driver User          @relation("DriverDispatches", fields: [driverId], references: [id])
+  truck  FleetVehicle  @relation(fields: [truckId], references: [id])
+  items  DispatchItem[]
+
+  @@index([driverId])
+  @@index([truckId])
+  @@index([status])
+  @@map("dispatches")
+}
+
+model DispatchItem {
+  id            String             @id @default(uuid())
+  dispatchId    String
+  clientOrderId String
+  status        DispatchItemStatus @default(PENDING)
+  deliveryNotes String?
+  signatureUrl  String?
+  createdAt     DateTime           @default(now())
+
+  dispatch    Dispatch        @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
+  clientOrder ClientOrder     @relation(fields: [clientOrderId], references: [id])
+  photos      DispatchPhoto[]
+
+  @@index([dispatchId])
+  @@index([clientOrderId])
+  @@map("dispatch_items")
+}
+
+model DispatchPhoto {
+  id             String   @id @default(uuid())
+  dispatchItemId String
+  imageUrl       String
+  caption        String?
+  uploadedById   String
+  createdAt      DateTime @default(now())
+
+  dispatchItem DispatchItem @relation(fields: [dispatchItemId], references: [id], onDelete: Cascade)
+  uploadedBy   User         @relation("PhotoUploadedBy", fields: [uploadedById], references: [id])
+
+  @@index([dispatchItemId])
+  @@map("dispatch_photos")
+}
+
+model FleetVehicle {
+  id                  String        @id @default(uuid())
+  plateNumber         String        @unique
+  model               String
+  type                String
+  status              VehicleStatus @default(ACTIVE)
+  lastMaintenanceDate DateTime?
+  nextMaintenanceDate DateTime?
+  mileage             Float         @default(0)
+  fuelConsumption     Float         @default(0)
+  createdAt           DateTime      @default(now())
+
+  dispatches  Dispatch[]
+  maintenance FleetMaintenance[]
+
+  @@index([plateNumber])
+  @@index([status])
+  @@map("fleet_vehicles")
+}
+
+model FleetMaintenance {
+  id          String    @id @default(uuid())
+  vehicleId   String
+  type        String
+  description String
+  cost        Float
+  date        DateTime
+  nextDueDate DateTime?
+  createdAt   DateTime  @default(now())
+
+  vehicle FleetVehicle @relation(fields: [vehicleId], references: [id])
+
+  @@index([vehicleId])
+  @@index([date])
+  @@map("fleet_maintenance")
+}
+
+model WasteEntry {
+  id             String    @id @default(uuid())
+  productId      String
+  qualityGradeId String
+  quantity       Float
+  wasteType      WasteType
+  reason         String
+  cost           Float
+  authorizedById String?
+  createdById    String
+  createdAt      DateTime  @default(now())
+
+  product      Product      @relation(fields: [productId], references: [id])
+  qualityGrade QualityGrade @relation(fields: [qualityGradeId], references: [id])
+  authorizedBy User?        @relation("WasteAuthorizedBy", fields: [authorizedById], references: [id])
+  createdBy    User         @relation("WasteCreatedBy", fields: [createdById], references: [id])
+
+  @@index([productId])
+  @@index([wasteType])
+  @@index([createdAt])
+  @@map("waste_entries")
+}
+
+model SupplierRating {
+  id         String   @id @default(uuid())
+  supplierId String
+  ratedById  String
+  rating     Int
+  notes      String?
+  date       DateTime
+  createdAt  DateTime @default(now())
+
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+  ratedBy  User     @relation("RatedByUser", fields: [ratedById], references: [id])
+
+  @@index([supplierId])
+  @@index([date])
+  @@map("supplier_ratings")
+}
+
+model PriceSurvey {
+  id          String   @id @default(uuid())
+  supplierId  String
+  productId   String
+  price       Float
+  surveyDate  DateTime
+  createdById String
+  createdAt   DateTime @default(now())
+
+  supplier  Supplier @relation(fields: [supplierId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
+  createdBy User     @relation("SurveyCreatedBy", fields: [createdById], references: [id])
+
+  @@index([supplierId])
+  @@index([productId])
+  @@index([surveyDate])
+  @@map("price_surveys")
+}
+
+model ReturnAmendment {
+  id                 String                @id @default(uuid())
+  clientOrderId      String
+  requestedById      String
+  type               ReturnAmendmentType
+  status             ReturnAmendmentStatus @default(PENDING)
+  reason             String
+  opsManagerApproval Boolean?
+  qcApproval         Boolean?
+  opsManagerComment  String?
+  qcComment          String?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  clientOrder ClientOrder @relation(fields: [clientOrderId], references: [id])
+  requestedBy User        @relation("ReturnRequestedBy", fields: [requestedById], references: [id])
+
+  @@index([clientOrderId])
+  @@index([status])
+  @@map("return_amendments")
+}
+
+model SpotCheck {
+  id             String   @id @default(uuid())
+  productId      String
+  qualityGradeId String
+  systemCount    Float
+  physicalCount  Float
+  discrepancy    Float
+  checkedById    String
+  createdAt      DateTime @default(now())
+
+  product      Product      @relation(fields: [productId], references: [id])
+  qualityGrade QualityGrade @relation(fields: [qualityGradeId], references: [id])
+  checkedBy    User         @relation("SpotCheckedBy", fields: [checkedById], references: [id])
+
+  @@index([productId])
+  @@index([createdAt])
+  @@map("spot_checks")
+}
+
+model Invoice {
+  id            String        @id @default(uuid())
+  clientOrderId String
+  clientId      String
+  amount        Float
+  status        InvoiceStatus @default(DRAFT)
+  dueDate       DateTime
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+
+  clientOrder ClientOrder @relation(fields: [clientOrderId], references: [id])
+  client      Client      @relation(fields: [clientId], references: [id])
+
+  @@index([clientOrderId])
+  @@index([clientId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("invoices")
+}
+
+model ActivityLog {
+  id         String   @id @default(uuid())
+  userId     String
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user User @relation("ActivityUser", fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entityType])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
