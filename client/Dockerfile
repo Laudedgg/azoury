@@ -1,4 +1,4 @@
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 
 WORKDIR /app
 
@@ -7,7 +7,6 @@ RUN npm ci
 
 COPY . .
 
-# Set the API URL at build time
 ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
 
