@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Copy only server files explicitly
 COPY server/package*.json ./
-RUN npm ci
+RUN npm install
 
 # Verify prisma installed
 RUN ls node_modules/.bin/prisma
