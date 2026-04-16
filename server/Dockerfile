@@ -2,10 +2,15 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
+# Copy only server files explicitly
+COPY server/package*.json ./
 RUN npm ci
 
-COPY . .
+# Verify prisma installed
+RUN ls node_modules/.bin/prisma
+
+COPY server/prisma ./prisma
+COPY server/src ./src
 
 RUN ./node_modules/.bin/prisma generate --schema=./prisma/schema.prisma
 RUN mkdir -p uploads
