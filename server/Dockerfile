@@ -7,9 +7,9 @@ RUN npm ci
 
 COPY . .
 
-RUN npx prisma generate --schema=./prisma/schema.prisma
+RUN ./node_modules/.bin/prisma generate --schema=./prisma/schema.prisma
 RUN mkdir -p uploads
 
 EXPOSE 3001
 
-CMD npx prisma db push --accept-data-loss --schema=./prisma/schema.prisma && node src/server.js
+CMD ./node_modules/.bin/prisma db push --accept-data-loss --schema=./prisma/schema.prisma && node src/server.js
