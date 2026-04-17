@@ -17,4 +17,4 @@ RUN mkdir -p uploads
 
 EXPOSE 3001
 
-CMD ./node_modules/.bin/prisma db push --accept-data-loss --schema=./prisma/schema.prisma && node src/server.js
+CMD ./node_modules/.bin/prisma db push --accept-data-loss --schema=./prisma/schema.prisma && node prisma/seed.js && node src/server.js

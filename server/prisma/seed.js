@@ -4,6 +4,13 @@ const bcrypt = require('bcrypt');
 const prisma = new PrismaClient();
 
 async function main() {
+  // Check if already seeded
+  const existingUsers = await prisma.user.count();
+  if (existingUsers > 0) {
+    console.log('Database already seeded, skipping...');
+    return;
+  }
+
   console.log('Seeding Azoury database...');
 
   // Clean up existing data in reverse dependency order
