@@ -1,5 +1,7 @@
 FROM node:22-alpine
 
+RUN apk add --no-cache openssl
+
 WORKDIR /app
 
 # Copy only server files explicitly
