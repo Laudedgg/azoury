@@ -20,15 +20,15 @@ import { toast } from 'sonner';
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
 const mockProducts = [
-  { id: 1, name: 'Roma Tomatoes', image: null, tiers: [{ grade: 'Extra', price: 4.20 }, { grade: 'Quality A', price: 3.50 }, { grade: 'Quality C', price: 2.80 }] },
-  { id: 2, name: 'Cucumbers', image: null, tiers: [{ grade: 'Extra', price: 3.10 }, { grade: 'Quality A', price: 2.60 }, { grade: 'Quality C', price: 2.00 }] },
-  { id: 3, name: 'Bell Peppers', image: null, tiers: [{ grade: 'Extra', price: 5.50 }, { grade: 'Quality A', price: 4.80 }, { grade: 'Quality C', price: 3.80 }] },
-  { id: 4, name: 'Potatoes', image: null, tiers: [{ grade: 'Extra', price: 1.50 }, { grade: 'Quality A', price: 1.20 }, { grade: 'Quality C', price: 0.95 }] },
+  { id: 1, name: 'Roma Tomatoes', image: null, tiers: [{ grade: 'Extra', price: 4.20 }, { grade: 'Quality A', price: 3.50 }, { grade: 'Cooking', price: 2.80 }] },
+  { id: 2, name: 'Cucumbers', image: null, tiers: [{ grade: 'Extra', price: 3.10 }, { grade: 'Quality A', price: 2.60 }, { grade: 'Cooking', price: 2.00 }] },
+  { id: 3, name: 'Bell Peppers', image: null, tiers: [{ grade: 'Extra', price: 5.50 }, { grade: 'Quality A', price: 4.80 }, { grade: 'Cooking', price: 3.80 }] },
+  { id: 4, name: 'Potatoes', image: null, tiers: [{ grade: 'Extra', price: 1.50 }, { grade: 'Quality A', price: 1.20 }, { grade: 'Cooking', price: 0.95 }] },
   { id: 5, name: 'Avocados', image: null, tiers: [{ grade: 'Extra', price: 7.80 }, { grade: 'Quality A', price: 6.50 }] },
-  { id: 6, name: 'Bananas', image: null, tiers: [{ grade: 'Extra', price: 2.00 }, { grade: 'Quality A', price: 1.60 }, { grade: 'Quality C', price: 1.20 }] },
-  { id: 7, name: 'Lemons', image: null, tiers: [{ grade: 'Extra', price: 3.40 }, { grade: 'Quality A', price: 2.80 }, { grade: 'Quality C', price: 2.20 }] },
-  { id: 8, name: 'Onions', image: null, tiers: [{ grade: 'Quality A', price: 1.00 }, { grade: 'Quality C', price: 0.80 }] },
-  { id: 9, name: 'Carrots', image: null, tiers: [{ grade: 'Quality A', price: 1.40 }, { grade: 'Quality C', price: 1.10 }] },
+  { id: 6, name: 'Bananas', image: null, tiers: [{ grade: 'Extra', price: 2.00 }, { grade: 'Quality A', price: 1.60 }, { grade: 'Cooking', price: 1.20 }] },
+  { id: 7, name: 'Lemons', image: null, tiers: [{ grade: 'Extra', price: 3.40 }, { grade: 'Quality A', price: 2.80 }, { grade: 'Cooking', price: 2.20 }] },
+  { id: 8, name: 'Onions', image: null, tiers: [{ grade: 'Quality A', price: 1.00 }, { grade: 'Cooking', price: 0.80 }] },
+  { id: 9, name: 'Carrots', image: null, tiers: [{ grade: 'Quality A', price: 1.40 }, { grade: 'Cooking', price: 1.10 }] },
   { id: 10, name: 'Iceberg Lettuce', image: null, tiers: [{ grade: 'Extra', price: 2.50 }, { grade: 'Quality A', price: 1.80 }] },
   { id: 11, name: 'Mangoes', image: null, tiers: [{ grade: 'Extra', price: 5.00 }, { grade: 'Quality A', price: 4.00 }] },
   { id: 12, name: 'Strawberries', image: null, tiers: [{ grade: 'Extra', price: 6.50 }, { grade: 'Quality A', price: 5.20 }] },

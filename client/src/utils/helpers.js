@@ -83,7 +83,20 @@ export function relativeTime(date) {
   return formatDate(date);
 }
 
+export function formatGrade(grade) {
+  const map = {
+    EXTRA: 'Extra',
+    QUALITY_A: 'Quality A',
+    QUALITY_C: 'Cooking',
+    A: 'Grade A',
+    B: 'Grade B',
+    C_PLUS_PLUS: 'Cooking',
+    C: 'Cooking',
+  };
+  return map[grade] || grade;
+}
+
 export default {
   cn, formatCurrency, formatDate, formatDateTime,
-  getStatusColor, getInitials, truncate, relativeTime,
+  getStatusColor, getInitials, truncate, relativeTime, formatGrade,
 };

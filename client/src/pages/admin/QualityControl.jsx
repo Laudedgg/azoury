@@ -59,9 +59,9 @@ const mockGrading = [
   { id: 1, product: 'Roma Tomatoes', date: '2026-04-08', internal: 'Extra', client: 'Extra', qty: 120, approvedBy: 'Karim H.' },
   { id: 2, product: 'Cucumbers', date: '2026-04-08', internal: 'A', client: 'Quality A', qty: 200, approvedBy: 'Karim H.' },
   { id: 3, product: 'Bell Peppers', date: '2026-04-08', internal: 'B', client: 'Quality A', qty: 80, approvedBy: 'Sami R.' },
-  { id: 4, product: 'Potatoes', date: '2026-04-07', internal: 'C++', client: 'Quality C', qty: 350, approvedBy: 'Karim H.' },
+  { id: 4, product: 'Potatoes', date: '2026-04-07', internal: 'C++', client: 'Cooking', qty: 350, approvedBy: 'Karim H.' },
   { id: 5, product: 'Avocados', date: '2026-04-07', internal: 'Extra', client: 'Extra', qty: 45, approvedBy: 'Sami R.' },
-  { id: 6, product: 'Bananas', date: '2026-04-07', internal: 'C', client: 'Quality C', qty: 180, approvedBy: 'Karim H.' },
+  { id: 6, product: 'Bananas', date: '2026-04-07', internal: 'C', client: 'Cooking', qty: 180, approvedBy: 'Karim H.' },
 ];
 
 const mockWasteTrend = (() => {
@@ -83,7 +83,7 @@ const mockVehicles = [
 const mockSpotChecks = [
   { id: 1, product: 'Roma Tomatoes', grade: 'Extra', system: 120, physical: 118, disc: -2, date: '2026-04-08', by: 'Karim H.' },
   { id: 2, product: 'Cucumbers', grade: 'Quality A', system: 200, physical: 200, disc: 0, date: '2026-04-08', by: 'Sami R.' },
-  { id: 3, product: 'Potatoes', grade: 'Quality C', system: 350, physical: 342, disc: -8, date: '2026-04-08', by: 'Karim H.' },
+  { id: 3, product: 'Potatoes', grade: 'Cooking', system: 350, physical: 342, disc: -8, date: '2026-04-08', by: 'Karim H.' },
   { id: 4, product: 'Bell Peppers', grade: 'Extra', system: 80, physical: 80, disc: 0, date: '2026-04-07', by: 'Sami R.' },
   { id: 5, product: 'Avocados', grade: 'Extra', system: 45, physical: 44, disc: -1, date: '2026-04-07', by: 'Karim H.' },
 ];
@@ -92,7 +92,7 @@ const mockDispatchItems = [
   { id: 1, product: 'Roma Tomatoes - Extra', ordered: 50, loaded: 50, verified: true },
   { id: 2, product: 'Cucumbers - Quality A', ordered: 30, loaded: 30, verified: true },
   { id: 3, product: 'Bell Peppers - Extra', ordered: 20, loaded: 20, verified: false },
-  { id: 4, product: 'Potatoes - Quality C', ordered: 80, loaded: 78, verified: false },
+  { id: 4, product: 'Potatoes - Cooking', ordered: 80, loaded: 78, verified: false },
   { id: 5, product: 'Avocados - Extra', ordered: 15, loaded: 15, verified: false },
   { id: 6, product: 'Lemons - Quality A', ordered: 25, loaded: 25, verified: false },
 ];
@@ -298,7 +298,7 @@ function QualityControl() {
               <CardContent className="p-4">
                 <h3 className="text-brand-primary font-semibold mb-3">Grade Mapping</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                  {[['Extra', 'Extra'], ['A / B', 'Quality A'], ['C++ / C', 'Quality C'], ['Reject', 'Waste']].map(([from, to]) => (
+                  {[['Extra', 'Extra'], ['A / B', 'Quality A'], ['C++ / C', 'Cooking'], ['Reject', 'Waste']].map(([from, to]) => (
                     <div key={from} className="bg-brand-elevated rounded-lg p-3 text-center"><p className="text-brand-accent font-semibold">{from}</p><p className="text-brand-muted text-xs mt-1">maps to {to}</p></div>
                   ))}
                 </div>

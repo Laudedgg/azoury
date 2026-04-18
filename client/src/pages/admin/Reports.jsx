@@ -263,7 +263,7 @@ function Reports() {
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <Bar dataKey="extra" name="Extra" fill={CHART_COLORS[0]} stackId="a" radius={[0, 0, 0, 0]} />
               <Bar dataKey="qualityA" name="Quality A" fill={CHART_COLORS[1]} stackId="a" />
-              <Bar dataKey="qualityC" name="Quality C" fill={CHART_COLORS[2]} stackId="a" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="qualityC" name="Cooking" fill={CHART_COLORS[2]} stackId="a" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>

@@ -181,7 +181,7 @@ function Dashboard() {
               <Legend wrapperStyle={{ color: '#8AABA6', fontSize: 12 }} />
               <Bar dataKey="extra" name="Extra" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} stackId="a" />
               <Bar dataKey="qualityA" name="Quality A" fill={CHART_COLORS[1]} stackId="a" />
-              <Bar dataKey="qualityC" name="Quality C" fill={CHART_COLORS[2]} stackId="a" />
+              <Bar dataKey="qualityC" name="Cooking" fill={CHART_COLORS[2]} stackId="a" />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>

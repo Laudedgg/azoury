@@ -27,7 +27,7 @@ const mockDeliveries = [
       { product: 'Roma Tomatoes - Extra', qty: '50 kg' },
       { product: 'Cucumbers - Quality A', qty: '30 kg' },
       { product: 'Bell Peppers - Extra', qty: '20 kg' },
-      { product: 'Potatoes - Quality C', qty: '80 kg' },
+      { product: 'Potatoes - Cooking', qty: '80 kg' },
     ],
   },
   {
@@ -45,9 +45,9 @@ const mockDeliveries = [
     timeWindow: '9:30 AM - 10:30 AM', status: 'Pending', phone: '+961 1 456 789',
     instructions: 'Parking available in the basement. Take service elevator.',
     items: [
-      { product: 'Onions - Quality C', qty: '60 kg' },
+      { product: 'Onions - Cooking', qty: '60 kg' },
       { product: 'Carrots - Quality A', qty: '35 kg' },
-      { product: 'Potatoes - Quality C', qty: '100 kg' },
+      { product: 'Potatoes - Cooking', qty: '100 kg' },
       { product: 'Roma Tomatoes - Quality A', qty: '45 kg' },
     ],
   },

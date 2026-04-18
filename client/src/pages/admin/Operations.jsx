@@ -33,7 +33,7 @@ const mockChecklist = [
   { id: 1, product: 'Roma Tomatoes - Extra', qty: 50, picked: false },
   { id: 2, product: 'Cucumbers - Quality A', qty: 30, picked: false },
   { id: 3, product: 'Bell Peppers - Extra', qty: 20, picked: true },
-  { id: 4, product: 'Potatoes - Quality C', qty: 80, picked: true },
+  { id: 4, product: 'Potatoes - Cooking', qty: 80, picked: true },
   { id: 5, product: 'Avocados - Extra', qty: 15, picked: false },
   { id: 6, product: 'Lemons - Quality A', qty: 25, picked: false },
 ];
@@ -107,7 +107,7 @@ const pricingColumns = [
   { accessorKey: 'product', header: 'Product' },
   { accessorKey: 'extraPrice', header: 'Extra', cell: ({ row }) => formatCurrency(row.original.extraPrice) },
   { accessorKey: 'qualityAPrice', header: 'Quality A', cell: ({ row }) => formatCurrency(row.original.qualityAPrice) },
-  { accessorKey: 'qualityCPrice', header: 'Quality C', cell: ({ row }) => formatCurrency(row.original.qualityCPrice) },
+  { accessorKey: 'qualityCPrice', header: 'Cooking', cell: ({ row }) => formatCurrency(row.original.qualityCPrice) },
   { accessorKey: 'margin', header: 'Margin %', cell: ({ row }) => <span className={row.original.margin >= 30 ? 'text-brand-success font-semibold' : 'text-brand-warning font-semibold'}>{row.original.margin}%</span> },
 ];
 
@@ -196,7 +196,7 @@ function Operations() {
       const grades = p.qualityGrades || [];
       const extraGrade = grades.find((g) => g.name === 'Extra' || g.grade === 'Extra');
       const qualityAGrade = grades.find((g) => g.name === 'Quality A' || g.grade === 'A');
-      const qualityCGrade = grades.find((g) => g.name === 'Quality C' || g.grade === 'C');
+      const qualityCGrade = grades.find((g) => g.name === 'Cooking' || g.grade === 'C');
       return {
         id: p.id,
         product: p.name,

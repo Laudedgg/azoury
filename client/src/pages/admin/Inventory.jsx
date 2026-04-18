@@ -25,10 +25,10 @@ const mockInventory = [
   { id: 2, product: 'Roma Tomatoes', grade: 'Quality A', currentStock: 250, reserved: 80, available: 170, minThreshold: 100, status: 'OK', lastMovement: '2026-04-08 09:30' },
   { id: 3, product: 'Cucumbers', grade: 'Extra', currentStock: 350, reserved: 100, available: 250, minThreshold: 150, status: 'OK', lastMovement: '2026-04-08 08:15' },
   { id: 4, product: 'Bell Peppers', grade: 'Extra', currentStock: 40, reserved: 20, available: 20, minThreshold: 80, status: 'Low', lastMovement: '2026-04-08 07:45' },
-  { id: 5, product: 'Potatoes', grade: 'Quality C', currentStock: 800, reserved: 200, available: 600, minThreshold: 300, status: 'Overstocked', lastMovement: '2026-04-08 08:00' },
+  { id: 5, product: 'Potatoes', grade: 'Cooking', currentStock: 800, reserved: 200, available: 600, minThreshold: 300, status: 'Overstocked', lastMovement: '2026-04-08 08:00' },
   { id: 6, product: 'Avocados', grade: 'Extra', currentStock: 45, reserved: 30, available: 15, minThreshold: 50, status: 'Low', lastMovement: '2026-04-08 08:20' },
   { id: 7, product: 'Bananas', grade: 'Quality A', currentStock: 400, reserved: 150, available: 250, minThreshold: 200, status: 'OK', lastMovement: '2026-04-07 16:30' },
-  { id: 8, product: 'Onions', grade: 'Quality C', currentStock: 600, reserved: 100, available: 500, minThreshold: 200, status: 'Overstocked', lastMovement: '2026-04-07 15:00' },
+  { id: 8, product: 'Onions', grade: 'Cooking', currentStock: 600, reserved: 100, available: 500, minThreshold: 200, status: 'Overstocked', lastMovement: '2026-04-07 15:00' },
   { id: 9, product: 'Lemons', grade: 'Quality A', currentStock: 180, reserved: 60, available: 120, minThreshold: 100, status: 'OK', lastMovement: '2026-04-07 14:30' },
   { id: 10, product: 'Carrots', grade: 'Quality A', currentStock: 300, reserved: 80, available: 220, minThreshold: 150, status: 'OK', lastMovement: '2026-04-07 13:00' },
   { id: 11, product: 'Iceberg Lettuce', grade: 'Extra', currentStock: 60, reserved: 40, available: 20, minThreshold: 80, status: 'Low', lastMovement: '2026-04-08 07:30' },
@@ -40,16 +40,16 @@ const mockMovements = [
   { id: 2, product: 'Cucumbers', grade: 'Quality A', type: 'Sale Out', qty: -80, date: '2026-04-08 09:00', notes: 'Order #1847 Al Mandaloun', user: 'System' },
   { id: 3, product: 'Bell Peppers', grade: 'Extra', type: 'Purchase In', qty: 200, date: '2026-04-08 07:45', notes: 'PO-1206 from Bekaa Farms', user: 'Hassan K.' },
   { id: 4, product: 'Bananas', grade: 'Quality A', type: 'Waste', qty: -20, date: '2026-04-07 16:30', notes: 'Aging waste - overripe', user: 'Karim H.' },
-  { id: 5, product: 'Potatoes', grade: 'Quality C', type: 'Sale Out', qty: -150, date: '2026-04-08 08:00', notes: 'Order #1845 Karam Beirut', user: 'System' },
+  { id: 5, product: 'Potatoes', grade: 'Cooking', type: 'Sale Out', qty: -150, date: '2026-04-08 08:00', notes: 'Order #1845 Karam Beirut', user: 'System' },
   { id: 6, product: 'Avocados', grade: 'Extra', type: 'Return', qty: 5, date: '2026-04-08 08:20', notes: 'Returned from Le Petit Chef', user: 'Omar S.' },
   { id: 7, product: 'Lemons', grade: 'Quality A', type: 'Sale Out', qty: -40, date: '2026-04-07 14:30', notes: 'Order #1842 Green Basket', user: 'System' },
-  { id: 8, product: 'Onions', grade: 'Quality C', type: 'Adjustment', qty: 15, date: '2026-04-07 15:00', notes: 'Inventory count adjustment', user: 'Ali M.' },
+  { id: 8, product: 'Onions', grade: 'Cooking', type: 'Adjustment', qty: 15, date: '2026-04-07 15:00', notes: 'Inventory count adjustment', user: 'Ali M.' },
 ];
 
 const qualityDistribution = [
   { name: 'Extra', value: 35 },
   { name: 'Quality A', value: 40 },
-  { name: 'Quality C', value: 25 },
+  { name: 'Cooking', value: 25 },
 ];
 
 const inventoryColumns = [

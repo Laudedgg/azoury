@@ -44,10 +44,10 @@ const mockInventoryCount = [
   { id: 4, product: 'Cucumbers', grade: 'Quality A', systemCount: 200, physicalCount: '198', discrepancy: -2 },
   { id: 5, product: 'Bell Peppers', grade: 'Extra', systemCount: 40, physicalCount: '', discrepancy: null },
   { id: 6, product: 'Bell Peppers', grade: 'Quality A', systemCount: 50, physicalCount: '50', discrepancy: 0 },
-  { id: 7, product: 'Potatoes', grade: 'Quality C', systemCount: 350, physicalCount: '342', discrepancy: -8 },
+  { id: 7, product: 'Potatoes', grade: 'Cooking', systemCount: 350, physicalCount: '342', discrepancy: -8 },
   { id: 8, product: 'Avocados', grade: 'Extra', systemCount: 40, physicalCount: '', discrepancy: null },
   { id: 9, product: 'Bananas', grade: 'Quality A', systemCount: 300, physicalCount: '300', discrepancy: 0 },
-  { id: 10, product: 'Onions', grade: 'Quality C', systemCount: 380, physicalCount: '', discrepancy: null },
+  { id: 10, product: 'Onions', grade: 'Cooking', systemCount: 380, physicalCount: '', discrepancy: null },
   { id: 11, product: 'Lemons', grade: 'Quality A', systemCount: 180, physicalCount: '178', discrepancy: -2 },
   { id: 12, product: 'Carrots', grade: 'Quality A', systemCount: 400, physicalCount: '400', discrepancy: 0 },
 ];

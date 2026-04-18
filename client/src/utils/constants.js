@@ -28,7 +28,7 @@ export const ORDER_STATUSES = {
 export const QUALITY_GRADES = {
   A: { value: 'A', label: 'Grade A - Premium' },
   B: { value: 'B', label: 'Grade B - Standard' },
-  C: { value: 'C', label: 'Grade C - Economy' },
+  C: { value: 'C', label: 'Cooking' },
   REJECT: { value: 'REJECT', label: 'Reject' },
 };
 

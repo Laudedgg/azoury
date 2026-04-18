@@ -22,7 +22,7 @@ const mockDispatches = [
       { id: 1, product: 'Roma Tomatoes - Extra', qty: 50, photos: [{ id: 1, url: '/photos/p1.jpg', time: '09:15 AM' }] },
       { id: 2, product: 'Cucumbers - Quality A', qty: 30, photos: [] },
       { id: 3, product: 'Bell Peppers - Extra', qty: 20, photos: [{ id: 2, url: '/photos/p2.jpg', time: '09:20 AM' }] },
-      { id: 4, product: 'Potatoes - Quality C', qty: 80, photos: [] },
+      { id: 4, product: 'Potatoes - Cooking', qty: 80, photos: [] },
     ],
   },
   {
@@ -44,9 +44,9 @@ const mockDispatches = [
     itemsCount: 31,
     status: 'Ready',
     items: [
-      { id: 8, product: 'Onions - Quality C', qty: 60, photos: [{ id: 6, url: '/photos/p6.jpg', time: '08:45 AM' }] },
+      { id: 8, product: 'Onions - Cooking', qty: 60, photos: [{ id: 6, url: '/photos/p6.jpg', time: '08:45 AM' }] },
       { id: 9, product: 'Carrots - Quality A', qty: 35, photos: [{ id: 7, url: '/photos/p7.jpg', time: '08:50 AM' }] },
-      { id: 10, product: 'Potatoes - Quality C', qty: 100, photos: [{ id: 8, url: '/photos/p8.jpg', time: '08:55 AM' }] },
+      { id: 10, product: 'Potatoes - Cooking', qty: 100, photos: [{ id: 8, url: '/photos/p8.jpg', time: '08:55 AM' }] },
     ],
   },
   {

@@ -34,12 +34,12 @@ const mockAgingWaste = [
   { id: 6, product: 'Iceberg Lettuce', grade: 'Extra', qty: 25, supplier: 'Green Valley', cost: 37.50, date: '2026-04-08', reason: '3 days in cold storage', authorizedBy: 'Karim H.', status: 'Authorized', daysAged: 3 },
   { id: 7, product: 'Cucumbers', grade: 'Quality A', qty: 12, supplier: 'Farm Fresh Co.', cost: 22.80, date: '2026-04-07', reason: '4 days - softening', authorizedBy: 'Sami R.', status: 'Authorized', daysAged: 4 },
   { id: 8, product: 'Bananas', grade: 'Quality A', qty: 20, supplier: 'Tropical Imports', cost: 24.00, date: '2026-04-06', reason: '5 days - overripe', authorizedBy: 'Karim H.', status: 'Authorized', daysAged: 5 },
-  { id: 9, product: 'Roma Tomatoes', grade: 'Quality C', qty: 18, supplier: 'Farm Fresh Co.', cost: 16.20, date: '2026-04-08', reason: '2 days - spotting', authorizedBy: null, status: 'Pending', daysAged: 2 },
+  { id: 9, product: 'Roma Tomatoes', grade: 'Cooking', qty: 18, supplier: 'Farm Fresh Co.', cost: 16.20, date: '2026-04-08', reason: '2 days - spotting', authorizedBy: null, status: 'Pending', daysAged: 2 },
 ];
 
 const mockPendingAuth = [
   { id: 4, product: 'Cucumbers', grade: 'Quality A', qty: 10, cost: 19.00, type: 'Receiving', reason: 'Size below spec', submittedBy: 'Ali M.' },
-  { id: 9, product: 'Roma Tomatoes', grade: 'Quality C', qty: 18, cost: 16.20, type: 'Aging', reason: '2 days - spotting', submittedBy: 'Hassan K.' },
+  { id: 9, product: 'Roma Tomatoes', grade: 'Cooking', qty: 18, cost: 16.20, type: 'Aging', reason: '2 days - spotting', submittedBy: 'Hassan K.' },
 ];
 
 const mockWasteTrend = (() => {
