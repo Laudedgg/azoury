@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutDashboard, ShoppingBag, UserCircle, LogOut, ChevronLeft, ChevronRight, Sun, Moon } from 'lucide-react';
 import { ProtectedRoute } from './ProtectedRoute';
 import { Header } from './Header';
+import { MobileNav } from './MobileNav';
 import { ScrollArea } from '@/components/ui/ScrollArea';
 import { Separator } from '@/components/ui/Separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/Avatar';
@@ -17,6 +18,8 @@ const clientNav = [
   { label: 'Orders', icon: ShoppingBag, path: '/portal/orders' },
   { label: 'Account', icon: UserCircle, path: '/portal/account' },
 ];
+
+const clientNavSections = [{ title: 'Menu', items: clientNav }];
 
 function ClientLayout() {
   const [collapsed, setCollapsed] = useState(false);
@@ -36,9 +39,8 @@ function ClientLayout() {
           initial={false}
           animate={{ width: collapsed ? 72 : 260 }}
           transition={{ duration: 0.2, ease: 'easeInOut' }}
-          className="relative flex flex-col h-screen bg-brand-surface border-r border-brand-border z-30 shrink-0"
+          className="hidden lg:flex relative flex-col h-screen bg-brand-surface border-r border-brand-border z-30 shrink-0"
         >
-          {/* Logo */}
           <div className="flex items-center h-16 px-4 border-b border-brand-border">
             <NavLink to="/portal" className="flex items-center gap-3 overflow-hidden">
               <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-brand-accent flex items-center justify-center">
@@ -152,7 +154,8 @@ function ClientLayout() {
 
         <div className="flex flex-col flex-1 overflow-hidden">
           <Header />
-          <main className="flex-1 overflow-y-auto p-6">
+          <MobileNav navSections={clientNavSections} primaryTabs={clientNav} />
+          <main className="flex-1 overflow-y-auto p-4 lg:p-6 pb-20 lg:pb-6">
             <Outlet />
           </main>
         </div>

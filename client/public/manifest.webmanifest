@@ -1,0 +1,19 @@
+{
+  "name": "Azoury",
+  "short_name": "Azoury",
+  "description": "End-to-End Supply Chain Intelligence",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0B1E1E",
+  "theme_color": "#0B1E1E",
+  "icons": [
+    {
+      "src": "/azoury-logo.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

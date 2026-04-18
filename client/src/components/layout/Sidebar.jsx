@@ -18,7 +18,7 @@ import { ScrollArea } from '@/components/ui/ScrollArea';
 import { ROLES } from '@/utils/constants';
 import { cn, getInitials } from '@/utils/helpers';
 
-const navSections = [
+export const navSections = [
   {
     title: 'Overview',
     items: [
@@ -73,7 +73,7 @@ function Sidebar() {
       initial={false}
       animate={{ width: collapsed ? 72 : 260 }}
       transition={{ duration: 0.2, ease: 'easeInOut' }}
-      className="relative flex flex-col h-screen bg-brand-surface border-r border-brand-border z-30 shrink-0"
+      className="hidden lg:flex relative flex-col h-screen bg-brand-surface border-r border-brand-border z-30 shrink-0"
     >
       {/* Logo */}
       <div className="flex items-center h-16 px-4 border-b border-brand-border">

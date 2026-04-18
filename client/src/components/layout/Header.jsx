@@ -15,7 +15,7 @@ function Header() {
   const { user, logout } = useAuth();
 
   return (
-    <header className="sticky top-0 z-20 flex items-center h-16 px-6 bg-brand-base border-b border-brand-border">
+    <header className="hidden lg:flex sticky top-0 z-20 items-center h-16 px-6 bg-brand-base border-b border-brand-border">
       {/* Left: Breadcrumbs */}
       <div className="flex-1">
         <Breadcrumbs />
