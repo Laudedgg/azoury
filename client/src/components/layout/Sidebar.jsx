@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, ShoppingCart, Settings2, ShieldCheck, PackageCheck,
-  Truck, Bus, Warehouse, Users, BarChart3, Trash2,
+  Truck, Bus, Warehouse, Users, BarChart3, Trash2, Package,
   ChevronLeft, ChevronRight, LogOut, Sun, Moon, MoreVertical,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -38,6 +38,7 @@ export const navSections = [
   {
     title: 'Management',
     items: [
+      { label: 'Products', icon: Package, path: '/admin/products', permission: 'products' },
       { label: 'Inventory', icon: Warehouse, path: '/admin/inventory', permission: 'inventory' },
       { label: 'Fleet', icon: Bus, path: '/admin/fleet', permission: 'fleet' },
       { label: 'Waste', icon: Trash2, path: '/admin/waste', permission: 'waste' },

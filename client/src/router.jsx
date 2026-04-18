@@ -44,6 +44,7 @@ const Receiving = React.lazy(() => import('@/pages/admin/Receiving'));
 const Logistics = React.lazy(() => import('@/pages/admin/Logistics'));
 const Fleet = React.lazy(() => import('@/pages/admin/Fleet'));
 const Inventory = React.lazy(() => import('@/pages/admin/Inventory'));
+const Products = React.lazy(() => import('@/pages/admin/Products'));
 const Users = React.lazy(() => import('@/pages/admin/Users'));
 const Reports = React.lazy(() => import('@/pages/admin/Reports'));
 const Waste = React.lazy(() => import('@/pages/admin/Waste'));
@@ -94,6 +95,7 @@ const router = createBrowserRouter([
       { path: 'logistics', element: wrap(Logistics) },
       { path: 'fleet', element: wrap(Fleet) },
       { path: 'inventory', element: wrap(Inventory) },
+      { path: 'products', element: wrap(Products) },
       { path: 'users', element: wrap(Users) },
       { path: 'reports', element: wrap(Reports) },
       { path: 'waste', element: wrap(Waste) },

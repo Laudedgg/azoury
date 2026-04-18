@@ -324,6 +324,43 @@ function Users() {
                 <Plus className="w-4 h-4 mr-2" /> Add Client Organization
               </Button>
             </div>
+
+            {/* Pending approvals banner */}
+            {clients.filter((c) => c.status === 'Pending').length > 0 && (
+              <Card className="border-brand-warning/40 bg-brand-warning/5">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Building2 className="w-5 h-5 text-brand-warning" />
+                    <h3 className="text-brand-primary font-semibold text-sm">
+                      Pending Approvals ({clients.filter((c) => c.status === 'Pending').length})
+                    </h3>
+                  </div>
+                  <p className="text-brand-secondary text-xs mb-3">
+                    New client registrations waiting for approval. Approved accounts can log in immediately.
+                  </p>
+                  <div className="space-y-2">
+                    {clients.filter((c) => c.status === 'Pending').map((c) => (
+                      <div key={c.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-brand-elevated rounded-lg border border-brand-border">
+                        <div className="min-w-0">
+                          <p className="text-brand-primary font-medium text-sm truncate">{c.businessName}</p>
+                          <p className="text-brand-muted text-xs truncate">{c.type} · {c.contact} · {c.email}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="shrink-0 w-full sm:w-auto"
+                          disabled={approvingId === c.id}
+                          onClick={(e) => handleApproveClient(e, c.id)}
+                        >
+                          {approvingId === c.id ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Check className="w-3 h-3 mr-1" />}
+                          Approve
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardContent className="p-6">
                 <DataTable

@@ -1,7 +1,7 @@
 export const ROLES = {
   SUPER_ADMIN: { value: 'SUPER_ADMIN', label: 'Super Admin', permissions: ['*'] },
-  PURCHASE_MANAGER: { value: 'PURCHASE_MANAGER', label: 'Purchase Manager', permissions: ['dashboard', 'purchasing', 'inventory'] },
-  OPERATIONS_MANAGER: { value: 'OPERATIONS_MANAGER', label: 'Operations Manager', permissions: ['dashboard', 'operations', 'receiving', 'logistics', 'inventory', 'waste'] },
+  PURCHASE_MANAGER: { value: 'PURCHASE_MANAGER', label: 'Purchase Manager', permissions: ['dashboard', 'purchasing', 'inventory', 'products'] },
+  OPERATIONS_MANAGER: { value: 'OPERATIONS_MANAGER', label: 'Operations Manager', permissions: ['dashboard', 'operations', 'receiving', 'logistics', 'inventory', 'waste', 'products'] },
   QUALITY_COST_CONTROL: { value: 'QUALITY_COST_CONTROL', label: 'Quality & Cost Control', permissions: ['dashboard', 'quality', 'fleet', 'waste', 'inventory'] },
   RECEIVING: { value: 'RECEIVING', label: 'Receiving Team', permissions: ['dashboard', 'receiving', 'inventory'] },
   LOGISTICS_TEAM: { value: 'LOGISTICS_TEAM', label: 'Logistics Team', permissions: ['dashboard', 'logistics'] },
