@@ -173,9 +173,9 @@ function Receiving() {
       initial="initial"
       animate="animate"
       variants={{ animate: { transition: { staggerChildren: 0.08 } } }}
-      className="space-y-8"
+      className="space-y-4 lg:space-y-8"
     >
-      <motion.div variants={fadeInUp}>
+      <motion.div variants={fadeInUp} className="hidden lg:block">
         <h1 className="text-2xl font-bold text-brand-primary">Receiving Dashboard</h1>
         <p className="text-brand-secondary text-sm mt-1">Product weighing and daily inventory counts</p>
       </motion.div>
@@ -189,7 +189,7 @@ function Receiving() {
               <h2 className="text-lg font-semibold text-brand-primary">Incoming Product Weighing</h2>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
               <div>
                 <label className="block text-brand-secondary text-sm mb-1">Product</label>
                 <Select value={selectedProduct} onValueChange={(v) => { setSelectedProduct(v); setSelectedGradeId(''); }}>
@@ -226,7 +226,7 @@ function Receiving() {
                   onChange={(e) => setWeight(e.target.value)}
                 />
               </div>
-              <div className="flex items-end">
+              <div className="flex items-end col-span-2 sm:col-span-1">
                 <Button className="w-full sm:w-auto" onClick={handleRecordWeight} disabled={submitting}>
                   <Plus className="w-4 h-4 mr-1" /> {submitting ? 'Recording...' : 'Record Weight'}
                 </Button>

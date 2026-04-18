@@ -135,25 +135,25 @@ function Fleet() {
       initial="initial"
       animate="animate"
       variants={{ animate: { transition: { staggerChildren: 0.08 } } }}
-      className="space-y-6"
+      className="space-y-4 lg:space-y-6"
     >
-      <motion.div variants={fadeInUp} className="flex items-center justify-between">
-        <div>
+      <motion.div variants={fadeInUp} className="flex flex-col-reverse gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="hidden lg:block">
           <h1 className="text-2xl font-bold text-brand-primary">Fleet Management</h1>
           <p className="text-brand-secondary text-sm mt-1">Vehicle tracking, maintenance, and fuel consumption</p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={() => setMaintenanceDialog(true)}>
+        <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+          <Button variant="outline" className="w-full sm:w-auto" onClick={() => setMaintenanceDialog(true)}>
             <Wrench className="w-4 h-4 mr-2" /> Log Maintenance
           </Button>
-          <Button onClick={() => setAddVehicleDialog(true)}>
+          <Button className="w-full sm:w-auto" onClick={() => setAddVehicleDialog(true)}>
             <Plus className="w-4 h-4 mr-2" /> Add Vehicle
           </Button>
         </div>
       </motion.div>
 
       {/* KPI Cards */}
-      <motion.div variants={fadeInUp} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div variants={fadeInUp} className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KPICard title="Total Vehicles" value={stats.totalVehicles ?? vehicles.length} icon={Truck} />
         <KPICard title="Active" value={activeCount} icon={Activity} trend="up" trendValue={0} />
         <KPICard title="In Maintenance" value={maintenanceCount} icon={Wrench} />

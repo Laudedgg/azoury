@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight, Eye, EyeOff, Zap, Shield, BarChart3 } from 'lucide-react';
@@ -12,6 +12,13 @@ const features = [
   { icon: Zap, text: 'Real-time order tracking and dispatch management' },
   { icon: Shield, text: 'Quality control with weight verification and grading' },
   { icon: BarChart3, text: 'Advanced analytics and supplier performance insights' },
+];
+
+const heroImages = [
+  'https://images.unsplash.com/photo-1542838132-92c53300491e?w=1920&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=1920&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=1920&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1518843875459-f738682238a6?w=1920&q=80&auto=format&fit=crop',
 ];
 
 const Logo = ({ size = 200, className = '' }) => (
@@ -34,11 +41,18 @@ function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [heroIdx, setHeroIdx] = useState(0);
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const from = location.state?.from?.pathname || '/admin';
+
+  useEffect(() => {
+    heroImages.forEach((src) => { const img = new Image(); img.src = src; });
+    const t = setInterval(() => setHeroIdx((i) => (i + 1) % heroImages.length), 7000);
+    return () => clearInterval(t);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -66,80 +80,93 @@ function Login() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
-      {/* Desktop Left Panel */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.8 }}
-        className="hidden lg:flex lg:w-[60%] bg-brand-base relative overflow-hidden flex-col items-center justify-center px-16"
-      >
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute w-[600px] h-[600px] rounded-full opacity-10 animate-mesh-move" style={{ background: 'radial-gradient(circle, #4EECD3 0%, transparent 70%)', top: '-10%', left: '-10%' }} />
-          <div className="absolute w-[500px] h-[500px] rounded-full opacity-[0.08] animate-mesh-move-reverse" style={{ background: 'radial-gradient(circle, #4EEC90 0%, transparent 70%)', bottom: '-15%', right: '-5%', animationDelay: '2s' }} />
-          <div className="absolute w-[400px] h-[400px] rounded-full opacity-5 animate-mesh-move" style={{ background: 'radial-gradient(circle, #4EB8EC 0%, transparent 70%)', top: '40%', left: '50%', animationDelay: '4s' }} />
-        </div>
+    <div className="min-h-screen relative bg-brand-base">
+      {/* Full-page hero image cross-fade */}
+      <div className="fixed inset-0 z-0">
+        {heroImages.map((src, i) => (
+          <div
+            key={src}
+            className="absolute inset-0 bg-cover bg-center transition-opacity ease-in-out"
+            style={{
+              backgroundImage: `url(${src})`,
+              opacity: i === heroIdx ? 1 : 0,
+              transitionDuration: '1800ms',
+            }}
+          />
+        ))}
+      </div>
 
-        <div className="relative z-10 text-center max-w-lg">
-          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.6, delay: 0.2 }}>
-            <Logo size={200} className="mx-auto mb-8" />
-          </motion.div>
+      {/* Dark readability overlay spanning the whole page */}
+      <div className="fixed inset-0 z-0 bg-gradient-to-br from-brand-base/90 via-brand-base/80 to-brand-base/95" />
 
-          <motion.h1 initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, delay: 0.4 }} className="text-4xl font-bold text-brand-primary tracking-tight mb-2">
-            Azoury
-          </motion.h1>
-          <motion.p initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, delay: 0.5 }} className="text-brand-accent text-lg font-medium mb-12">
-            End-to-End Supply Chain Intelligence
-          </motion.p>
+      {/* Brand color mesh accents */}
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none mix-blend-screen">
+        <div className="absolute w-[600px] h-[600px] rounded-full opacity-[0.08] animate-mesh-move" style={{ background: 'radial-gradient(circle, #4EECD3 0%, transparent 70%)', top: '-10%', left: '-10%' }} />
+        <div className="absolute w-[500px] h-[500px] rounded-full opacity-[0.06] animate-mesh-move-reverse" style={{ background: 'radial-gradient(circle, #4EEC90 0%, transparent 70%)', bottom: '-15%', right: '-5%', animationDelay: '2s' }} />
+        <div className="absolute w-[400px] h-[400px] rounded-full opacity-[0.04] animate-mesh-move" style={{ background: 'radial-gradient(circle, #4EB8EC 0%, transparent 70%)', top: '40%', left: '50%', animationDelay: '4s' }} />
+      </div>
 
-          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, delay: 0.6 }} className="space-y-6">
-            {features.map((f, i) => (
-              <div key={i} className="flex items-center gap-4 text-left">
-                <div className="w-10 h-10 rounded-lg bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
-                  <f.icon className="w-5 h-5 text-brand-accent" />
+      <div className="relative z-10 min-h-screen flex flex-col lg:flex-row">
+        {/* Desktop Left Panel — transparent, sits over the shared background */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+          className="hidden lg:flex lg:w-[60%] relative flex-col items-center justify-center px-16"
+        >
+          <div className="text-center max-w-lg drop-shadow-[0_2px_12px_rgba(0,0,0,0.7)]">
+            <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.6, delay: 0.2 }}>
+              <Logo size={200} className="mx-auto mb-8" />
+            </motion.div>
+
+            <motion.h1 initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, delay: 0.4 }} className="text-4xl font-bold text-white tracking-tight mb-2">
+              Azoury
+            </motion.h1>
+            <motion.p initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, delay: 0.5 }} className="text-brand-accent text-lg font-medium mb-12">
+              End-to-End Supply Chain Intelligence
+            </motion.p>
+
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, delay: 0.6 }} className="space-y-4">
+              {features.map((f, i) => (
+                <div key={i} className="flex items-center gap-4 text-left bg-brand-base/40 backdrop-blur-sm border border-white/10 rounded-lg px-4 py-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-accent/20 flex items-center justify-center flex-shrink-0">
+                    <f.icon className="w-5 h-5 text-brand-accent" />
+                  </div>
+                  <p className="text-white/90 text-sm">{f.text}</p>
                 </div>
-                <p className="text-brand-secondary text-sm">{f.text}</p>
-              </div>
-            ))}
-          </motion.div>
-        </div>
-      </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </motion.div>
 
-      {/* Mobile Brand Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="lg:hidden relative overflow-hidden bg-brand-base"
-      >
-        {/* Mobile mesh background */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute w-[300px] h-[300px] rounded-full opacity-[0.12] animate-mesh-move" style={{ background: 'radial-gradient(circle, #4EECD3 0%, transparent 70%)', top: '-40%', right: '-20%' }} />
-          <div className="absolute w-[250px] h-[250px] rounded-full opacity-[0.08] animate-mesh-move-reverse" style={{ background: 'radial-gradient(circle, #4EEC90 0%, transparent 70%)', bottom: '-30%', left: '-15%' }} />
-        </div>
+        {/* Mobile Brand Header — transparent */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="lg:hidden"
+        >
+          <div className="flex flex-col items-center pt-10 pb-6 px-6 drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)]">
+            <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5, delay: 0.1 }}>
+              <Logo size={80} className="mb-4" />
+            </motion.div>
+            <motion.h1 initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.4, delay: 0.2 }} className="text-2xl font-bold text-white tracking-tight">
+              Azoury
+            </motion.h1>
+            <motion.p initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.4, delay: 0.3 }} className="text-brand-accent text-xs font-medium mt-1">
+              End-to-End Supply Chain Intelligence
+            </motion.p>
+          </div>
+        </motion.div>
 
-        <div className="relative z-10 flex flex-col items-center pt-10 pb-8 px-6">
-          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5, delay: 0.1 }}>
-            <Logo size={80} className="mb-4" />
-          </motion.div>
-          <motion.h1 initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.4, delay: 0.2 }} className="text-2xl font-bold text-brand-primary tracking-tight">
-            Azoury
-          </motion.h1>
-          <motion.p initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.4, delay: 0.3 }} className="text-brand-accent text-xs font-medium mt-1">
-            End-to-End Supply Chain Intelligence
-          </motion.p>
-        </div>
-      </motion.div>
-
-      {/* Form Panel */}
-      <motion.div
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6, delay: 0.3 }}
-        className="flex-1 bg-brand-surface flex items-start lg:items-center justify-center px-5 py-8 sm:px-8 lg:p-12"
-      >
-        <div className="w-full max-w-md">
-          <div>
+        {/* Form Panel — glass card over the shared background */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="flex-1 flex items-start lg:items-center justify-center px-5 py-8 sm:px-8 lg:p-12"
+        >
+          <div className="w-full max-w-md bg-brand-surface/85 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-6 sm:p-8">
             <h2 className="text-xl sm:text-2xl font-bold text-brand-primary mb-1">Welcome back</h2>
             <p className="text-brand-secondary text-sm mb-6 sm:mb-8">Sign in to your account to continue</p>
 
@@ -187,8 +214,8 @@ function Login() {
               <Link to="/register" className="text-brand-accent hover:underline font-medium">Register</Link>
             </p>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
 
       <style>{`
         @keyframes mesh-move { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(30px, -50px) scale(1.1); } 66% { transform: translate(-20px, 20px) scale(0.9); } }

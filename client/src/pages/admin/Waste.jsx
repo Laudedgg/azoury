@@ -146,20 +146,20 @@ function Waste() {
       initial="initial"
       animate="animate"
       variants={{ animate: { transition: { staggerChildren: 0.08 } } }}
-      className="space-y-6"
+      className="space-y-4 lg:space-y-6"
     >
-      <motion.div variants={fadeInUp} className="flex items-center justify-between">
-        <div>
+      <motion.div variants={fadeInUp} className="flex flex-col-reverse gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="hidden lg:block">
           <h1 className="text-2xl font-bold text-brand-primary">Waste Management</h1>
           <p className="text-brand-secondary text-sm mt-1">Track, authorize, and analyze product waste</p>
         </div>
-        <Button variant="destructive" onClick={() => setWasteDialog(true)}>
+        <Button variant="destructive" className="w-full lg:w-auto" onClick={() => setWasteDialog(true)}>
           <Plus className="w-4 h-4 mr-2" /> Log Waste Entry
         </Button>
       </motion.div>
 
       {/* KPI Cards */}
-      <motion.div variants={fadeInUp} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div variants={fadeInUp} className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KPICard title="Today's Waste Cost" value={formatCurrency(todayCost)} icon={Trash2} trend="down" trendValue={8} />
         <KPICard title="This Week's Waste" value={formatCurrency(weekCost)} icon={Trash2} trend="down" trendValue={12} />
         <KPICard title="Waste % of Inventory" value="2.1%" icon={AlertTriangle} trend="down" trendValue={0.3} />
@@ -171,7 +171,7 @@ function Waste() {
         <Card>
           <CardContent className="p-6">
             <h3 className="text-brand-primary font-semibold mb-4">Quick Log Waste</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
               <div>
                 <label className="block text-brand-secondary text-xs mb-1">Product</label>
                 <Select value={wasteForm.productId} onValueChange={(v) => setWasteForm((f) => ({ ...f, productId: v, qualityGradeId: '' }))}>
@@ -212,7 +212,7 @@ function Waste() {
                 <label className="block text-brand-secondary text-xs mb-1">Reason</label>
                 <Input placeholder="Brief reason" value={wasteForm.reason} onChange={(e) => setWasteForm((f) => ({ ...f, reason: e.target.value }))} />
               </div>
-              <div className="flex items-end">
+              <div className="flex items-end col-span-2 lg:col-span-1">
                 <Button className="w-full" onClick={handleSubmitWaste} disabled={submitting}>
                   {submitting ? 'Submitting...' : 'Submit'}
                 </Button>

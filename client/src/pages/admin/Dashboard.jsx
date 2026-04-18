@@ -73,14 +73,14 @@ function Dashboard() {
   }, [activityData]);
 
   return (
-    <motion.div initial="initial" animate="animate" variants={stagger} className="space-y-6">
-      <motion.div variants={fadeInUp}>
+    <motion.div initial="initial" animate="animate" variants={stagger} className="space-y-4 lg:space-y-6">
+      <motion.div variants={fadeInUp} className="hidden lg:block">
         <h1 className="text-2xl font-bold text-brand-primary">Executive Dashboard</h1>
         <p className="text-brand-secondary mt-1">Real-time overview of operations</p>
       </motion.div>
 
       {/* Row 1: KPI Cards */}
-      <motion.div variants={fadeInUp} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <motion.div variants={fadeInUp} className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         <KPICard title="Total Active Orders" value={kpis?.activeOrders ?? 0} icon={ShoppingCart} trend="up" trendValue={12.5} loading={kpisLoading} />
         <KPICard title="Revenue Today" value={formatCurrency(kpis?.todaysRevenue ?? 0)} icon={DollarSign} trend="up" trendValue={8.3} loading={kpisLoading} />
         <KPICard title="Pending Dispatches" value={kpis?.pendingDispatches ?? 0} icon={Truck} trend="down" trendValue={5.2} loading={kpisLoading} />
@@ -92,7 +92,7 @@ function Dashboard() {
       {/* Row 2: Order Volume + Revenue by Grade */}
       <motion.div variants={fadeInUp} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard title="Order Volume Trend" subtitle="Last 30 days">
-          <ResponsiveContainer width="100%" height={280}>
+          <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={orderTrend}>
               <defs>
                 <linearGradient id="orderGrad" x1="0" y1="0" x2="0" y2="1">
@@ -110,7 +110,7 @@ function Dashboard() {
         </ChartCard>
 
         <ChartCard title="Revenue vs Cost by Week" subtitle="By quality grade">
-          <ResponsiveContainer width="100%" height={280}>
+          <ResponsiveContainer width="100%" height={220}>
             <BarChart data={[]}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1A3F3F" />
               <XAxis dataKey="grade" tick={{ fill: '#5A7A75', fontSize: 11 }} tickLine={false} axisLine={false} />
@@ -128,7 +128,7 @@ function Dashboard() {
       {/* Row 3: Delivery Performance + Top Clients */}
       <motion.div variants={fadeInUp} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard title="Delivery Performance" subtitle="This month">
-          <ResponsiveContainer width="100%" height={280}>
+          <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie data={deliveryData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={3} dataKey="value">
                 {deliveryData.map((entry, i) => (
@@ -142,7 +142,7 @@ function Dashboard() {
         </ChartCard>
 
         <ChartCard title="Top 10 Clients by Volume" subtitle="Units ordered this month">
-          <ResponsiveContainer width="100%" height={280}>
+          <ResponsiveContainer width="100%" height={220}>
             <BarChart data={topClientsData} layout="vertical" margin={{ left: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1A3F3F" horizontal={false} />
               <XAxis type="number" tick={{ fill: '#5A7A75', fontSize: 11 }} tickLine={false} axisLine={false} />

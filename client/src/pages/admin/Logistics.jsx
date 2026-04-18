@@ -66,9 +66,9 @@ function Logistics() {
       initial="initial"
       animate="animate"
       variants={{ animate: { transition: { staggerChildren: 0.08 } } }}
-      className="space-y-6"
+      className="space-y-4 lg:space-y-6"
     >
-      <motion.div variants={fadeInUp}>
+      <motion.div variants={fadeInUp} className="hidden lg:block">
         <h1 className="text-2xl font-bold text-brand-primary">Logistics Dashboard</h1>
         <p className="text-brand-secondary text-sm mt-1">Manage dispatch preparation and photo documentation</p>
       </motion.div>

@@ -140,8 +140,8 @@ function QualityControl() {
   const allVerified = dispatchChecklist.every((i) => i.verified);
 
   return (
-    <motion.div initial="initial" animate="animate" variants={{ animate: { transition: { staggerChildren: 0.08 } } }} className="space-y-6">
-      <motion.div variants={fadeInUp}>
+    <motion.div initial="initial" animate="animate" variants={{ animate: { transition: { staggerChildren: 0.08 } } }} className="space-y-4 lg:space-y-6">
+      <motion.div variants={fadeInUp} className="hidden lg:block">
         <h1 className="text-2xl font-bold text-brand-primary">Quality & Cost Control</h1>
         <p className="text-brand-secondary text-sm mt-1">Verification, grading, waste, and fleet</p>
       </motion.div>
@@ -235,7 +235,7 @@ function QualityControl() {
 
           {/* Waste */}
           <TabsContent value="waste" className="mt-6 space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <KPICard title="Waste Cost This Week" value={formatCurrency(wasteAnalytics?.weekly?.totalCost || 0)} icon={Trash2} trend="down" trendValue={12} />
               <KPICard title="Waste % of Inventory" value={wasteAnalytics?.weekly?.wastePercentage ? `${wasteAnalytics.weekly.wastePercentage}%` : '0%'} icon={AlertTriangle} trend="down" trendValue={0.3} />
             </div>
@@ -352,7 +352,7 @@ function QualityControl() {
           {/* Fleet */}
           <TabsContent value="fleet" className="mt-6 space-y-6">
             {fleetStats && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 <KPICard title="Total Vehicles" value={fleetStats.totalVehicles || vehicleItems.length} icon={Truck} />
                 {fleetStats.maintenanceCosts != null && <KPICard title="Maintenance Costs" value={formatCurrency(fleetStats.maintenanceCosts)} icon={Wrench} />}
               </div>

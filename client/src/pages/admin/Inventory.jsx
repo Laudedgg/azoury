@@ -159,20 +159,20 @@ function Inventory() {
       initial="initial"
       animate="animate"
       variants={{ animate: { transition: { staggerChildren: 0.08 } } }}
-      className="space-y-6"
+      className="space-y-4 lg:space-y-6"
     >
-      <motion.div variants={fadeInUp} className="flex items-center justify-between">
-        <div>
+      <motion.div variants={fadeInUp} className="flex flex-col-reverse gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="hidden lg:block">
           <h1 className="text-2xl font-bold text-brand-primary">Inventory Management</h1>
           <p className="text-brand-secondary text-sm mt-1">Stock levels, movements, and alerts</p>
         </div>
-        <Button onClick={() => setMovementDialog(true)}>
+        <Button className="w-full lg:w-auto" onClick={() => setMovementDialog(true)}>
           <ArrowDownUp className="w-4 h-4 mr-2" /> Record Movement
         </Button>
       </motion.div>
 
       {/* KPI Cards */}
-      <motion.div variants={fadeInUp} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div variants={fadeInUp} className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KPICard title="Total Items" value={totalItems} icon={Package} />
         <KPICard title="Total Value" value={formatCurrency(totalValue)} icon={DollarSign} trend="up" trendValue={1.8} />
         <KPICard title="Low Stock Items" value={lowStockItems} icon={AlertTriangle} trend="up" trendValue={2} />

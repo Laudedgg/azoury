@@ -239,8 +239,8 @@ function Purchasing() {
   ];
 
   return (
-    <motion.div initial="initial" animate="animate" variants={{ animate: { transition: { staggerChildren: 0.08 } } }} className="space-y-6">
-      <motion.div variants={fadeInUp}>
+    <motion.div initial="initial" animate="animate" variants={{ animate: { transition: { staggerChildren: 0.08 } } }} className="space-y-4 lg:space-y-6">
+      <motion.div variants={fadeInUp} className="hidden lg:block">
         <h1 className="text-2xl font-bold text-brand-primary">Purchase Management</h1>
         <p className="text-brand-secondary text-sm mt-1">Manage orders, suppliers, and procurement</p>
       </motion.div>
@@ -343,7 +343,7 @@ function Purchasing() {
             <Card>
               <CardContent className="p-6">
                 <h3 className="text-brand-primary font-semibold mb-4">Add Price Survey</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                   <div>
                     <label className="block text-brand-secondary text-xs mb-1">Supplier</label>
                     <Select value={surveySupplier} onValueChange={setSurveySupplier}>
@@ -370,7 +370,7 @@ function Purchasing() {
                     <label className="block text-brand-secondary text-xs mb-1">Date</label>
                     <Input type="date" value={surveyDate} onChange={(e) => setSurveyDate(e.target.value)} />
                   </div>
-                  <div className="flex items-end">
+                  <div className="flex items-end col-span-2 lg:col-span-1">
                     <Button className="w-full" onClick={async () => {
                       if (!surveySupplier || !surveyProduct || !surveyPrice) {
                         toast.error('Please fill in all fields');

@@ -198,8 +198,8 @@ function Operations() {
   const togglePick = (id) => setChecklist((prev) => prev.map((i) => i.id === id ? { ...i, picked: !i.picked } : i));
 
   return (
-    <motion.div initial="initial" animate="animate" variants={{ animate: { transition: { staggerChildren: 0.08 } } }} className="space-y-6">
-      <motion.div variants={fadeInUp}>
+    <motion.div initial="initial" animate="animate" variants={{ animate: { transition: { staggerChildren: 0.08 } } }} className="space-y-4 lg:space-y-6">
+      <motion.div variants={fadeInUp} className="hidden lg:block">
         <h1 className="text-2xl font-bold text-brand-primary">Operations Management</h1>
         <p className="text-brand-secondary text-sm mt-1">Dispatch, routing, pricing, and returns</p>
       </motion.div>
@@ -327,12 +327,12 @@ function Operations() {
             <Card>
               <CardContent className="p-6">
                 <h3 className="text-brand-primary font-semibold mb-4">Quick Urgent Purchase</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                   <div><label className="block text-brand-secondary text-xs mb-1">Product</label><Input placeholder="Product name" /></div>
                   <div><label className="block text-brand-secondary text-xs mb-1">Qty (kg)</label><Input type="number" placeholder="0" /></div>
                   <div><label className="block text-brand-secondary text-xs mb-1">Supplier</label><Input placeholder="Supplier" /></div>
                   <div><label className="block text-brand-secondary text-xs mb-1">Reason</label><Input placeholder="Why urgent?" /></div>
-                  <div className="flex items-end"><Button variant="destructive" className="w-full"><AlertTriangle className="w-4 h-4 mr-1" /> Submit</Button></div>
+                  <div className="flex items-end col-span-2 lg:col-span-1"><Button variant="destructive" className="w-full"><AlertTriangle className="w-4 h-4 mr-1" /> Submit</Button></div>
                 </div>
               </CardContent>
             </Card>

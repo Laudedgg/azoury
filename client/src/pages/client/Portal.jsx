@@ -57,14 +57,14 @@ function Portal() {
       initial="initial"
       animate="animate"
       variants={{ animate: { transition: { staggerChildren: 0.08 } } }}
-      className="space-y-6"
+      className="space-y-4 lg:space-y-6"
     >
-      <motion.div variants={fadeInUp} className="flex items-center justify-between">
-        <div>
+      <motion.div variants={fadeInUp} className="flex flex-col-reverse gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="hidden lg:block">
           <h1 className="text-2xl font-bold text-brand-primary">Welcome, {businessName}</h1>
           <p className="text-brand-secondary text-sm mt-1">Here is your order overview and upcoming deliveries</p>
         </div>
-        <Button asChild>
+        <Button asChild className="w-full lg:w-auto">
           <Link to="/portal/orders">
             <Plus className="w-4 h-4 mr-2" /> Place Order
           </Link>
@@ -72,7 +72,7 @@ function Portal() {
       </motion.div>
 
       {/* KPI Cards */}
-      <motion.div variants={fadeInUp} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div variants={fadeInUp} className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KPICard title="Active Orders" value={activeOrders} icon={ShoppingBag} trend="up" trendValue={5} />
         <KPICard title="Pending Deliveries" value={pendingDeliveries} icon={Truck} />
         <KPICard title="This Month's Spend" value={formatCurrency(monthlySpend)} icon={DollarSign} trend="up" trendValue={8.3} />

@@ -143,9 +143,9 @@ function Account() {
       initial="initial"
       animate="animate"
       variants={{ animate: { transition: { staggerChildren: 0.08 } } }}
-      className="space-y-6 max-w-4xl"
+      className="space-y-4 lg:space-y-6 max-w-4xl"
     >
-      <motion.div variants={fadeInUp}>
+      <motion.div variants={fadeInUp} className="hidden lg:block">
         <h1 className="text-2xl font-bold text-brand-primary">Account Settings</h1>
         <p className="text-brand-secondary text-sm mt-1">Manage your company profile, staff, and security</p>
       </motion.div>

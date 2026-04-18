@@ -100,16 +100,16 @@ function Reports() {
       initial="initial"
       animate="animate"
       variants={{ animate: { transition: { staggerChildren: 0.08 } } }}
-      className="space-y-6"
+      className="space-y-4 lg:space-y-6"
     >
-      <motion.div variants={fadeInUp} className="flex items-center justify-between">
-        <div>
+      <motion.div variants={fadeInUp} className="flex flex-col-reverse gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="hidden lg:block">
           <h1 className="text-2xl font-bold text-brand-primary">Reports & Analytics</h1>
           <p className="text-brand-secondary text-sm mt-1">Financial performance and insights</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
           <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-full sm:w-40">
               <Calendar className="w-4 h-4 mr-2" />
               <SelectValue />
             </SelectTrigger>
@@ -121,17 +121,17 @@ function Reports() {
               <SelectItem value="custom">Custom Range</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline">
+          <Button variant="outline" className="w-full sm:w-auto">
             <Download className="w-4 h-4 mr-2" /> Export CSV
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" className="w-full sm:w-auto">
             <FileText className="w-4 h-4 mr-2" /> Export PDF
           </Button>
         </div>
       </motion.div>
 
       {/* KPI Cards */}
-      <motion.div variants={fadeInUp} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div variants={fadeInUp} className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KPICard title="Total Revenue" value={formatCurrency(totalRevenue)} icon={DollarSign} trend="up" trendValue={14.2} />
         <KPICard title="Total Cost" value={formatCurrency(totalCost)} icon={DollarSign} trend="up" trendValue={8.5} />
         <KPICard title="Gross Margin" value={`${grossMargin}%`} icon={TrendingUp} trend="up" trendValue={3.1} />
