@@ -60,6 +60,15 @@ export function AuthProvider({ children }) {
     }
   }, [saveToken]);
 
+  const changePassword = useCallback(async (currentPassword, newPassword) => {
+    await authService.changePassword(currentPassword, newPassword);
+    const response = await authService.getMe();
+    const userData = response.data.user || response.data;
+    const enriched = { ...userData, name: `${userData.firstName} ${userData.lastName}` };
+    setUser(enriched);
+    return enriched;
+  }, []);
+
   useEffect(() => {
     const initAuth = async () => {
       if (!token) {
@@ -91,6 +100,7 @@ export function AuthProvider({ children }) {
     register,
     logout,
     refreshToken,
+    changePassword,
   };
 
   return (

@@ -49,7 +49,7 @@ async function login(req, res, next) {
     const { password: _, ...userWithoutPassword } = user;
 
     res.json({
-      user: userWithoutPassword,
+      user: { ...userWithoutPassword, mustChangePassword: user.mustChangePassword },
       ...tokens,
     });
   } catch (error) {
@@ -178,6 +178,7 @@ async function me(req, res, next) {
         role: true,
         phone: true,
         isActive: true,
+        mustChangePassword: true,
         clientId: true,
         createdAt: true,
         client: {
@@ -197,10 +198,56 @@ async function me(req, res, next) {
   }
 }
 
+async function changePassword(req, res, next) {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (!user.mustChangePassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ error: 'Current password is required' });
+      }
+      const valid = await bcrypt.compare(currentPassword, user.password);
+      if (!valid) {
+        return res.status(401).json({ error: 'Current password is incorrect' });
+      }
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 12);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashed, mustChangePassword: false },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        userId: user.id,
+        action: 'CHANGE_PASSWORD',
+        entityType: 'User',
+        entityId: user.id,
+      },
+    });
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   login,
   register,
   refreshToken,
   logout,
   me,
+  changePassword,
 };

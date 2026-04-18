@@ -46,6 +46,10 @@ function Login() {
     try {
       const data = await login(email, password);
       toast.success('Welcome back!');
+      if (data.user?.mustChangePassword) {
+        navigate('/change-password');
+        return;
+      }
       const role = data.user?.role;
       if (role === 'CLIENT_ADMIN' || role === 'CLIENT_STAFF') {
         navigate('/portal');

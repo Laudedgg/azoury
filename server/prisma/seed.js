@@ -3,15 +3,59 @@ const bcrypt = require('bcrypt');
 
 const prisma = new PrismaClient();
 
+async function seedMinimal() {
+  const email = process.env.SUPER_ADMIN_EMAIL || 'admin@azoury.com';
+  const password = process.env.SUPER_ADMIN_PASSWORD || 'password123';
+  const firstName = process.env.SUPER_ADMIN_FIRST_NAME || 'Super';
+  const lastName = process.env.SUPER_ADMIN_LAST_NAME || 'Admin';
+
+  const hashed = await bcrypt.hash(password, 12);
+  await prisma.user.create({
+    data: {
+      email,
+      password: hashed,
+      firstName,
+      lastName,
+      role: 'SUPER_ADMIN',
+      mustChangePassword: false,
+    },
+  });
+
+  console.log('Minimal seed complete.');
+  console.log('');
+  console.log('=== Bootstrap Super Admin ===');
+  console.log(`Email:    ${email}`);
+  console.log(`Password: ${password}`);
+}
+
 async function main() {
-  // Check if already seeded
-  const existingUsers = await prisma.user.count();
-  if (existingUsers > 0) {
-    console.log('Database already seeded, skipping...');
+  const mode = (process.env.SEED_MODE || 'minimal').toLowerCase();
+
+  if (mode === 'none') {
+    console.log('SEED_MODE=none — skipping seed.');
     return;
   }
 
-  console.log('Seeding Azoury database...');
+  // Check if already seeded
+  const existingUsers = await prisma.user.count();
+  if (existingUsers > 0) {
+    console.log('Database already has users, skipping seed...');
+    return;
+  }
+
+  if (mode === 'minimal') {
+    console.log('Seeding minimal (super admin only)...');
+    await seedMinimal();
+    return;
+  }
+
+  if (mode !== 'demo') {
+    console.log(`Unknown SEED_MODE="${mode}" — falling back to minimal.`);
+    await seedMinimal();
+    return;
+  }
+
+  console.log('Seeding Azoury database (full demo)...');
 
   // Clean up existing data in reverse dependency order
   await prisma.activityLog.deleteMany();

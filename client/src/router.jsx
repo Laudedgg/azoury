@@ -1,9 +1,19 @@
 import React, { Suspense } from 'react';
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom';
 import AdminLayout from '@/components/layout/AdminLayout';
 import ClientLayout from '@/components/layout/ClientLayout';
 import DriverLayout from '@/components/layout/DriverLayout';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { useAuth } from '@/context/AuthContext';
+
+function RequirePasswordReset({ children }) {
+  const { user } = useAuth();
+  const location = useLocation();
+  if (user?.mustChangePassword && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />;
+  }
+  return children;
+}
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-screen bg-brand-base">
@@ -23,6 +33,7 @@ const PageLoader = () => (
 // Auth pages
 const Login = React.lazy(() => import('@/pages/auth/Login'));
 const Register = React.lazy(() => import('@/pages/auth/Register'));
+const ChangePassword = React.lazy(() => import('@/pages/auth/ChangePassword'));
 
 // Admin pages
 const Dashboard = React.lazy(() => import('@/pages/admin/Dashboard'));
@@ -68,8 +79,12 @@ const router = createBrowserRouter([
     element: wrap(Register),
   },
   {
+    path: '/change-password',
+    element: wrap(ChangePassword),
+  },
+  {
     path: '/admin',
-    element: <AdminLayout />,
+    element: <RequirePasswordReset><AdminLayout /></RequirePasswordReset>,
     children: [
       { index: true, element: wrap(Dashboard) },
       { path: 'purchasing', element: wrap(Purchasing) },
@@ -86,7 +101,7 @@ const router = createBrowserRouter([
   },
   {
     path: '/portal',
-    element: <ClientLayout />,
+    element: <RequirePasswordReset><ClientLayout /></RequirePasswordReset>,
     children: [
       { index: true, element: wrap(Portal) },
       { path: 'orders', element: wrap(Orders) },
@@ -95,7 +110,7 @@ const router = createBrowserRouter([
   },
   {
     path: '/driver',
-    element: <DriverLayout />,
+    element: <RequirePasswordReset><DriverLayout /></RequirePasswordReset>,
     children: [
       { index: true, element: wrap(Deliveries) },
     ],

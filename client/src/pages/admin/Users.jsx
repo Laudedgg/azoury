@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { UserPlus, Shield, Building2, Check, X, ChevronDown, Loader2 } from 'lucide-react';
+import { UserPlus, Shield, Building2, Check, X, ChevronDown, Loader2, Copy, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -11,76 +11,35 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { Avatar, AvatarFallback } from '@/components/ui/Avatar';
 import { DataTable } from '@/components/tables/DataTable';
 import { formatDate, getInitials } from '@/utils/helpers';
-import { ROLES } from '@/utils/constants';
+import { ROLES, INTERNAL_ROLES } from '@/utils/constants';
 import { useFetch } from '@/hooks/useFetch';
 import api from '@/services/api';
 import { toast } from 'sonner';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
-const mockStaff = [
-  { id: 1, name: 'Karim Haddad', email: 'karim@azoury.com', role: 'SUPER_ADMIN', status: 'Active', lastLogin: '2026-04-08 09:15', phone: '+961 3 123 456' },
-  { id: 2, name: 'Sami Rashid', email: 'sami@azoury.com', role: 'QC_MANAGER', status: 'Active', lastLogin: '2026-04-08 08:30', phone: '+961 3 234 567' },
-  { id: 3, name: 'Ali Mansour', email: 'ali@azoury.com', role: 'RECEIVING', status: 'Active', lastLogin: '2026-04-08 07:00', phone: '+961 3 345 678' },
-  { id: 4, name: 'Hassan Khalil', email: 'hassan@azoury.com', role: 'RECEIVING', status: 'Active', lastLogin: '2026-04-07 16:30', phone: '+961 3 456 789' },
-  { id: 5, name: 'Omar Saeed', email: 'omar@azoury.com', role: 'DRIVER', status: 'Active', lastLogin: '2026-04-08 06:30', phone: '+961 3 567 890' },
-  { id: 6, name: 'Ahmad Khalil', email: 'ahmad@azoury.com', role: 'DRIVER', status: 'Active', lastLogin: '2026-04-08 06:45', phone: '+961 3 678 901' },
-  { id: 7, name: 'Hassan Mousa', email: 'hmousa@azoury.com', role: 'DRIVER', status: 'Inactive', lastLogin: '2026-03-15 14:00', phone: '+961 3 789 012' },
-  { id: 8, name: 'Nadia Farah', email: 'nadia@azoury.com', role: 'OPERATIONS', status: 'Active', lastLogin: '2026-04-08 08:00', phone: '+961 3 890 123' },
-  { id: 9, name: 'Rami Khoury', email: 'rami@azoury.com', role: 'PURCHASING', status: 'Active', lastLogin: '2026-04-08 09:00', phone: '+961 3 901 234' },
+const BUSINESS_TYPES = [
+  { value: 'RESTAURANT', label: 'Restaurant' },
+  { value: 'SUPERMARKET', label: 'Supermarket' },
+  { value: 'GROCERY', label: 'Grocery' },
+  { value: 'OTHER', label: 'Other' },
 ];
 
-const mockClients = [
-  {
-    id: 1, businessName: 'Al Mandaloun', type: 'Restaurant', contact: 'George Hanna', email: 'george@almandaloun.com',
-    status: 'Approved', staffCount: 3,
-    staff: [
-      { id: 101, name: 'George Hanna', role: 'Procurement Officer', canOrder: true },
-      { id: 102, name: 'Michel Hanna', role: 'Chef', canOrder: true },
-      { id: 103, name: 'Layla Sarkis', role: 'Store Manager', canOrder: false },
-    ],
-  },
-  {
-    id: 2, businessName: 'Le Petit Chef', type: 'Restaurant', contact: 'Antoine Rizk', email: 'antoine@lepetitchef.com',
-    status: 'Approved', staffCount: 2,
-    staff: [
-      { id: 201, name: 'Antoine Rizk', role: 'Chef', canOrder: true },
-      { id: 202, name: 'Carla Makhoul', role: 'Procurement Officer', canOrder: true },
-    ],
-  },
-  {
-    id: 3, businessName: 'Fresh Market', type: 'Supermarket', contact: 'Samir Nassar', email: 'samir@freshmarket.com',
-    status: 'Approved', staffCount: 4,
-    staff: [
-      { id: 301, name: 'Samir Nassar', role: 'Store Manager', canOrder: true },
-      { id: 302, name: 'Hala Badr', role: 'Procurement Officer', canOrder: true },
-      { id: 303, name: 'Fadi Karam', role: 'Store Manager', canOrder: false },
-      { id: 304, name: 'Mira Jaber', role: 'Chef', canOrder: false },
-    ],
-  },
-  {
-    id: 4, businessName: 'Karam Beirut', type: 'Restaurant', contact: 'Walid Karam', email: 'walid@karambeirut.com',
-    status: 'Approved', staffCount: 2,
-    staff: [
-      { id: 401, name: 'Walid Karam', role: 'Chef', canOrder: true },
-      { id: 402, name: 'Rania Saab', role: 'Procurement Officer', canOrder: true },
-    ],
-  },
-  {
-    id: 5, businessName: 'Green Grocer', type: 'Grocery', contact: 'Tarek Youssef', email: 'tarek@greengrocer.com',
-    status: 'Pending', staffCount: 1,
-    staff: [
-      { id: 501, name: 'Tarek Youssef', role: 'Store Manager', canOrder: true },
-    ],
-  },
-  {
-    id: 6, businessName: 'Byblos Kitchen', type: 'Restaurant', contact: 'Lina Aoun', email: 'lina@bybloskitchen.com',
-    status: 'Pending', staffCount: 1,
-    staff: [
-      { id: 601, name: 'Lina Aoun', role: 'Chef', canOrder: true },
-    ],
-  },
-];
+function generatePassword(len = 12) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+  let out = '';
+  const arr = new Uint32Array(len);
+  (window.crypto || window.msCrypto).getRandomValues(arr);
+  for (let i = 0; i < len; i++) out += chars[arr[i] % chars.length];
+  return out;
+}
+
+const emptyStaffForm = { firstName: '', lastName: '', email: '', role: '', phone: '', password: '' };
+const emptyClientForm = {
+  businessName: '', businessType: '', contactPerson: '', email: '', phone: '', address: '',
+  adminFirstName: '', adminLastName: '', adminEmail: '', adminPhone: '', adminPassword: '',
+};
+const emptyClientStaffForm = { firstName: '', lastName: '', email: '', role: 'CLIENT_STAFF', phone: '', password: '' };
 
 const staffColumns = [
   {
@@ -125,47 +84,54 @@ const clientColumns = [
   { accessorKey: 'staffCount', header: 'Staff' },
 ];
 
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(
+    () => toast.success('Copied to clipboard'),
+    () => toast.error('Copy failed')
+  );
+}
+
 function Users() {
   const [addStaffDialog, setAddStaffDialog] = useState(false);
+  const [addClientDialog, setAddClientDialog] = useState(false);
+  const [addClientStaffDialog, setAddClientStaffDialog] = useState(false);
+  const [targetClientId, setTargetClientId] = useState(null);
   const [expandedClient, setExpandedClient] = useState(null);
   const [clientStaff, setClientStaff] = useState({});
   const [loadingStaff, setLoadingStaff] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [approvingId, setApprovingId] = useState(null);
-  const [togglingId, setTogglingId] = useState(null);
 
-  // Form state for add staff dialog
-  const [staffForm, setStaffForm] = useState({ firstName: '', lastName: '', email: '', role: '', phone: '' });
+  const [staffForm, setStaffForm] = useState(emptyStaffForm);
+  const [clientForm, setClientForm] = useState(emptyClientForm);
+  const [clientStaffForm, setClientStaffForm] = useState(emptyClientStaffForm);
 
-  const { data: usersData, loading: usersLoading, refetch: refetchUsers } = useFetch('/users?page=1&limit=50');
-  const { data: clientsData, loading: clientsLoading, refetch: refetchClients } = useFetch('/clients?page=1&limit=50');
+  const { data: usersData, refetch: refetchUsers } = useFetch('/users?page=1&limit=50');
+  const { data: clientsData, refetch: refetchClients } = useFetch('/clients?page=1&limit=50');
 
-  // Map API users to table format
-  const staffList = (usersData?.data || []).map((u) => ({
-    id: u.id,
-    name: `${u.firstName} ${u.lastName}`,
-    email: u.email,
-    role: u.role,
-    status: u.isActive ? 'Active' : 'Inactive',
-    lastLogin: u.lastLogin || '-',
-    phone: u.phone || '-',
-  }));
-  const staff = staffList.length > 0 ? staffList : mockStaff;
+  const staff = (usersData?.data || [])
+    .filter((u) => INTERNAL_ROLES.includes(u.role) || u.role === 'DRIVER')
+    .map((u) => ({
+      id: u.id,
+      name: `${u.firstName} ${u.lastName}`,
+      email: u.email,
+      role: u.role,
+      status: u.isActive ? 'Active' : 'Inactive',
+      lastLogin: u.lastLogin || '-',
+      phone: u.phone || '-',
+    }));
 
-  // Map API clients to table format
-  const clientsList = (clientsData?.data || []).map((c) => ({
+  const clients = (clientsData?.data || []).map((c) => ({
     id: c.id,
     businessName: c.businessName,
-    type: c.type || 'Business',
-    contact: c.contactName || '-',
+    type: c.businessType || 'OTHER',
+    contact: c.contactPerson || '-',
     email: c.email || '-',
+    phone: c.phone || '-',
     status: c.isApproved ? 'Approved' : 'Pending',
     staffCount: c._count?.users || 0,
-    staff: [],
   }));
-  const clients = clientsList.length > 0 ? clientsList : mockClients;
 
-  // Fetch staff for expanded client
   useEffect(() => {
     if (expandedClient && !clientStaff[expandedClient] && !loadingStaff[expandedClient]) {
       setLoadingStaff((prev) => ({ ...prev, [expandedClient]: true }));
@@ -174,11 +140,7 @@ function Users() {
           setClientStaff((prev) => ({ ...prev, [expandedClient]: res.data }));
         })
         .catch(() => {
-          // Fall back to mock data if available
-          const mockClient = mockClients.find((c) => c.id === expandedClient);
-          if (mockClient) {
-            setClientStaff((prev) => ({ ...prev, [expandedClient]: mockClient.staff }));
-          }
+          setClientStaff((prev) => ({ ...prev, [expandedClient]: [] }));
         })
         .finally(() => {
           setLoadingStaff((prev) => ({ ...prev, [expandedClient]: false }));
@@ -186,9 +148,22 @@ function Users() {
     }
   }, [expandedClient]);
 
+  const refetchClientStaff = async (clientId) => {
+    try {
+      const res = await api.get(`/clients/${clientId}/staff`);
+      setClientStaff((prev) => ({ ...prev, [clientId]: res.data }));
+    } catch {
+      setClientStaff((prev) => ({ ...prev, [clientId]: [] }));
+    }
+  };
+
   const handleAddStaff = async () => {
-    if (!staffForm.firstName || !staffForm.email || !staffForm.role) {
-      toast.error('Please fill in required fields');
+    if (!staffForm.firstName || !staffForm.email || !staffForm.role || !staffForm.password) {
+      toast.error('First name, email, role, and password are required');
+      return;
+    }
+    if (staffForm.password.length < 6) {
+      toast.error('Password must be at least 6 characters');
       return;
     }
     setSubmitting(true);
@@ -199,13 +174,90 @@ function Users() {
         email: staffForm.email,
         role: staffForm.role,
         phone: staffForm.phone,
+        password: staffForm.password,
       });
-      toast.success('Staff member added successfully');
+      toast.success('Staff member added. They must change their password on first login.');
       setAddStaffDialog(false);
-      setStaffForm({ firstName: '', lastName: '', email: '', role: '', phone: '' });
+      setStaffForm(emptyStaffForm);
       refetchUsers();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to add staff member');
+      toast.error(err.response?.data?.error || 'Failed to add staff member');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleAddClient = async () => {
+    const required = ['businessName', 'businessType', 'contactPerson', 'email', 'phone', 'address',
+      'adminFirstName', 'adminEmail', 'adminPassword'];
+    for (const field of required) {
+      if (!clientForm[field]) {
+        toast.error(`Missing field: ${field}`);
+        return;
+      }
+    }
+    if (clientForm.adminPassword.length < 6) {
+      toast.error('Admin password must be at least 6 characters');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const clientRes = await api.post('/clients', {
+        businessName: clientForm.businessName,
+        businessType: clientForm.businessType,
+        contactPerson: clientForm.contactPerson,
+        email: clientForm.email,
+        phone: clientForm.phone,
+        address: clientForm.address,
+      });
+      const newClientId = clientRes.data.id;
+
+      await api.post(`/clients/${newClientId}/staff`, {
+        firstName: clientForm.adminFirstName,
+        lastName: clientForm.adminLastName,
+        email: clientForm.adminEmail,
+        phone: clientForm.adminPhone,
+        role: 'CLIENT_ADMIN',
+        password: clientForm.adminPassword,
+      });
+
+      toast.success('Client organization and admin account created');
+      setAddClientDialog(false);
+      setClientForm(emptyClientForm);
+      refetchClients();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to create client');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleAddClientStaff = async () => {
+    if (!clientStaffForm.firstName || !clientStaffForm.email || !clientStaffForm.password) {
+      toast.error('First name, email, and password are required');
+      return;
+    }
+    if (clientStaffForm.password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await api.post(`/clients/${targetClientId}/staff`, {
+        firstName: clientStaffForm.firstName,
+        lastName: clientStaffForm.lastName,
+        email: clientStaffForm.email,
+        phone: clientStaffForm.phone,
+        role: clientStaffForm.role,
+        password: clientStaffForm.password,
+      });
+      toast.success('Staff added to client');
+      setAddClientStaffDialog(false);
+      setClientStaffForm(emptyClientStaffForm);
+      await refetchClientStaff(targetClientId);
+      refetchClients();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to add client staff');
     } finally {
       setSubmitting(false);
     }
@@ -216,25 +268,12 @@ function Users() {
     setApprovingId(clientId);
     try {
       await api.patch(`/clients/${clientId}/approve`);
-      toast.success('Client approved successfully');
+      toast.success('Client approved');
       refetchClients();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to approve client');
+      toast.error(err.response?.data?.error || 'Failed to approve client');
     } finally {
       setApprovingId(null);
-    }
-  };
-
-  const handleToggleActive = async (userId) => {
-    setTogglingId(userId);
-    try {
-      await api.patch(`/users/${userId}/toggle-active`);
-      toast.success('User status updated');
-      refetchUsers();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update user status');
-    } finally {
-      setTogglingId(null);
     }
   };
 
@@ -280,6 +319,11 @@ function Users() {
           </TabsContent>
 
           <TabsContent value="clients" className="mt-6 space-y-4">
+            <div className="flex justify-end">
+              <Button onClick={() => setAddClientDialog(true)}>
+                <Plus className="w-4 h-4 mr-2" /> Add Client Organization
+              </Button>
+            </div>
             <Card>
               <CardContent className="p-6">
                 <DataTable
@@ -291,7 +335,6 @@ function Users() {
               </CardContent>
             </Card>
 
-            {/* Expandable client detail */}
             <div className="space-y-3">
               {clients.map((client) => (
                 <Card key={client.id} className={client.status === 'Pending' ? 'border-brand-warning/30' : ''}>
@@ -324,34 +367,51 @@ function Users() {
                         animate={{ opacity: 1, height: 'auto' }}
                         className="mt-4 pt-4 border-t border-brand-border"
                       >
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-brand-secondary text-sm font-medium">
+                            Staff Members ({(clientStaff[client.id] || []).length})
+                          </h4>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTargetClientId(client.id);
+                              setClientStaffForm(emptyClientStaffForm);
+                              setAddClientStaffDialog(true);
+                            }}
+                          >
+                            <UserPlus className="w-3 h-3 mr-1" /> Add Staff
+                          </Button>
+                        </div>
                         {loadingStaff[client.id] ? (
                           <div className="flex items-center gap-2 text-brand-muted text-sm py-4">
                             <Loader2 className="w-4 h-4 animate-spin" /> Loading staff...
                           </div>
                         ) : (
-                          <>
-                            <h4 className="text-brand-secondary text-sm font-medium mb-3">Staff Members ({(clientStaff[client.id] || client.staff || []).length})</h4>
-                            <div className="space-y-2">
-                              {(clientStaff[client.id] || client.staff || []).map((s) => {
-                                const displayName = s.name || (s.firstName ? `${s.firstName} ${s.lastName}` : 'Unknown');
-                                const displayRole = s.role || '-';
-                                return (
-                                  <div key={s.id} className="flex items-center justify-between p-2 bg-brand-elevated rounded-lg">
-                                    <div className="flex items-center gap-2">
-                                      <Avatar className="h-6 w-6">
-                                        <AvatarFallback className="text-xs">{getInitials(displayName)}</AvatarFallback>
-                                      </Avatar>
-                                      <span className="text-brand-primary text-sm">{displayName}</span>
-                                      <Badge variant="outline" className="text-xs">{displayRole}</Badge>
-                                    </div>
-                                    <Badge variant={s.canOrder || s.isActive ? 'success' : 'default'} className="text-xs">
-                                      {s.canOrder ? 'Can Order' : s.isActive ? 'Active' : 'View Only'}
-                                    </Badge>
+                          <div className="space-y-2">
+                            {(clientStaff[client.id] || []).length === 0 && (
+                              <p className="text-brand-muted text-xs py-2">No staff yet.</p>
+                            )}
+                            {(clientStaff[client.id] || []).map((s) => {
+                              const displayName = s.firstName ? `${s.firstName} ${s.lastName}` : (s.name || 'Unknown');
+                              return (
+                                <div key={s.id} className="flex items-center justify-between p-2 bg-brand-elevated rounded-lg">
+                                  <div className="flex items-center gap-2">
+                                    <Avatar className="h-6 w-6">
+                                      <AvatarFallback className="text-xs">{getInitials(displayName)}</AvatarFallback>
+                                    </Avatar>
+                                    <span className="text-brand-primary text-sm">{displayName}</span>
+                                    <Badge variant="outline" className="text-xs">{ROLES[s.role]?.label || s.role}</Badge>
+                                    <span className="text-brand-muted text-xs">{s.email}</span>
                                   </div>
-                                );
-                              })}
-                            </div>
-                          </>
+                                  <Badge variant={s.isActive ? 'success' : 'default'} className="text-xs">
+                                    {s.isActive ? 'Active' : 'Inactive'}
+                                  </Badge>
+                                </div>
+                              );
+                            })}
+                          </div>
                         )}
                       </motion.div>
                     )}
@@ -372,28 +432,26 @@ function Users() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-brand-secondary text-sm mb-1">First Name</label>
-                <Input placeholder="First name" value={staffForm.firstName} onChange={(e) => setStaffForm((f) => ({ ...f, firstName: e.target.value }))} />
+                <label className="block text-brand-secondary text-sm mb-1">First Name *</label>
+                <Input value={staffForm.firstName} onChange={(e) => setStaffForm((f) => ({ ...f, firstName: e.target.value }))} />
               </div>
               <div>
                 <label className="block text-brand-secondary text-sm mb-1">Last Name</label>
-                <Input placeholder="Last name" value={staffForm.lastName} onChange={(e) => setStaffForm((f) => ({ ...f, lastName: e.target.value }))} />
+                <Input value={staffForm.lastName} onChange={(e) => setStaffForm((f) => ({ ...f, lastName: e.target.value }))} />
               </div>
             </div>
             <div>
-              <label className="block text-brand-secondary text-sm mb-1">Email</label>
+              <label className="block text-brand-secondary text-sm mb-1">Email *</label>
               <Input type="email" placeholder="email@azoury.com" value={staffForm.email} onChange={(e) => setStaffForm((f) => ({ ...f, email: e.target.value }))} />
             </div>
             <div>
-              <label className="block text-brand-secondary text-sm mb-1">Role</label>
+              <label className="block text-brand-secondary text-sm mb-1">Role *</label>
               <Select value={staffForm.role} onValueChange={(val) => setStaffForm((f) => ({ ...f, role: val }))}>
                 <SelectTrigger><SelectValue placeholder="Select role..." /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
-                  <SelectItem value="PURCHASING">Purchase Manager</SelectItem>
-                  <SelectItem value="OPERATIONS">Operations Manager</SelectItem>
-                  <SelectItem value="QC_MANAGER">QC Manager</SelectItem>
-                  <SelectItem value="RECEIVING">Receiving Team</SelectItem>
+                  {INTERNAL_ROLES.map((r) => (
+                    <SelectItem key={r} value={r}>{ROLES[r]?.label || r}</SelectItem>
+                  ))}
                   <SelectItem value="DRIVER">Driver</SelectItem>
                 </SelectContent>
               </Select>
@@ -402,8 +460,169 @@ function Users() {
               <label className="block text-brand-secondary text-sm mb-1">Phone</label>
               <Input placeholder="+961 X XXX XXX" value={staffForm.phone} onChange={(e) => setStaffForm((f) => ({ ...f, phone: e.target.value }))} />
             </div>
+            <div>
+              <label className="block text-brand-secondary text-sm mb-1">Temporary Password *</label>
+              <div className="flex gap-2">
+                <Input value={staffForm.password} onChange={(e) => setStaffForm((f) => ({ ...f, password: e.target.value }))} placeholder="Min 6 characters" />
+                <Button type="button" variant="outline" onClick={() => setStaffForm((f) => ({ ...f, password: generatePassword() }))}>
+                  Generate
+                </Button>
+                {staffForm.password && (
+                  <Button type="button" variant="outline" onClick={() => copyToClipboard(staffForm.password)}>
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+              <p className="text-brand-muted text-xs mt-1">User will be required to change this on first login.</p>
+            </div>
             <Button className="w-full" onClick={handleAddStaff} disabled={submitting}>
               {submitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Adding...</> : 'Add Staff Member'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Client Organization Dialog */}
+      <Dialog open={addClientDialog} onOpenChange={setAddClientDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Add Client Organization</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+            <div>
+              <h4 className="text-brand-primary text-sm font-medium mb-3">Business Information</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-brand-secondary text-sm mb-1">Business Name *</label>
+                  <Input value={clientForm.businessName} onChange={(e) => setClientForm((f) => ({ ...f, businessName: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="block text-brand-secondary text-sm mb-1">Business Type *</label>
+                  <Select value={clientForm.businessType} onValueChange={(val) => setClientForm((f) => ({ ...f, businessType: val }))}>
+                    <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                    <SelectContent>
+                      {BUSINESS_TYPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-brand-secondary text-sm mb-1">Contact Person *</label>
+                  <Input value={clientForm.contactPerson} onChange={(e) => setClientForm((f) => ({ ...f, contactPerson: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="block text-brand-secondary text-sm mb-1">Business Phone *</label>
+                  <Input value={clientForm.phone} onChange={(e) => setClientForm((f) => ({ ...f, phone: e.target.value }))} />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-brand-secondary text-sm mb-1">Business Email *</label>
+                  <Input type="email" value={clientForm.email} onChange={(e) => setClientForm((f) => ({ ...f, email: e.target.value }))} />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-brand-secondary text-sm mb-1">Address *</label>
+                  <Input value={clientForm.address} onChange={(e) => setClientForm((f) => ({ ...f, address: e.target.value }))} />
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-brand-border pt-4">
+              <h4 className="text-brand-primary text-sm font-medium mb-3">Client Admin Account</h4>
+              <p className="text-brand-muted text-xs mb-3">This person will log in and manage their own staff.</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-brand-secondary text-sm mb-1">First Name *</label>
+                  <Input value={clientForm.adminFirstName} onChange={(e) => setClientForm((f) => ({ ...f, adminFirstName: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="block text-brand-secondary text-sm mb-1">Last Name</label>
+                  <Input value={clientForm.adminLastName} onChange={(e) => setClientForm((f) => ({ ...f, adminLastName: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="block text-brand-secondary text-sm mb-1">Admin Email *</label>
+                  <Input type="email" value={clientForm.adminEmail} onChange={(e) => setClientForm((f) => ({ ...f, adminEmail: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="block text-brand-secondary text-sm mb-1">Admin Phone</label>
+                  <Input value={clientForm.adminPhone} onChange={(e) => setClientForm((f) => ({ ...f, adminPhone: e.target.value }))} />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-brand-secondary text-sm mb-1">Temporary Password *</label>
+                  <div className="flex gap-2">
+                    <Input value={clientForm.adminPassword} onChange={(e) => setClientForm((f) => ({ ...f, adminPassword: e.target.value }))} placeholder="Min 6 characters" />
+                    <Button type="button" variant="outline" onClick={() => setClientForm((f) => ({ ...f, adminPassword: generatePassword() }))}>
+                      Generate
+                    </Button>
+                    {clientForm.adminPassword && (
+                      <Button type="button" variant="outline" onClick={() => copyToClipboard(clientForm.adminPassword)}>
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-brand-muted text-xs mt-1">Admin will be required to change this on first login.</p>
+                </div>
+              </div>
+            </div>
+
+            <Button className="w-full" onClick={handleAddClient} disabled={submitting}>
+              {submitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...</> : 'Create Client Organization'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Client Staff Dialog */}
+      <Dialog open={addClientStaffDialog} onOpenChange={setAddClientStaffDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add User to Client</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-brand-secondary text-sm mb-1">First Name *</label>
+                <Input value={clientStaffForm.firstName} onChange={(e) => setClientStaffForm((f) => ({ ...f, firstName: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-brand-secondary text-sm mb-1">Last Name</label>
+                <Input value={clientStaffForm.lastName} onChange={(e) => setClientStaffForm((f) => ({ ...f, lastName: e.target.value }))} />
+              </div>
+            </div>
+            <div>
+              <label className="block text-brand-secondary text-sm mb-1">Email *</label>
+              <Input type="email" value={clientStaffForm.email} onChange={(e) => setClientStaffForm((f) => ({ ...f, email: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block text-brand-secondary text-sm mb-1">Role *</label>
+              <Select value={clientStaffForm.role} onValueChange={(val) => setClientStaffForm((f) => ({ ...f, role: val }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CLIENT_ADMIN">Client Admin</SelectItem>
+                  <SelectItem value="CLIENT_STAFF">Client Staff</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="block text-brand-secondary text-sm mb-1">Phone</label>
+              <Input value={clientStaffForm.phone} onChange={(e) => setClientStaffForm((f) => ({ ...f, phone: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block text-brand-secondary text-sm mb-1">Temporary Password *</label>
+              <div className="flex gap-2">
+                <Input value={clientStaffForm.password} onChange={(e) => setClientStaffForm((f) => ({ ...f, password: e.target.value }))} placeholder="Min 6 characters" />
+                <Button type="button" variant="outline" onClick={() => setClientStaffForm((f) => ({ ...f, password: generatePassword() }))}>
+                  Generate
+                </Button>
+                {clientStaffForm.password && (
+                  <Button type="button" variant="outline" onClick={() => copyToClipboard(clientStaffForm.password)}>
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+              <p className="text-brand-muted text-xs mt-1">User will be required to change this on first login.</p>
+            </div>
+            <Button className="w-full" onClick={handleAddClientStaff} disabled={submitting}>
+              {submitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Adding...</> : 'Add User'}
             </Button>
           </div>
         </DialogContent>

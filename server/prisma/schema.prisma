@@ -122,17 +122,18 @@ enum InvoiceStatus {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  firstName String
-  lastName  String
-  role      UserRole
-  isActive  Boolean  @default(true)
-  phone     String?
-  clientId  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String   @id @default(uuid())
+  email              String   @unique
+  password           String
+  firstName          String
+  lastName           String
+  role               UserRole
+  isActive           Boolean  @default(true)
+  mustChangePassword Boolean  @default(false)
+  phone              String?
+  clientId           String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   client             Client?             @relation(fields: [clientId], references: [id])
   purchaseOrders     PurchaseOrder[]     @relation("CreatedByUser")

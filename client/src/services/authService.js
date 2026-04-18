@@ -20,4 +20,8 @@ export const logout = () => {
   return api.post('/auth/logout');
 };
 
-export default { login, register, refreshToken, getMe, logout };
+export const changePassword = (currentPassword, newPassword) => {
+  return api.post('/auth/change-password', { currentPassword, newPassword });
+};
+
+export default { login, register, refreshToken, getMe, logout, changePassword };

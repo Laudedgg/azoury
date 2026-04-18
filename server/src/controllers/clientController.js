@@ -200,6 +200,10 @@ async function addStaffToClient(req, res, next) {
       return res.status(400).json({ error: 'Role must be CLIENT_ADMIN or CLIENT_STAFF' });
     }
 
+    if (!password || password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 12);
 
     const user = await prisma.user.create({
@@ -211,6 +215,7 @@ async function addStaffToClient(req, res, next) {
         role,
         phone,
         clientId: req.params.id,
+        mustChangePassword: true,
       },
       select: {
         id: true,
