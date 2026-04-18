@@ -19,12 +19,6 @@ import { getInitials } from '@/utils/helpers';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
-const mockStaff = [
-  { id: 1, name: 'George Hanna', email: 'george@almandaloun.com', role: 'Procurement Officer', canOrder: true, lastLogin: '2026-04-08 09:15' },
-  { id: 2, name: 'Michel Hanna', email: 'michel@almandaloun.com', role: 'Chef', canOrder: true, lastLogin: '2026-04-07 16:30' },
-  { id: 3, name: 'Layla Sarkis', email: 'layla@almandaloun.com', role: 'Store Manager', canOrder: false, lastLogin: '2026-04-06 11:00' },
-];
-
 const staffColumns = [
   {
     accessorKey: 'name',
@@ -69,7 +63,7 @@ function Account() {
   const { data: staffData, refetch: refetchStaff } = useFetch(clientId ? `/clients/${clientId}/staff` : null);
 
   const client = clientData || {};
-  const staff = Array.isArray(staffData) ? staffData : (staffData?.data || mockStaff);
+  const staff = Array.isArray(staffData) ? staffData : (staffData?.data || []);
 
   const [form, setForm] = useState({
     name: user?.name || '',

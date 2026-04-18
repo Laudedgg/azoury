@@ -19,37 +19,6 @@ import { toast } from 'sonner';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
-const mockProducts = [
-  { id: 1, name: 'Roma Tomatoes', image: null, tiers: [{ grade: 'Extra', price: 4.20 }, { grade: 'Quality A', price: 3.50 }, { grade: 'Cooking', price: 2.80 }] },
-  { id: 2, name: 'Cucumbers', image: null, tiers: [{ grade: 'Extra', price: 3.10 }, { grade: 'Quality A', price: 2.60 }, { grade: 'Cooking', price: 2.00 }] },
-  { id: 3, name: 'Bell Peppers', image: null, tiers: [{ grade: 'Extra', price: 5.50 }, { grade: 'Quality A', price: 4.80 }, { grade: 'Cooking', price: 3.80 }] },
-  { id: 4, name: 'Potatoes', image: null, tiers: [{ grade: 'Extra', price: 1.50 }, { grade: 'Quality A', price: 1.20 }, { grade: 'Cooking', price: 0.95 }] },
-  { id: 5, name: 'Avocados', image: null, tiers: [{ grade: 'Extra', price: 7.80 }, { grade: 'Quality A', price: 6.50 }] },
-  { id: 6, name: 'Bananas', image: null, tiers: [{ grade: 'Extra', price: 2.00 }, { grade: 'Quality A', price: 1.60 }, { grade: 'Cooking', price: 1.20 }] },
-  { id: 7, name: 'Lemons', image: null, tiers: [{ grade: 'Extra', price: 3.40 }, { grade: 'Quality A', price: 2.80 }, { grade: 'Cooking', price: 2.20 }] },
-  { id: 8, name: 'Onions', image: null, tiers: [{ grade: 'Quality A', price: 1.00 }, { grade: 'Cooking', price: 0.80 }] },
-  { id: 9, name: 'Carrots', image: null, tiers: [{ grade: 'Quality A', price: 1.40 }, { grade: 'Cooking', price: 1.10 }] },
-  { id: 10, name: 'Iceberg Lettuce', image: null, tiers: [{ grade: 'Extra', price: 2.50 }, { grade: 'Quality A', price: 1.80 }] },
-  { id: 11, name: 'Mangoes', image: null, tiers: [{ grade: 'Extra', price: 5.00 }, { grade: 'Quality A', price: 4.00 }] },
-  { id: 12, name: 'Strawberries', image: null, tiers: [{ grade: 'Extra', price: 6.50 }, { grade: 'Quality A', price: 5.20 }] },
-];
-
-const mockActiveOrders = [
-  { id: 1, orderRef: '#1847', items: 24, total: 3240, deliveryDate: '2026-04-09', status: 'Preparing', createdAt: '2026-04-08' },
-  { id: 2, orderRef: '#1850', items: 18, total: 2450, deliveryDate: '2026-04-10', status: 'Confirmed', createdAt: '2026-04-08' },
-];
-
-const mockOrderHistory = [
-  { id: 3, orderRef: '#1839', items: 18, total: 2850, deliveryDate: '2026-04-07', status: 'Delivered', createdAt: '2026-04-06' },
-  { id: 4, orderRef: '#1832', items: 31, total: 4120, deliveryDate: '2026-04-06', status: 'Delivered', createdAt: '2026-04-05' },
-  { id: 5, orderRef: '#1825', items: 15, total: 1890, deliveryDate: '2026-04-05', status: 'Delivered', createdAt: '2026-04-04' },
-  { id: 6, orderRef: '#1818', items: 22, total: 2560, deliveryDate: '2026-04-04', status: 'Delivered', createdAt: '2026-04-03' },
-  { id: 7, orderRef: '#1810', items: 28, total: 3450, deliveryDate: '2026-04-03', status: 'Delivered', createdAt: '2026-04-02' },
-  { id: 8, orderRef: '#1803', items: 12, total: 1650, deliveryDate: '2026-04-02', status: 'Delivered', createdAt: '2026-04-01' },
-  { id: 9, orderRef: '#1796', items: 20, total: 2780, deliveryDate: '2026-04-01', status: 'Delivered', createdAt: '2026-03-31' },
-  { id: 10, orderRef: '#1789', items: 35, total: 4580, deliveryDate: '2026-03-31', status: 'Delivered', createdAt: '2026-03-30' },
-];
-
 const activeOrderColumns = [
   { accessorKey: 'orderRef', header: 'Order #', cell: ({ row }) => `#${row.original.orderNumber || row.original.orderRef || row.original.id}` },
   { accessorKey: 'items', header: 'Items', cell: ({ row }) => `${row.original._count?.items ?? row.original.items ?? 0} items` },
@@ -90,19 +59,17 @@ function Orders() {
 
   const refetch = () => { refetchActive(); refetchHistory(); };
 
-  // Map API products to the shape the UI expects, fallback to mock
-  const products = productsData?.data
-    ? productsData.data.map((p) => ({
-        id: p.id,
-        name: p.name,
-        image: p.image || null,
-        tiers: (p.qualityGrades || []).map((qg) => ({
-          grade: qg.clientFacingGrade || qg.grade,
-          price: qg.price,
-          qualityGradeId: qg.id,
-        })),
-      }))
-    : mockProducts;
+  // Map API products to the shape the UI expects
+  const products = (productsData?.data || []).map((p) => ({
+    id: p.id,
+    name: p.name,
+    image: p.image || null,
+    tiers: (p.qualityGrades || []).map((qg) => ({
+      grade: qg.clientFacingGrade || qg.grade,
+      price: qg.price,
+      qualityGradeId: qg.id,
+    })),
+  }));
 
   const addToCart = (product, tier) => {
     const key = `${product.id}-${tier.grade}`;
@@ -320,7 +287,7 @@ function Orders() {
                       <Button variant="outline" size="sm" onClick={() => handleCancelOrder(row.original.id)}>Cancel</Button>
                     ) : null,
                   }]}
-                  data={activeOrdersData?.data || mockActiveOrders}
+                  data={activeOrdersData?.data || []}
                   searchPlaceholder="Search orders..."
                   searchColumn="orderRef"
                 />
@@ -334,7 +301,7 @@ function Orders() {
               <CardContent className="p-6">
                 <DataTable
                   columns={historyColumns}
-                  data={historyData?.data || mockOrderHistory}
+                  data={historyData?.data || []}
                   searchPlaceholder="Search order history..."
                   searchColumn="orderRef"
                 />

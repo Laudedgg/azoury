@@ -22,50 +22,6 @@ import { toast } from 'sonner';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
-const mockReceivingWaste = [
-  { id: 1, product: 'Roma Tomatoes', grade: 'Extra', qty: 15, supplier: 'Farm Fresh Co.', cost: 42.00, date: '2026-04-08', reason: 'Bruised on arrival', authorizedBy: 'Karim H.', status: 'Authorized' },
-  { id: 2, product: 'Bell Peppers', grade: 'Quality A', qty: 8, supplier: 'Bekaa Farms', cost: 25.60, date: '2026-04-08', reason: 'Mold detected', authorizedBy: 'Sami R.', status: 'Authorized' },
-  { id: 3, product: 'Avocados', grade: 'Extra', qty: 5, supplier: 'Tropical Imports', cost: 22.50, date: '2026-04-07', reason: 'Overripe on delivery', authorizedBy: 'Karim H.', status: 'Authorized' },
-  { id: 4, product: 'Cucumbers', grade: 'Quality A', qty: 10, supplier: 'Green Valley', cost: 19.00, date: '2026-04-07', reason: 'Size below spec', authorizedBy: null, status: 'Pending' },
-  { id: 5, product: 'Lemons', grade: 'Quality A', qty: 6, supplier: 'South Coast Citrus', cost: 12.00, date: '2026-04-06', reason: 'Fungal spots', authorizedBy: 'Karim H.', status: 'Authorized' },
-];
-
-const mockAgingWaste = [
-  { id: 6, product: 'Iceberg Lettuce', grade: 'Extra', qty: 25, supplier: 'Green Valley', cost: 37.50, date: '2026-04-08', reason: '3 days in cold storage', authorizedBy: 'Karim H.', status: 'Authorized', daysAged: 3 },
-  { id: 7, product: 'Cucumbers', grade: 'Quality A', qty: 12, supplier: 'Farm Fresh Co.', cost: 22.80, date: '2026-04-07', reason: '4 days - softening', authorizedBy: 'Sami R.', status: 'Authorized', daysAged: 4 },
-  { id: 8, product: 'Bananas', grade: 'Quality A', qty: 20, supplier: 'Tropical Imports', cost: 24.00, date: '2026-04-06', reason: '5 days - overripe', authorizedBy: 'Karim H.', status: 'Authorized', daysAged: 5 },
-  { id: 9, product: 'Roma Tomatoes', grade: 'Cooking', qty: 18, supplier: 'Farm Fresh Co.', cost: 16.20, date: '2026-04-08', reason: '2 days - spotting', authorizedBy: null, status: 'Pending', daysAged: 2 },
-];
-
-const mockPendingAuth = [
-  { id: 4, product: 'Cucumbers', grade: 'Quality A', qty: 10, cost: 19.00, type: 'Receiving', reason: 'Size below spec', submittedBy: 'Ali M.' },
-  { id: 9, product: 'Roma Tomatoes', grade: 'Cooking', qty: 18, cost: 16.20, type: 'Aging', reason: '2 days - spotting', submittedBy: 'Hassan K.' },
-];
-
-const mockWasteTrend = (() => {
-  const data = [];
-  const now = new Date();
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    data.push({
-      date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      receiving: +(15 + Math.random() * 50).toFixed(0),
-      aging: +(10 + Math.random() * 40).toFixed(0),
-    });
-  }
-  return data;
-})();
-
-const mockSupplierWaste = [
-  { supplier: 'Farm Fresh Co.', wasteCost: 78.20 },
-  { supplier: 'Bekaa Farms', wasteCost: 45.60 },
-  { supplier: 'Tropical Imports', wasteCost: 46.50 },
-  { supplier: 'Green Valley', wasteCost: 56.50 },
-  { supplier: 'South Coast Citrus', wasteCost: 12.00 },
-  { supplier: 'Mountain Produce', wasteCost: 8.40 },
-];
-
 const receivingColumns = [
   { accessorKey: 'product', header: 'Product' },
   { accessorKey: 'grade', header: 'Grade' },
@@ -112,46 +68,39 @@ function Waste() {
 
   const products = productsData?.data || productsData || [];
 
-  const receivingWaste = receivingData?.data
-    ? receivingData.data.map((w) => ({
-        id: w.id,
-        product: w.product?.name || '',
-        grade: w.qualityGrade?.clientFacingGrade || w.qualityGrade?.grade || '',
-        qty: w.quantity,
-        supplier: '',
-        cost: w.cost || 0,
-        date: w.createdAt ? w.createdAt.split('T')[0] : '',
-        reason: w.reason || '',
-        authorizedBy: w.authorizedBy?.name || null,
-        status: w.authorizedBy ? 'Authorized' : 'Pending',
-      }))
-    : mockReceivingWaste;
+  const receivingWaste = (receivingData?.data || []).map((w) => ({
+    id: w.id,
+    product: w.product?.name || '',
+    grade: w.qualityGrade?.clientFacingGrade || w.qualityGrade?.grade || '',
+    qty: w.quantity,
+    supplier: '',
+    cost: w.cost || 0,
+    date: w.createdAt ? w.createdAt.split('T')[0] : '',
+    reason: w.reason || '',
+    authorizedBy: w.authorizedBy?.name || null,
+    status: w.authorizedBy ? 'Authorized' : 'Pending',
+  }));
 
-  const agingWaste = agingData?.data
-    ? agingData.data.map((w) => ({
-        id: w.id,
-        product: w.product?.name || '',
-        grade: w.qualityGrade?.clientFacingGrade || w.qualityGrade?.grade || '',
-        qty: w.quantity,
-        supplier: '',
-        cost: w.cost || 0,
-        date: w.createdAt ? w.createdAt.split('T')[0] : '',
-        reason: w.reason || '',
-        authorizedBy: w.authorizedBy?.name || null,
-        status: w.authorizedBy ? 'Authorized' : 'Pending',
-        daysAged: 0,
-      }))
-    : mockAgingWaste;
+  const agingWaste = (agingData?.data || []).map((w) => ({
+    id: w.id,
+    product: w.product?.name || '',
+    grade: w.qualityGrade?.clientFacingGrade || w.qualityGrade?.grade || '',
+    qty: w.quantity,
+    supplier: '',
+    cost: w.cost || 0,
+    date: w.createdAt ? w.createdAt.split('T')[0] : '',
+    reason: w.reason || '',
+    authorizedBy: w.authorizedBy?.name || null,
+    status: w.authorizedBy ? 'Authorized' : 'Pending',
+    daysAged: 0,
+  }));
 
   const pendingAuth = [...receivingWaste, ...agingWaste].filter((w) => w.status === 'Pending');
 
   const analytics = analyticsData || {};
-  const todayCost = analytics.daily?.totalCost ?? (
-    mockReceivingWaste.filter((w) => w.date === '2026-04-08').reduce((s, w) => s + w.cost, 0)
-    + mockAgingWaste.filter((w) => w.date === '2026-04-08').reduce((s, w) => s + w.cost, 0)
-  );
-  const weekCost = analytics.weekly?.totalCost ?? [...mockReceivingWaste, ...mockAgingWaste].reduce((s, w) => s + w.cost, 0);
-  const topWasteProduct = analytics.topWasteProducts?.[0]?.product?.name || 'Iceberg Lettuce';
+  const todayCost = analytics.daily?.totalCost ?? 0;
+  const weekCost = analytics.weekly?.totalCost ?? 0;
+  const topWasteProduct = analytics.topWasteProducts?.[0]?.product?.name || '';
 
   const selectedProduct = products.find((p) => p.id === wasteForm.productId);
 
@@ -329,7 +278,7 @@ function Waste() {
       <motion.div variants={fadeInUp}>
         <ChartCard title="Daily Waste Cost" subtitle="Last 30 days - stacked by type">
           <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={mockWasteTrend}>
+            <AreaChart data={[]}>
               <defs>
                 <linearGradient id="recGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#4EECD3" stopOpacity={0.3} />
@@ -356,7 +305,7 @@ function Waste() {
       <motion.div variants={fadeInUp}>
         <ChartCard title="Waste by Supplier" subtitle="Which suppliers products generate most waste">
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={mockSupplierWaste} layout="vertical" margin={{ left: 30 }}>
+            <BarChart data={[]} layout="vertical" margin={{ left: 30 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1A3F3F" horizontal={false} />
               <XAxis type="number" tick={{ fill: '#5A7A75', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
               <YAxis type="category" dataKey="supplier" tick={{ fill: '#8AABA6', fontSize: 11 }} tickLine={false} axisLine={false} width={120} />

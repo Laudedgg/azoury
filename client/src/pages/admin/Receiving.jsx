@@ -13,45 +13,6 @@ import { toast } from 'sonner';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
-const productOptions = [
-  { value: 'roma-tomatoes', label: 'Roma Tomatoes' },
-  { value: 'cucumbers', label: 'Cucumbers' },
-  { value: 'bell-peppers', label: 'Bell Peppers' },
-  { value: 'potatoes', label: 'Potatoes' },
-  { value: 'avocados', label: 'Avocados' },
-  { value: 'lemons', label: 'Lemons' },
-  { value: 'bananas', label: 'Bananas' },
-  { value: 'onions', label: 'Onions' },
-  { value: 'carrots', label: 'Carrots' },
-  { value: 'iceberg-lettuce', label: 'Iceberg Lettuce' },
-];
-
-const mockWeighIns = [
-  { id: 1, product: 'Roma Tomatoes', po: 'PO-1204', weight: 487, time: '07:15 AM', recordedBy: 'Ali M.' },
-  { id: 2, product: 'Cucumbers', po: 'PO-1205', weight: 298, time: '07:32 AM', recordedBy: 'Ali M.' },
-  { id: 3, product: 'Bell Peppers', po: 'PO-1206', weight: 185, time: '07:48 AM', recordedBy: 'Hassan K.' },
-  { id: 4, product: 'Potatoes', po: 'PO-1207', weight: 795, time: '08:05 AM', recordedBy: 'Ali M.' },
-  { id: 5, product: 'Avocados', po: 'PO-1208', weight: 92, time: '08:20 AM', recordedBy: 'Hassan K.' },
-  { id: 6, product: 'Bananas', po: 'PO-1209', weight: 398, time: '08:35 AM', recordedBy: 'Ali M.' },
-  { id: 7, product: 'Onions', po: 'PO-1210', weight: 575, time: '08:52 AM', recordedBy: 'Hassan K.' },
-  { id: 8, product: 'Lemons', po: 'PO-1211', weight: 248, time: '09:10 AM', recordedBy: 'Ali M.' },
-];
-
-const mockInventoryCount = [
-  { id: 1, product: 'Roma Tomatoes', grade: 'Extra', systemCount: 120, physicalCount: '', discrepancy: null },
-  { id: 2, product: 'Roma Tomatoes', grade: 'Quality A', systemCount: 85, physicalCount: '83', discrepancy: -2 },
-  { id: 3, product: 'Cucumbers', grade: 'Extra', systemCount: 150, physicalCount: '150', discrepancy: 0 },
-  { id: 4, product: 'Cucumbers', grade: 'Quality A', systemCount: 200, physicalCount: '198', discrepancy: -2 },
-  { id: 5, product: 'Bell Peppers', grade: 'Extra', systemCount: 40, physicalCount: '', discrepancy: null },
-  { id: 6, product: 'Bell Peppers', grade: 'Quality A', systemCount: 50, physicalCount: '50', discrepancy: 0 },
-  { id: 7, product: 'Potatoes', grade: 'Cooking', systemCount: 350, physicalCount: '342', discrepancy: -8 },
-  { id: 8, product: 'Avocados', grade: 'Extra', systemCount: 40, physicalCount: '', discrepancy: null },
-  { id: 9, product: 'Bananas', grade: 'Quality A', systemCount: 300, physicalCount: '300', discrepancy: 0 },
-  { id: 10, product: 'Onions', grade: 'Cooking', systemCount: 380, physicalCount: '', discrepancy: null },
-  { id: 11, product: 'Lemons', grade: 'Quality A', systemCount: 180, physicalCount: '178', discrepancy: -2 },
-  { id: 12, product: 'Carrots', grade: 'Quality A', systemCount: 400, physicalCount: '400', discrepancy: 0 },
-];
-
 const weighInColumns = [
   { accessorKey: 'product', header: 'Product' },
   { accessorKey: 'po', header: 'PO #' },
@@ -76,37 +37,33 @@ function Receiving() {
   const currentProduct = products.find((p) => p.id === selectedProduct);
 
   // Build weigh-ins from recent PURCHASE_IN movements
-  const weighIns = movementsData?.data
-    ? movementsData.data
-        .filter((m) => m.type === 'PURCHASE_IN')
-        .map((m) => ({
-          id: m.id,
-          product: m.product?.name || '',
-          po: m.reference || '',
-          weight: m.quantity,
-          time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '',
-          recordedBy: m.createdBy?.name || '',
-        }))
-    : mockWeighIns;
+  const weighIns = (movementsData?.data || [])
+    .filter((m) => m.type === 'PURCHASE_IN')
+    .map((m) => ({
+      id: m.id,
+      product: m.product?.name || '',
+      po: m.reference || '',
+      weight: m.quantity,
+      time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '',
+      recordedBy: m.createdBy?.name || '',
+    }));
 
   // Build inventory count from stock data
   const stockItems = stockData || [];
-  const initialInventoryCount = stockItems.length > 0
-    ? stockItems.flatMap((item) =>
-        (item.grades || []).map((g) => ({
-          id: `${item.product.id}-${g.id}`,
-          productId: item.product.id,
-          qualityGradeId: g.id,
-          product: item.product.name,
-          grade: g.clientFacingGrade || g.grade,
-          systemCount: g.currentStock,
-          physicalCount: '',
-          discrepancy: null,
-        }))
-      )
-    : mockInventoryCount;
+  const initialInventoryCount = stockItems.flatMap((item) =>
+    (item.grades || []).map((g) => ({
+      id: `${item.product.id}-${g.id}`,
+      productId: item.product.id,
+      qualityGradeId: g.id,
+      product: item.product.name,
+      grade: g.clientFacingGrade || g.grade,
+      systemCount: g.currentStock,
+      physicalCount: '',
+      discrepancy: null,
+    }))
+  );
 
-  const [inventoryData, setInventoryData] = useState(mockInventoryCount);
+  const [inventoryData, setInventoryData] = useState([]);
 
   // Sync inventory data when stock loads
   React.useEffect(() => {

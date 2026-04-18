@@ -24,65 +24,6 @@ import { toast } from 'sonner';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
-const mockCombinedOrders = [
-  { id: 1, product: 'Roma Tomatoes', totalOrdered: 450, currentStock: 120, netToPurchase: 330, supplier: 'Farm Fresh Co.', lastPrice: 2.80, unit: 'kg' },
-  { id: 2, product: 'Iceberg Lettuce', totalOrdered: 280, currentStock: 350, netToPurchase: 0, supplier: 'Green Valley', lastPrice: 1.50, unit: 'kg' },
-  { id: 3, product: 'Cucumbers', totalOrdered: 380, currentStock: 200, netToPurchase: 180, supplier: 'Farm Fresh Co.', lastPrice: 1.90, unit: 'kg' },
-  { id: 4, product: 'Bell Peppers', totalOrdered: 220, currentStock: 90, netToPurchase: 130, supplier: 'Bekaa Farms', lastPrice: 3.20, unit: 'kg' },
-  { id: 5, product: 'Bananas', totalOrdered: 500, currentStock: 600, netToPurchase: 0, supplier: 'Tropical Imports', lastPrice: 1.20, unit: 'kg' },
-  { id: 6, product: 'Potatoes', totalOrdered: 800, currentStock: 450, netToPurchase: 350, supplier: 'Mountain Produce', lastPrice: 0.90, unit: 'kg' },
-  { id: 7, product: 'Onions', totalOrdered: 600, currentStock: 380, netToPurchase: 220, supplier: 'Bekaa Farms', lastPrice: 0.75, unit: 'kg' },
-  { id: 8, product: 'Carrots', totalOrdered: 340, currentStock: 400, netToPurchase: 0, supplier: 'Farm Fresh Co.', lastPrice: 1.10, unit: 'kg' },
-  { id: 9, product: 'Avocados', totalOrdered: 150, currentStock: 40, netToPurchase: 110, supplier: 'Tropical Imports', lastPrice: 4.50, unit: 'kg' },
-  { id: 10, product: 'Lemons', totalOrdered: 260, currentStock: 180, netToPurchase: 80, supplier: 'South Coast Citrus', lastPrice: 2.00, unit: 'kg' },
-];
-
-const mockSupplierComparison = [
-  { name: 'Farm Fresh Co.', currentPrice: 2.80, avg7: 2.75, avg30: 2.68, ytd: 2.55, lastYear: 2.30, trend: 'Rising' },
-  { name: 'Bekaa Farms', currentPrice: 2.95, avg7: 2.90, avg30: 2.82, ytd: 2.70, lastYear: 2.45, trend: 'Rising' },
-  { name: 'Green Valley', currentPrice: 2.60, avg7: 2.65, avg30: 2.70, ytd: 2.60, lastYear: 2.50, trend: 'Falling' },
-  { name: 'Mountain Produce', currentPrice: 2.70, avg7: 2.72, avg30: 2.75, ytd: 2.65, lastYear: 2.40, trend: 'Stable' },
-];
-
-const generatePriceHistory = () => {
-  const data = [];
-  const now = new Date();
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    data.push({
-      date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      'Farm Fresh Co.': +(2.5 + Math.random() * 0.6).toFixed(2),
-      'Bekaa Farms': +(2.6 + Math.random() * 0.7).toFixed(2),
-      'Green Valley': +(2.3 + Math.random() * 0.5).toFixed(2),
-    });
-  }
-  return data;
-};
-
-const mockSurveys = [
-  { id: 1, date: '2026-04-08', supplier: 'Farm Fresh Co.', product: 'Roma Tomatoes', price: 2.80 },
-  { id: 2, date: '2026-04-08', supplier: 'Bekaa Farms', product: 'Roma Tomatoes', price: 2.95 },
-  { id: 3, date: '2026-04-07', supplier: 'Green Valley', product: 'Cucumbers', price: 1.85 },
-  { id: 4, date: '2026-04-07', supplier: 'Farm Fresh Co.', product: 'Cucumbers', price: 1.90 },
-  { id: 5, date: '2026-04-06', supplier: 'Mountain Produce', product: 'Potatoes', price: 0.88 },
-  { id: 6, date: '2026-04-06', supplier: 'Bekaa Farms', product: 'Onions', price: 0.78 },
-  { id: 7, date: '2026-04-05', supplier: 'Tropical Imports', product: 'Avocados', price: 4.55 },
-  { id: 8, date: '2026-04-05', supplier: 'South Coast Citrus', product: 'Lemons', price: 1.95 },
-];
-
-const mockReceipts = [
-  { id: 1, date: '2026-04-08', supplier: 'Farm Fresh Co.', total: 3420 },
-  { id: 2, date: '2026-04-07', supplier: 'Bekaa Farms', total: 2150 },
-  { id: 3, date: '2026-04-06', supplier: 'Tropical Imports', total: 1890 },
-  { id: 4, date: '2026-04-05', supplier: 'Green Valley', total: 4200 },
-  { id: 5, date: '2026-04-04', supplier: 'Mountain Produce', total: 2780 },
-  { id: 6, date: '2026-04-03', supplier: 'South Coast Citrus', total: 1560 },
-];
-
-const products = ['Roma Tomatoes', 'Cucumbers', 'Potatoes', 'Bell Peppers', 'Avocados'];
-const suppliers = ['Farm Fresh Co.', 'Bekaa Farms', 'Green Valley', 'Mountain Produce', 'Tropical Imports', 'South Coast Citrus'];
-
 function Purchasing() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [receiptDialog, setReceiptDialog] = useState(null);
@@ -111,13 +52,11 @@ function Purchasing() {
 
   const productsList = productsData?.data || productsData || [];
   const suppliersList = suppliersData?.data || suppliersData || [];
-  const surveyItems = surveysData?.data || surveysData || mockSurveys;
-  const comparisonItems = comparisonData || mockSupplierComparison;
+  const surveyItems = surveysData?.data || surveysData || [];
 
   // Map combined orders API response to expected shape
   const combinedOrders = useMemo(() => {
-    if (!combinedData) return mockCombinedOrders;
-    return combinedData.map((item, idx) => ({
+    return (combinedData || []).map((item, idx) => ({
       id: item.productId || idx + 1,
       product: item.productName,
       totalOrdered: item.totalQuantityNeeded,
@@ -133,8 +72,7 @@ function Purchasing() {
 
   // Map comparison data to table shape
   const comparisonTableData = useMemo(() => {
-    if (!comparisonData) return mockSupplierComparison;
-    return comparisonData.map((item) => ({
+    return (comparisonData || []).map((item) => ({
       name: item.supplier?.name || item.supplier,
       currentPrice: item.avgPrice,
       avg7: item.avgPrice,
@@ -144,8 +82,6 @@ function Purchasing() {
       trend: item.avgPrice > item.minPrice ? 'Rising' : item.avgPrice < item.maxPrice ? 'Falling' : 'Stable',
     }));
   }, [comparisonData]);
-
-  const priceHistory = useMemo(() => generatePriceHistory(), []);
 
   const itemsNeedingPurchase = combinedOrders.filter((o) => o.netToPurchase > 0);
 
@@ -376,7 +312,6 @@ function Purchasing() {
                 <SelectTrigger><SelectValue placeholder="Select a product..." /></SelectTrigger>
                 <SelectContent>
                   {productsList.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
-                  {productsList.length === 0 && products.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -389,7 +324,7 @@ function Purchasing() {
 
             <ChartCard title="Price History - Top 3 Suppliers" subtitle="Last 30 days">
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={priceHistory}>
+                <LineChart data={[]}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1A3F3F" />
                   <XAxis dataKey="date" tick={{ fill: '#5A7A75', fontSize: 11 }} tickLine={false} axisLine={false} interval={4} />
                   <YAxis tick={{ fill: '#5A7A75', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
@@ -415,7 +350,6 @@ function Purchasing() {
                       <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
                       <SelectContent>
                         {suppliersList.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
-                        {suppliersList.length === 0 && suppliers.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -425,7 +359,6 @@ function Purchasing() {
                       <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
                       <SelectContent>
                         {productsList.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
-                        {productsList.length === 0 && products.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -481,7 +414,7 @@ function Purchasing() {
             </Card>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {mockReceipts.map((receipt) => (
+              {[].map((receipt) => (
                 <Card key={receipt.id} className="cursor-pointer hover:border-brand-accent/50 transition-all" onClick={() => setReceiptDialog(receipt)}>
                   <CardContent className="p-4">
                     <div className="w-full h-40 bg-brand-elevated rounded-lg flex items-center justify-center mb-3">
@@ -586,7 +519,6 @@ function Purchasing() {
                           </SelectTrigger>
                           <SelectContent>
                             {suppliersList.map((s) => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
-                            {suppliersList.length === 0 && suppliers.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>

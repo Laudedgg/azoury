@@ -11,82 +11,6 @@ import { toast } from 'sonner';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
-const mockDispatches = [
-  {
-    id: 1,
-    dispatchNum: 'D-392',
-    client: 'Al Mandaloun',
-    itemsCount: 24,
-    status: 'Preparing',
-    items: [
-      { id: 1, product: 'Roma Tomatoes - Extra', qty: 50, photos: [{ id: 1, url: '/photos/p1.jpg', time: '09:15 AM' }] },
-      { id: 2, product: 'Cucumbers - Quality A', qty: 30, photos: [] },
-      { id: 3, product: 'Bell Peppers - Extra', qty: 20, photos: [{ id: 2, url: '/photos/p2.jpg', time: '09:20 AM' }] },
-      { id: 4, product: 'Potatoes - Cooking', qty: 80, photos: [] },
-    ],
-  },
-  {
-    id: 2,
-    dispatchNum: 'D-393',
-    client: 'Le Petit Chef',
-    itemsCount: 18,
-    status: 'Loading',
-    items: [
-      { id: 5, product: 'Avocados - Extra', qty: 15, photos: [{ id: 3, url: '/photos/p3.jpg', time: '09:30 AM' }, { id: 4, url: '/photos/p4.jpg', time: '09:32 AM' }] },
-      { id: 6, product: 'Lemons - Quality A', qty: 25, photos: [] },
-      { id: 7, product: 'Bananas - Quality A', qty: 40, photos: [{ id: 5, url: '/photos/p5.jpg', time: '09:35 AM' }] },
-    ],
-  },
-  {
-    id: 3,
-    dispatchNum: 'D-394',
-    client: 'Karam Beirut',
-    itemsCount: 31,
-    status: 'Ready',
-    items: [
-      { id: 8, product: 'Onions - Cooking', qty: 60, photos: [{ id: 6, url: '/photos/p6.jpg', time: '08:45 AM' }] },
-      { id: 9, product: 'Carrots - Quality A', qty: 35, photos: [{ id: 7, url: '/photos/p7.jpg', time: '08:50 AM' }] },
-      { id: 10, product: 'Potatoes - Cooking', qty: 100, photos: [{ id: 8, url: '/photos/p8.jpg', time: '08:55 AM' }] },
-    ],
-  },
-  {
-    id: 4,
-    dispatchNum: 'D-395',
-    client: 'Fresh Market',
-    itemsCount: 12,
-    status: 'Preparing',
-    items: [
-      { id: 11, product: 'Iceberg Lettuce - Extra', qty: 20, photos: [] },
-      { id: 12, product: 'Roma Tomatoes - Quality A', qty: 45, photos: [] },
-    ],
-  },
-  {
-    id: 5,
-    dispatchNum: 'D-396',
-    client: 'Souq Express',
-    itemsCount: 22,
-    status: 'Loading',
-    items: [
-      { id: 13, product: 'Bell Peppers - Quality A', qty: 30, photos: [{ id: 9, url: '/photos/p9.jpg', time: '10:00 AM' }] },
-      { id: 14, product: 'Cucumbers - Extra', qty: 25, photos: [] },
-      { id: 15, product: 'Avocados - Extra', qty: 10, photos: [] },
-    ],
-  },
-  {
-    id: 6,
-    dispatchNum: 'D-397',
-    client: 'Phoenicia Hotel',
-    itemsCount: 38,
-    status: 'Preparing',
-    items: [
-      { id: 16, product: 'Roma Tomatoes - Extra', qty: 80, photos: [] },
-      { id: 17, product: 'Lemons - Extra', qty: 30, photos: [] },
-      { id: 18, product: 'Bananas - Extra', qty: 50, photos: [] },
-      { id: 19, product: 'Avocados - Extra', qty: 25, photos: [] },
-    ],
-  },
-];
-
 const statusVariant = (s) => {
   const map = { Preparing: 'warning', Loading: 'accent', Ready: 'success' };
   return map[s] || 'default';
@@ -99,16 +23,14 @@ function Logistics() {
   const { data: dispatchListData, refetch: refetchDispatches } = useFetch('/dispatches?status=LOADING,PLANNING');
   const { data: dispatchDetail, refetch: refetchDetail } = useFetch(selectedDispatch ? `/dispatches/${selectedDispatch.id}` : null);
 
-  const dispatches = dispatchListData?.data
-    ? dispatchListData.data.map((d) => ({
-        id: d.id,
-        dispatchNum: `D-${d.id}`,
-        client: d.clientOrder?.client?.businessName || d.driver?.name || '',
-        itemsCount: d._count?.items || 0,
-        status: d.status === 'PLANNING' ? 'Preparing' : d.status === 'LOADING' ? 'Loading' : d.status === 'READY' ? 'Ready' : d.status,
-        items: [],
-      }))
-    : mockDispatches;
+  const dispatches = (dispatchListData?.data || []).map((d) => ({
+    id: d.id,
+    dispatchNum: `D-${d.id}`,
+    client: d.clientOrder?.client?.businessName || d.driver?.name || '',
+    itemsCount: d._count?.items || 0,
+    status: d.status === 'PLANNING' ? 'Preparing' : d.status === 'LOADING' ? 'Loading' : d.status === 'READY' ? 'Ready' : d.status,
+    items: [],
+  }));
 
   // When a dispatch is selected and detail loads, merge items into selectedDispatch for rendering
   const activeDispatch = selectedDispatch

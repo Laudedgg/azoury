@@ -26,77 +26,6 @@ import { toast } from 'sonner';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
-const mockWeight = [
-  { id: 1, product: 'Roma Tomatoes', po: 'PO-1204', purchased: 500, received: 487, discrepancy: -13, status: 'Flagged' },
-  { id: 2, product: 'Cucumbers', po: 'PO-1205', purchased: 300, received: 298, discrepancy: -2, status: 'OK' },
-  { id: 3, product: 'Bell Peppers', po: 'PO-1206', purchased: 200, received: 185, discrepancy: -15, status: 'Flagged' },
-  { id: 4, product: 'Potatoes', po: 'PO-1207', purchased: 800, received: 795, discrepancy: -5, status: 'OK' },
-  { id: 5, product: 'Avocados', po: 'PO-1208', purchased: 100, received: 92, discrepancy: -8, status: 'Flagged' },
-  { id: 6, product: 'Bananas', po: 'PO-1209', purchased: 400, received: 398, discrepancy: -2, status: 'OK' },
-  { id: 7, product: 'Onions', po: 'PO-1210', purchased: 600, received: 575, discrepancy: -25, status: 'Flagged' },
-  { id: 8, product: 'Lemons', po: 'PO-1211', purchased: 250, received: 248, discrepancy: -2, status: 'OK' },
-];
-
-const mockRatings = [
-  { id: 1, supplier: 'Farm Fresh Co.', avgRating: 4.2, trend: 'Improving', deliveries: 145, issues: 8 },
-  { id: 2, supplier: 'Bekaa Farms', avgRating: 3.8, trend: 'Stable', deliveries: 112, issues: 14 },
-  { id: 3, supplier: 'Green Valley', avgRating: 4.5, trend: 'Improving', deliveries: 98, issues: 3 },
-  { id: 4, supplier: 'Mountain Produce', avgRating: 3.2, trend: 'Declining', deliveries: 76, issues: 18 },
-  { id: 5, supplier: 'Tropical Imports', avgRating: 4.0, trend: 'Stable', deliveries: 64, issues: 6 },
-  { id: 6, supplier: 'South Coast Citrus', avgRating: 4.7, trend: 'Improving', deliveries: 52, issues: 1 },
-];
-
-const mockRatingHistory = (() => {
-  const d = [];
-  for (let i = 11; i >= 0; i--) {
-    const dt = new Date(); dt.setMonth(dt.getMonth() - i);
-    d.push({ month: dt.toLocaleDateString('en-US', { month: 'short' }), 'Farm Fresh Co.': +(3.5 + Math.random() * 1.2).toFixed(1), 'Green Valley': +(3.8 + Math.random()).toFixed(1), 'Mountain Produce': +(2.8 + Math.random()).toFixed(1) });
-  }
-  return d;
-})();
-
-const mockGrading = [
-  { id: 1, product: 'Roma Tomatoes', date: '2026-04-08', internal: 'Extra', client: 'Extra', qty: 120, approvedBy: 'Karim H.' },
-  { id: 2, product: 'Cucumbers', date: '2026-04-08', internal: 'A', client: 'Quality A', qty: 200, approvedBy: 'Karim H.' },
-  { id: 3, product: 'Bell Peppers', date: '2026-04-08', internal: 'B', client: 'Quality A', qty: 80, approvedBy: 'Sami R.' },
-  { id: 4, product: 'Potatoes', date: '2026-04-07', internal: 'C++', client: 'Cooking', qty: 350, approvedBy: 'Karim H.' },
-  { id: 5, product: 'Avocados', date: '2026-04-07', internal: 'Extra', client: 'Extra', qty: 45, approvedBy: 'Sami R.' },
-  { id: 6, product: 'Bananas', date: '2026-04-07', internal: 'C', client: 'Cooking', qty: 180, approvedBy: 'Karim H.' },
-];
-
-const mockWasteTrend = (() => {
-  const d = [];
-  for (let i = 13; i >= 0; i--) {
-    const dt = new Date(); dt.setDate(dt.getDate() - i);
-    d.push({ date: dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), receiving: +(20 + Math.random() * 60).toFixed(0), aging: +(15 + Math.random() * 45).toFixed(0) });
-  }
-  return d;
-})();
-
-const mockVehicles = [
-  { id: 1, plate: 'B 234 567', model: 'Isuzu NPR', status: 'Active', mileage: 45200, next: '2026-04-20' },
-  { id: 2, plate: 'B 345 678', model: 'Mitsubishi Canter', status: 'Active', mileage: 32100, next: '2026-05-05' },
-  { id: 3, plate: 'B 456 789', model: 'Isuzu NPR', status: 'Maintenance', mileage: 67800, next: '2026-04-10' },
-  { id: 4, plate: 'B 567 890', model: 'Hino 300', status: 'Active', mileage: 28400, next: '2026-04-25' },
-];
-
-const mockSpotChecks = [
-  { id: 1, product: 'Roma Tomatoes', grade: 'Extra', system: 120, physical: 118, disc: -2, date: '2026-04-08', by: 'Karim H.' },
-  { id: 2, product: 'Cucumbers', grade: 'Quality A', system: 200, physical: 200, disc: 0, date: '2026-04-08', by: 'Sami R.' },
-  { id: 3, product: 'Potatoes', grade: 'Cooking', system: 350, physical: 342, disc: -8, date: '2026-04-08', by: 'Karim H.' },
-  { id: 4, product: 'Bell Peppers', grade: 'Extra', system: 80, physical: 80, disc: 0, date: '2026-04-07', by: 'Sami R.' },
-  { id: 5, product: 'Avocados', grade: 'Extra', system: 45, physical: 44, disc: -1, date: '2026-04-07', by: 'Karim H.' },
-];
-
-const mockDispatchItems = [
-  { id: 1, product: 'Roma Tomatoes - Extra', ordered: 50, loaded: 50, verified: true },
-  { id: 2, product: 'Cucumbers - Quality A', ordered: 30, loaded: 30, verified: true },
-  { id: 3, product: 'Bell Peppers - Extra', ordered: 20, loaded: 20, verified: false },
-  { id: 4, product: 'Potatoes - Cooking', ordered: 80, loaded: 78, verified: false },
-  { id: 5, product: 'Avocados - Extra', ordered: 15, loaded: 15, verified: false },
-  { id: 6, product: 'Lemons - Quality A', ordered: 25, loaded: 25, verified: false },
-];
-
 const renderStars = (r) => (
   <div className="flex items-center gap-0.5">
     {[1, 2, 3, 4, 5].map((s) => <Star key={s} className={`w-4 h-4 ${s <= Math.round(r) ? 'fill-brand-warning text-brand-warning' : 'text-brand-border'}`} />)}
@@ -143,7 +72,7 @@ const spotCheckColumns = [
 function QualityControl() {
   const [ratingDialog, setRatingDialog] = useState(false);
   const [wasteDialog, setWasteDialog] = useState(false);
-  const [dispatchChecklist, setDispatchChecklist] = useState(mockDispatchItems);
+  const [dispatchChecklist, setDispatchChecklist] = useState([]);
   const [ratingSupplier, setRatingSupplier] = useState('');
   const [ratingValue, setRatingValue] = useState(0);
   const [ratingNotes, setRatingNotes] = useState('');
@@ -180,12 +109,11 @@ function QualityControl() {
   const suppliersList = suppliersData?.data || suppliersData || [];
   const productsList = productsData?.data || productsData || [];
   const wasteItems = wasteData?.data || wasteData || [];
-  const spotCheckItems = spotChecksData?.data || spotChecksData || mockSpotChecks;
+  const spotCheckItems = spotChecksData?.data || spotChecksData || [];
 
   // Map fleet data
   const vehicleItems = useMemo(() => {
     const raw = fleetData?.data || fleetData || [];
-    if (raw.length === 0) return mockVehicles;
     return raw.map((v) => ({
       id: v.id,
       plate: v.plateNumber || v.plate || '',
@@ -198,7 +126,6 @@ function QualityControl() {
 
   // Map supplier ratings from supplier list
   const ratingItems = useMemo(() => {
-    if (suppliersList.length === 0) return mockRatings;
     return suppliersList.map((s) => ({
       id: s.id,
       supplier: s.name,
@@ -233,7 +160,7 @@ function QualityControl() {
 
           {/* Weight Verification */}
           <TabsContent value="weight" className="mt-6">
-            <Card><CardContent className="p-6"><DataTable columns={weightColumns} data={mockWeight} searchPlaceholder="Search..." searchColumn="product" /></CardContent></Card>
+            <Card><CardContent className="p-6"><DataTable columns={weightColumns} data={[]} searchPlaceholder="Search..." searchColumn="product" /></CardContent></Card>
           </TabsContent>
 
           {/* Supplier Ratings */}
@@ -242,7 +169,7 @@ function QualityControl() {
             <Card><CardContent className="p-6"><DataTable columns={ratingColumns} data={ratingItems} searchPlaceholder="Search..." searchColumn="supplier" /></CardContent></Card>
             <ChartCard title="Rating Trends" subtitle="Last 12 months">
               <ResponsiveContainer width="100%" height={280}>
-                <LineChart data={mockRatingHistory}>
+                <LineChart data={[]}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1A3F3F" />
                   <XAxis dataKey="month" tick={{ fill: '#5A7A75', fontSize: 11 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fill: '#5A7A75', fontSize: 11 }} tickLine={false} axisLine={false} domain={[1, 5]} />
@@ -262,7 +189,6 @@ function QualityControl() {
                     <Select value={ratingSupplier} onValueChange={setRatingSupplier}><SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
                       <SelectContent>
                         {suppliersList.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
-                        {suppliersList.length === 0 && mockRatings.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.supplier}</SelectItem>)}
                       </SelectContent></Select>
                   </div>
                   <div><label className="block text-brand-secondary text-sm mb-1">Rating</label><div className="flex gap-1">{[1,2,3,4,5].map((s) => <button key={s} className="p-1" onClick={() => setRatingValue(s)}><Star className={`w-8 h-8 ${s <= ratingValue ? 'fill-brand-warning text-brand-warning' : 'text-brand-border hover:fill-brand-warning hover:text-brand-warning'}`} /></button>)}</div></div>
@@ -304,14 +230,14 @@ function QualityControl() {
                 </div>
               </CardContent>
             </Card>
-            <Card><CardContent className="p-6"><DataTable columns={gradingColumns} data={mockGrading} searchPlaceholder="Search..." searchColumn="product" /></CardContent></Card>
+            <Card><CardContent className="p-6"><DataTable columns={gradingColumns} data={[]} searchPlaceholder="Search..." searchColumn="product" /></CardContent></Card>
           </TabsContent>
 
           {/* Waste */}
           <TabsContent value="waste" className="mt-6 space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <KPICard title="Waste Cost This Week" value={formatCurrency(wasteAnalytics?.weekly?.totalCost || 284)} icon={Trash2} trend="down" trendValue={12} />
-              <KPICard title="Waste % of Inventory" value={wasteAnalytics?.weekly?.wastePercentage ? `${wasteAnalytics.weekly.wastePercentage}%` : '2.1%'} icon={AlertTriangle} trend="down" trendValue={0.3} />
+              <KPICard title="Waste Cost This Week" value={formatCurrency(wasteAnalytics?.weekly?.totalCost || 0)} icon={Trash2} trend="down" trendValue={12} />
+              <KPICard title="Waste % of Inventory" value={wasteAnalytics?.weekly?.wastePercentage ? `${wasteAnalytics.weekly.wastePercentage}%` : '0%'} icon={AlertTriangle} trend="down" trendValue={0.3} />
             </div>
 
             <div className="flex justify-end">
@@ -355,7 +281,7 @@ function QualityControl() {
 
             <ChartCard title="Daily Waste Cost" subtitle="Last 14 days">
               <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={wasteAnalytics?.daily || mockWasteTrend}>
+                <BarChart data={wasteAnalytics?.daily || []}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1A3F3F" />
                   <XAxis dataKey="date" tick={{ fill: '#5A7A75', fontSize: 11 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fill: '#5A7A75', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />

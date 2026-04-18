@@ -18,64 +18,6 @@ import { getStatusColor } from '@/utils/helpers';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
-const mockDeliveries = [
-  {
-    id: 1, client: 'Al Mandaloun', address: 'Hamra Street, Beirut', orderRef: '#1847', itemsCount: 24,
-    timeWindow: '7:00 AM - 8:30 AM', status: 'In Progress', phone: '+961 1 234 567',
-    instructions: 'Use back entrance. Ask for George.',
-    items: [
-      { product: 'Roma Tomatoes - Extra', qty: '50 kg' },
-      { product: 'Cucumbers - Quality A', qty: '30 kg' },
-      { product: 'Bell Peppers - Extra', qty: '20 kg' },
-      { product: 'Potatoes - Cooking', qty: '80 kg' },
-    ],
-  },
-  {
-    id: 2, client: 'Le Petit Chef', address: 'Gemmayze, Beirut', orderRef: '#1846', itemsCount: 18,
-    timeWindow: '8:30 AM - 9:30 AM', status: 'Pending', phone: '+961 1 345 678',
-    instructions: 'Ring the bell twice. Delivery to kitchen entrance on the left.',
-    items: [
-      { product: 'Avocados - Extra', qty: '15 kg' },
-      { product: 'Lemons - Quality A', qty: '25 kg' },
-      { product: 'Bananas - Quality A', qty: '40 kg' },
-    ],
-  },
-  {
-    id: 3, client: 'Karam Beirut', address: 'Verdun, Beirut', orderRef: '#1845', itemsCount: 31,
-    timeWindow: '9:30 AM - 10:30 AM', status: 'Pending', phone: '+961 1 456 789',
-    instructions: 'Parking available in the basement. Take service elevator.',
-    items: [
-      { product: 'Onions - Cooking', qty: '60 kg' },
-      { product: 'Carrots - Quality A', qty: '35 kg' },
-      { product: 'Potatoes - Cooking', qty: '100 kg' },
-      { product: 'Roma Tomatoes - Quality A', qty: '45 kg' },
-    ],
-  },
-  {
-    id: 4, client: 'Fresh Market', address: 'Achrafieh, Beirut', orderRef: '#1844', itemsCount: 12,
-    timeWindow: '10:30 AM - 11:30 AM', status: 'Pending', phone: '+961 1 567 890',
-    instructions: '',
-    items: [
-      { product: 'Iceberg Lettuce - Extra', qty: '20 kg' },
-      { product: 'Roma Tomatoes - Quality A', qty: '45 kg' },
-    ],
-  },
-  {
-    id: 5, client: 'Souq Express', address: 'Hamra, Beirut', orderRef: '#1843', itemsCount: 22,
-    timeWindow: '11:30 AM - 12:30 PM', status: 'Pending', phone: '+961 1 678 901',
-    instructions: 'Side door delivery only.',
-    items: [
-      { product: 'Bell Peppers - Quality A', qty: '30 kg' },
-      { product: 'Cucumbers - Extra', qty: '25 kg' },
-      { product: 'Avocados - Extra', qty: '10 kg' },
-    ],
-  },
-];
-
-const mockCompleted = [
-  { id: 6, client: 'Phoenicia Hotel', orderRef: '#1841', completedAt: '6:45 AM', status: 'Delivered' },
-];
-
 const deliveryStatusOrder = { 'In Progress': 0, 'Pending': 1, 'Delivered': 2 };
 
 function Deliveries() {
@@ -92,32 +34,28 @@ function Deliveries() {
 
   const { data: apiData, refetch } = useFetch('/dispatches?page=1&limit=20');
 
-  // Map API dispatches to the shape the UI expects, fallback to mock
+  // Map API dispatches to the shape the UI expects
   const rawDispatches = apiData?.data || [];
-  const deliveries = rawDispatches.length > 0
-    ? rawDispatches.map((d) => ({
-        id: d.id,
-        client: d.items?.[0]?.clientOrder?.client?.businessName || 'Client',
-        address: d.items?.[0]?.clientOrder?.client?.address || '',
-        orderRef: `#${d.id}`,
-        itemsCount: d._count?.items || d.items?.length || 0,
-        timeWindow: 'TBD',
-        status: d.status === 'IN_TRANSIT' ? 'In Progress' : d.status === 'COMPLETED' ? 'Delivered' : 'Pending',
-        phone: d.items?.[0]?.clientOrder?.client?.phone || '',
-        instructions: d.items?.[0]?.clientOrder?.specialInstructions || '',
-        items: (d.items || []).map((item) => ({
-          id: item.id,
-          product: item.clientOrder?.items?.map((oi) => oi.product?.name).join(', ') || 'Items',
-          qty: `${item.quantity || ''} kg`,
-        })),
-        dispatchItemIds: (d.items || []).map((item) => item.id),
-      }))
-    : mockDeliveries;
+  const deliveries = rawDispatches.map((d) => ({
+    id: d.id,
+    client: d.items?.[0]?.clientOrder?.client?.businessName || 'Client',
+    address: d.items?.[0]?.clientOrder?.client?.address || '',
+    orderRef: `#${d.id}`,
+    itemsCount: d._count?.items || d.items?.length || 0,
+    timeWindow: 'TBD',
+    status: d.status === 'IN_TRANSIT' ? 'In Progress' : d.status === 'COMPLETED' ? 'Delivered' : 'Pending',
+    phone: d.items?.[0]?.clientOrder?.client?.phone || '',
+    instructions: d.items?.[0]?.clientOrder?.specialInstructions || '',
+    items: (d.items || []).map((item) => ({
+      id: item.id,
+      product: item.clientOrder?.items?.map((oi) => oi.product?.name).join(', ') || 'Items',
+      qty: `${item.quantity || ''} kg`,
+    })),
+    dispatchItemIds: (d.items || []).map((item) => item.id),
+  }));
 
   const activeDeliveries = deliveries.filter((d) => d.status !== 'Delivered');
-  const completedDeliveries = deliveries.filter((d) => d.status === 'Delivered').length > 0
-    ? deliveries.filter((d) => d.status === 'Delivered')
-    : mockCompleted;
+  const completedDeliveries = deliveries.filter((d) => d.status === 'Delivered');
 
   const handleConfirmDelivery = async () => {
     if (!confirmDialog) return;

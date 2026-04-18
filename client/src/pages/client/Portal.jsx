@@ -14,25 +14,6 @@ import { formatCurrency, formatDate, getStatusColor } from '@/utils/helpers';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
-const mockRecentOrders = [
-  { id: 1, orderRef: '#1847', date: '2026-04-08', items: 24, total: 3240, status: 'Preparing' },
-  { id: 2, orderRef: '#1839', date: '2026-04-07', items: 18, total: 2850, status: 'Delivered' },
-  { id: 3, orderRef: '#1832', date: '2026-04-06', items: 31, total: 4120, status: 'Delivered' },
-  { id: 4, orderRef: '#1825', date: '2026-04-05', items: 15, total: 1890, status: 'Delivered' },
-  { id: 5, orderRef: '#1818', date: '2026-04-04', items: 22, total: 2560, status: 'Delivered' },
-  { id: 6, orderRef: '#1810', date: '2026-04-03', items: 28, total: 3450, status: 'Delivered' },
-  { id: 7, orderRef: '#1803', date: '2026-04-02', items: 12, total: 1650, status: 'Delivered' },
-  { id: 8, orderRef: '#1796', date: '2026-04-01', items: 20, total: 2780, status: 'Delivered' },
-  { id: 9, orderRef: '#1789', date: '2026-03-31', items: 35, total: 4580, status: 'Delivered' },
-  { id: 10, orderRef: '#1782', date: '2026-03-30', items: 19, total: 2340, status: 'Delivered' },
-];
-
-const mockDeliveries = [
-  { id: 1, orderRef: '#1847', date: '2026-04-09', timeSlot: '7:00 AM - 9:00 AM', status: 'Scheduled', driver: 'Ahmad K.' },
-  { id: 2, orderRef: '#1850', date: '2026-04-10', timeSlot: '7:00 AM - 9:00 AM', status: 'Confirmed', driver: 'TBD' },
-  { id: 3, orderRef: '#1853', date: '2026-04-11', timeSlot: '8:00 AM - 10:00 AM', status: 'Pending', driver: 'TBD' },
-];
-
 function Portal() {
   const { user } = useAuth();
   const { data: ordersData } = useFetch('/orders?page=1&limit=10');
@@ -48,30 +29,26 @@ function Portal() {
     .reduce((sum, o) => sum + (o.total || 0), 0);
 
   // Map orders to display format for recent orders list
-  const recentOrders = orders.length > 0
-    ? orders.map((o) => ({
-        id: o.id,
-        orderRef: `#${o.orderNumber || o.id}`,
-        date: formatDate(o.createdAt),
-        items: o._count?.items || 0,
-        total: o.total || 0,
-        status: o.status,
-      }))
-    : mockRecentOrders;
+  const recentOrders = orders.map((o) => ({
+    id: o.id,
+    orderRef: `#${o.orderNumber || o.id}`,
+    date: formatDate(o.createdAt),
+    items: o._count?.items || 0,
+    total: o.total || 0,
+    status: o.status,
+  }));
 
   // Upcoming deliveries from orders with dispatch-related statuses
-  const upcomingDeliveries = orders.length > 0
-    ? orders
-        .filter((o) => ['DISPATCHED', 'CONFIRMED'].includes(o.status))
-        .map((o) => ({
-          id: o.id,
-          orderRef: `#${o.orderNumber || o.id}`,
-          date: formatDate(o.deliveryDate || o.createdAt),
-          timeSlot: 'TBD',
-          status: o.status,
-          driver: 'TBD',
-        }))
-    : mockDeliveries;
+  const upcomingDeliveries = orders
+    .filter((o) => ['DISPATCHED', 'CONFIRMED'].includes(o.status))
+    .map((o) => ({
+      id: o.id,
+      orderRef: `#${o.orderNumber || o.id}`,
+      date: formatDate(o.deliveryDate || o.createdAt),
+      timeSlot: 'TBD',
+      status: o.status,
+      driver: 'TBD',
+    }));
 
   const businessName = user?.client?.businessName || user?.company || 'Your Business';
 
@@ -96,10 +73,10 @@ function Portal() {
 
       {/* KPI Cards */}
       <motion.div variants={fadeInUp} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard title="Active Orders" value={activeOrders || 2} icon={ShoppingBag} trend="up" trendValue={5} />
-        <KPICard title="Pending Deliveries" value={pendingDeliveries || 3} icon={Truck} />
-        <KPICard title="This Month's Spend" value={formatCurrency(monthlySpend || 22540)} icon={DollarSign} trend="up" trendValue={8.3} />
-        <KPICard title="Last Invoice" value={formatCurrency(orders[0]?.total || 12480)} icon={FileText} />
+        <KPICard title="Active Orders" value={activeOrders} icon={ShoppingBag} trend="up" trendValue={5} />
+        <KPICard title="Pending Deliveries" value={pendingDeliveries} icon={Truck} />
+        <KPICard title="This Month's Spend" value={formatCurrency(monthlySpend)} icon={DollarSign} trend="up" trendValue={8.3} />
+        <KPICard title="Last Invoice" value={formatCurrency(orders[0]?.total || 0)} icon={FileText} />
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

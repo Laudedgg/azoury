@@ -18,57 +18,6 @@ import { formatCurrency } from '@/utils/helpers';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
-const mockOrders = [
-  { id: 1, client: 'Al Mandaloun', orderNum: '#1847', items: 24, status: 'Pending', priority: 'High' },
-  { id: 2, client: 'Le Petit Chef', orderNum: '#1846', items: 18, status: 'Preparing', priority: 'High' },
-  { id: 3, client: 'Karam Beirut', orderNum: '#1845', items: 31, status: 'Ready', priority: 'Medium' },
-  { id: 4, client: 'Fresh Market', orderNum: '#1844', items: 12, status: 'Pending', priority: 'Low' },
-  { id: 5, client: 'Souq Express', orderNum: '#1843', items: 22, status: 'Preparing', priority: 'High' },
-  { id: 6, client: 'Green Basket', orderNum: '#1842', items: 15, status: 'Pending', priority: 'Medium' },
-  { id: 7, client: 'Phoenicia Hotel', orderNum: '#1841', items: 38, status: 'Ready', priority: 'High' },
-  { id: 8, client: 'Byblos Bay', orderNum: '#1840', items: 20, status: 'Pending', priority: 'Medium' },
-];
-
-const mockChecklist = [
-  { id: 1, product: 'Roma Tomatoes - Extra', qty: 50, picked: false },
-  { id: 2, product: 'Cucumbers - Quality A', qty: 30, picked: false },
-  { id: 3, product: 'Bell Peppers - Extra', qty: 20, picked: true },
-  { id: 4, product: 'Potatoes - Cooking', qty: 80, picked: true },
-  { id: 5, product: 'Avocados - Extra', qty: 15, picked: false },
-  { id: 6, product: 'Lemons - Quality A', qty: 25, picked: false },
-];
-
-const mockRoutes = [
-  { id: 1, truck: 'B 234 567', driver: 'Ahmad Khalil', clients: 'Al Mandaloun, Le Petit Chef, Karam Beirut', stops: 3, status: 'Planned' },
-  { id: 2, truck: 'B 345 678', driver: 'Hassan Mousa', clients: 'Fresh Market, Souq Express', stops: 2, status: 'Dispatched' },
-  { id: 3, truck: 'B 456 789', driver: 'Omar Saeed', clients: 'Phoenicia Hotel, Green Basket, Byblos Bay', stops: 3, status: 'In Transit' },
-];
-
-const mockPricing = [
-  { id: 1, product: 'Roma Tomatoes', extraPrice: 4.20, qualityAPrice: 3.50, qualityCPrice: 2.80, margin: 33 },
-  { id: 2, product: 'Cucumbers', extraPrice: 3.10, qualityAPrice: 2.60, qualityCPrice: 2.00, margin: 28 },
-  { id: 3, product: 'Bell Peppers', extraPrice: 5.50, qualityAPrice: 4.80, qualityCPrice: 3.80, margin: 35 },
-  { id: 4, product: 'Potatoes', extraPrice: 1.50, qualityAPrice: 1.20, qualityCPrice: 0.95, margin: 25 },
-  { id: 5, product: 'Avocados', extraPrice: 7.80, qualityAPrice: 6.50, qualityCPrice: 5.20, margin: 38 },
-  { id: 6, product: 'Lemons', extraPrice: 3.40, qualityAPrice: 2.80, qualityCPrice: 2.20, margin: 30 },
-  { id: 7, product: 'Bananas', extraPrice: 2.00, qualityAPrice: 1.60, qualityCPrice: 1.20, margin: 27 },
-  { id: 8, product: 'Onions', extraPrice: 1.30, qualityAPrice: 1.00, qualityCPrice: 0.80, margin: 22 },
-];
-
-const mockReturns = [
-  { id: 1, client: 'Al Mandaloun', orderNum: '#1832', type: 'Return', reason: 'Product quality below standard', status: 'Pending' },
-  { id: 2, client: 'Fresh Market', orderNum: '#1828', type: 'Amendment', reason: 'Wrong quantity delivered', status: 'Under Review' },
-  { id: 3, client: 'Karam Beirut', orderNum: '#1835', type: 'Return', reason: 'Damaged packaging - tomatoes crushed', status: 'Approved' },
-  { id: 4, client: 'Le Petit Chef', orderNum: '#1830', type: 'Amendment', reason: 'Missing items: Bell Peppers and Avocados', status: 'Rejected' },
-  { id: 5, client: 'Souq Express', orderNum: '#1838', type: 'Return', reason: 'Received wrong grade', status: 'Pending' },
-];
-
-const mockUrgent = [
-  { id: 1, product: 'Roma Tomatoes', qty: 100, supplier: 'Farm Fresh Co.', reason: 'Stock shortage for evening orders', time: '09:30 AM' },
-  { id: 2, product: 'Avocados', qty: 30, supplier: 'Tropical Imports', reason: 'Unexpected large order', time: '11:15 AM' },
-  { id: 3, product: 'Lemons', qty: 50, supplier: 'South Coast Citrus', reason: 'Quality reject from morning delivery', time: '02:00 PM' },
-];
-
 const statusVariant = (s) => ({ Pending: 'warning', Preparing: 'accent', Ready: 'success', Dispatched: 'accent', 'In Transit': 'accent', Planned: 'default', 'Under Review': 'warning', Approved: 'success', Rejected: 'error' }[s] || 'default');
 
 const makeOrderColumns = (onStatusUpdate) => [
@@ -134,7 +83,7 @@ const urgentColumns = [
 
 function Operations() {
   const [prepMode, setPrepMode] = useState(null);
-  const [checklist, setChecklist] = useState(mockChecklist);
+  const [checklist, setChecklist] = useState([]);
   const [returnDialog, setReturnDialog] = useState(null);
   const [returnComment, setReturnComment] = useState('');
 
@@ -152,7 +101,6 @@ function Operations() {
   // Map orders API data to display shape
   const ordersItems = useMemo(() => {
     const raw = ordersData?.data || ordersData || [];
-    if (raw.length === 0) return mockOrders;
     return raw.map((o) => ({
       id: o.id,
       client: o.client?.name || o.client || '',
@@ -166,7 +114,6 @@ function Operations() {
   // Map dispatches to routes shape
   const routesItems = useMemo(() => {
     const raw = dispatchesData?.data || dispatchesData || [];
-    if (raw.length === 0) return mockRoutes;
     return raw.map((d) => ({
       id: d.id,
       truck: d.truck?.plateNumber || d.truck || '',
@@ -180,7 +127,6 @@ function Operations() {
   // Map fleet to truck cards
   const truckCards = useMemo(() => {
     const raw = fleetData?.data || fleetData || [];
-    if (raw.length === 0) return [{ plate: 'B 234 567', model: 'Isuzu NPR', status: 'Available' }, { plate: 'B 345 678', model: 'Mitsubishi Canter', status: 'Available' }, { plate: 'B 456 789', model: 'Isuzu NPR', status: 'In Use' }];
     return raw.map((v) => ({
       plate: v.plateNumber || v.plate || '',
       model: v.model || '',
@@ -191,7 +137,6 @@ function Operations() {
   // Map products to pricing shape
   const pricingItems = useMemo(() => {
     const raw = productsData?.data || productsData || [];
-    if (raw.length === 0) return mockPricing;
     return raw.map((p) => {
       const grades = p.qualityGrades || [];
       const extraGrade = grades.find((g) => g.name === 'Extra' || g.grade === 'Extra');
@@ -211,7 +156,6 @@ function Operations() {
   // Map returns data
   const returnsItems = useMemo(() => {
     const raw = returnsData?.data || returnsData || [];
-    if (raw.length === 0) return mockReturns;
     return raw.map((r) => ({
       id: r.id,
       client: r.clientOrder?.client?.name || '',
@@ -392,7 +336,7 @@ function Operations() {
                 </div>
               </CardContent>
             </Card>
-            <Card><CardContent className="p-6"><DataTable columns={urgentColumns} data={mockUrgent} /></CardContent></Card>
+            <Card><CardContent className="p-6"><DataTable columns={urgentColumns} data={[]} /></CardContent></Card>
           </TabsContent>
         </Tabs>
       </motion.div>

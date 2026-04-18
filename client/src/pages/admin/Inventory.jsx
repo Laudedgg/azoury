@@ -20,38 +20,6 @@ import { toast } from 'sonner';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
-const mockInventory = [
-  { id: 1, product: 'Roma Tomatoes', grade: 'Extra', currentStock: 120, reserved: 50, available: 70, minThreshold: 100, status: 'Low', lastMovement: '2026-04-08 09:30' },
-  { id: 2, product: 'Roma Tomatoes', grade: 'Quality A', currentStock: 250, reserved: 80, available: 170, minThreshold: 100, status: 'OK', lastMovement: '2026-04-08 09:30' },
-  { id: 3, product: 'Cucumbers', grade: 'Extra', currentStock: 350, reserved: 100, available: 250, minThreshold: 150, status: 'OK', lastMovement: '2026-04-08 08:15' },
-  { id: 4, product: 'Bell Peppers', grade: 'Extra', currentStock: 40, reserved: 20, available: 20, minThreshold: 80, status: 'Low', lastMovement: '2026-04-08 07:45' },
-  { id: 5, product: 'Potatoes', grade: 'Cooking', currentStock: 800, reserved: 200, available: 600, minThreshold: 300, status: 'Overstocked', lastMovement: '2026-04-08 08:00' },
-  { id: 6, product: 'Avocados', grade: 'Extra', currentStock: 45, reserved: 30, available: 15, minThreshold: 50, status: 'Low', lastMovement: '2026-04-08 08:20' },
-  { id: 7, product: 'Bananas', grade: 'Quality A', currentStock: 400, reserved: 150, available: 250, minThreshold: 200, status: 'OK', lastMovement: '2026-04-07 16:30' },
-  { id: 8, product: 'Onions', grade: 'Cooking', currentStock: 600, reserved: 100, available: 500, minThreshold: 200, status: 'Overstocked', lastMovement: '2026-04-07 15:00' },
-  { id: 9, product: 'Lemons', grade: 'Quality A', currentStock: 180, reserved: 60, available: 120, minThreshold: 100, status: 'OK', lastMovement: '2026-04-07 14:30' },
-  { id: 10, product: 'Carrots', grade: 'Quality A', currentStock: 300, reserved: 80, available: 220, minThreshold: 150, status: 'OK', lastMovement: '2026-04-07 13:00' },
-  { id: 11, product: 'Iceberg Lettuce', grade: 'Extra', currentStock: 60, reserved: 40, available: 20, minThreshold: 80, status: 'Low', lastMovement: '2026-04-08 07:30' },
-  { id: 12, product: 'Mangoes', grade: 'Extra', currentStock: 90, reserved: 30, available: 60, minThreshold: 50, status: 'OK', lastMovement: '2026-04-06 12:00' },
-];
-
-const mockMovements = [
-  { id: 1, product: 'Roma Tomatoes', grade: 'Extra', type: 'Purchase In', qty: 500, date: '2026-04-08 09:30', notes: 'PO-1204 from Farm Fresh', user: 'Ali M.' },
-  { id: 2, product: 'Cucumbers', grade: 'Quality A', type: 'Sale Out', qty: -80, date: '2026-04-08 09:00', notes: 'Order #1847 Al Mandaloun', user: 'System' },
-  { id: 3, product: 'Bell Peppers', grade: 'Extra', type: 'Purchase In', qty: 200, date: '2026-04-08 07:45', notes: 'PO-1206 from Bekaa Farms', user: 'Hassan K.' },
-  { id: 4, product: 'Bananas', grade: 'Quality A', type: 'Waste', qty: -20, date: '2026-04-07 16:30', notes: 'Aging waste - overripe', user: 'Karim H.' },
-  { id: 5, product: 'Potatoes', grade: 'Cooking', type: 'Sale Out', qty: -150, date: '2026-04-08 08:00', notes: 'Order #1845 Karam Beirut', user: 'System' },
-  { id: 6, product: 'Avocados', grade: 'Extra', type: 'Return', qty: 5, date: '2026-04-08 08:20', notes: 'Returned from Le Petit Chef', user: 'Omar S.' },
-  { id: 7, product: 'Lemons', grade: 'Quality A', type: 'Sale Out', qty: -40, date: '2026-04-07 14:30', notes: 'Order #1842 Green Basket', user: 'System' },
-  { id: 8, product: 'Onions', grade: 'Cooking', type: 'Adjustment', qty: 15, date: '2026-04-07 15:00', notes: 'Inventory count adjustment', user: 'Ali M.' },
-];
-
-const qualityDistribution = [
-  { name: 'Extra', value: 35 },
-  { name: 'Quality A', value: 40 },
-  { name: 'Cooking', value: 25 },
-];
-
 const inventoryColumns = [
   { accessorKey: 'product', header: 'Product' },
   { accessorKey: 'grade', header: 'Grade', cell: ({ row }) => <Badge variant="outline">{row.original.grade}</Badge> },
@@ -107,53 +75,47 @@ function Inventory() {
   const { data: productsData } = useFetch('/products');
 
   const stockItems = stockData || [];
-  const inventory = stockItems.length > 0
-    ? stockItems.flatMap((item) =>
-        (item.grades || []).map((g) => ({
-          id: `${item.product.id}-${g.id}`,
-          productId: item.product.id,
-          qualityGradeId: g.id,
-          product: item.product.name,
-          grade: g.clientFacingGrade || g.grade,
-          currentStock: g.currentStock,
-          reserved: 0,
-          available: g.currentStock,
-          minThreshold: 0,
-          price: g.price,
-          status: g.isLow ? 'Low' : 'OK',
-          lastMovement: '',
-        }))
-      )
-    : mockInventory;
+  const inventory = stockItems.flatMap((item) =>
+    (item.grades || []).map((g) => ({
+      id: `${item.product.id}-${g.id}`,
+      productId: item.product.id,
+      qualityGradeId: g.id,
+      product: item.product.name,
+      grade: g.clientFacingGrade || g.grade,
+      currentStock: g.currentStock,
+      reserved: 0,
+      available: g.currentStock,
+      minThreshold: 0,
+      price: g.price,
+      status: g.isLow ? 'Low' : 'OK',
+      lastMovement: '',
+    }))
+  );
 
-  const movements = movementsData?.data
-    ? movementsData.data.map((m) => ({
-        id: m.id,
-        product: m.product?.name || '',
-        grade: m.qualityGrade?.clientFacingGrade || m.qualityGrade?.grade || '',
-        type: m.type,
-        qty: m.quantity,
-        date: m.createdAt ? formatDate(m.createdAt) : '',
-        notes: m.notes || m.reference || '',
-        user: m.createdBy?.name || '',
-      }))
-    : mockMovements;
+  const movements = (movementsData?.data || []).map((m) => ({
+    id: m.id,
+    product: m.product?.name || '',
+    grade: m.qualityGrade?.clientFacingGrade || m.qualityGrade?.grade || '',
+    type: m.type,
+    qty: m.quantity,
+    date: m.createdAt ? formatDate(m.createdAt) : '',
+    notes: m.notes || m.reference || '',
+    user: m.createdBy?.name || '',
+  }));
 
   const lowStockAlerts = lowStockData || [];
-  const lowStockProducts = lowStockAlerts.length > 0
-    ? lowStockAlerts.map((g) => ({
-        id: g.id,
-        product: g.product?.name || '',
-        grade: g.clientFacingGrade || g.grade,
-        currentStock: g.currentStock,
-        minThreshold: 0,
-      }))
-    : inventory.filter((i) => i.status === 'Low');
+  const lowStockProducts = lowStockAlerts.map((g) => ({
+    id: g.id,
+    product: g.product?.name || '',
+    grade: g.clientFacingGrade || g.grade,
+    currentStock: g.currentStock,
+    minThreshold: 0,
+  }));
 
   const products = productsData?.data || productsData || [];
 
   const totalItems = inventory.reduce((s, i) => s + (i.currentStock || 0), 0);
-  const totalValue = inventory.reduce((s, i) => s + (i.currentStock || 0) * (i.price || 0), 0) || 182400;
+  const totalValue = inventory.reduce((s, i) => s + (i.currentStock || 0) * (i.price || 0), 0);
   const lowStockItems = lowStockAlerts.length || inventory.filter((i) => i.status === 'Low').length;
 
   // Build quality distribution from real data
@@ -161,8 +123,7 @@ function Inventory() {
   inventory.forEach((i) => {
     gradeCountMap[i.grade] = (gradeCountMap[i.grade] || 0) + (i.currentStock || 0);
   });
-  const computedQualityDistribution = Object.entries(gradeCountMap).map(([name, value]) => ({ name, value }));
-  const qualityDist = computedQualityDistribution.length > 0 ? computedQualityDistribution : qualityDistribution;
+  const qualityDist = Object.entries(gradeCountMap).map(([name, value]) => ({ name, value }));
 
   const handleRecordMovement = async () => {
     if (!movementForm.productId || !movementForm.qualityGradeId || !movementForm.type || !movementForm.quantity) {

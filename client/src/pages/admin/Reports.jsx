@@ -22,69 +22,6 @@ import { toast } from 'sonner';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
-const mockRevenueTrend = (() => {
-  const data = [];
-  const now = new Date();
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    data.push({
-      date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      revenue: +(3500 + Math.random() * 3000).toFixed(0),
-      cost: +(2200 + Math.random() * 1800).toFixed(0),
-    });
-  }
-  return data;
-})();
-
-const mockCostBreakdown = [
-  { name: 'Produce Purchase', value: 62000 },
-  { name: 'Logistics', value: 12000 },
-  { name: 'Labor', value: 18000 },
-  { name: 'Waste', value: 4500 },
-  { name: 'Overhead', value: 8500 },
-];
-
-const mockGradeRevenue = [
-  { week: 'W1', extra: 18400, qualityA: 24200, qualityC: 12500 },
-  { week: 'W2', extra: 21100, qualityA: 22800, qualityC: 14200 },
-  { week: 'W3', extra: 19800, qualityA: 26500, qualityC: 11800 },
-  { week: 'W4', extra: 22200, qualityA: 23600, qualityC: 15100 },
-];
-
-const mockTopClients = [
-  { name: 'Al Mandaloun', revenue: 28400 },
-  { name: 'Le Petit Chef', revenue: 25600 },
-  { name: 'Karam Beirut', revenue: 23100 },
-  { name: 'Fresh Market', revenue: 21000 },
-  { name: 'Phoenicia Hotel', revenue: 19500 },
-  { name: 'Souq Express', revenue: 18900 },
-  { name: 'Green Basket', revenue: 17200 },
-  { name: 'Byblos Bay', revenue: 14800 },
-];
-
-const mockTransactions = [
-  { id: 1, date: '2026-04-08', client: 'Al Mandaloun', orderNum: '#1847', amount: 3240, cost: 2180, margin: 32.7 },
-  { id: 2, date: '2026-04-08', client: 'Le Petit Chef', orderNum: '#1846', amount: 2850, cost: 1920, margin: 32.6 },
-  { id: 3, date: '2026-04-08', client: 'Karam Beirut', orderNum: '#1845', amount: 4120, cost: 2780, margin: 32.5 },
-  { id: 4, date: '2026-04-07', client: 'Fresh Market', orderNum: '#1844', amount: 1890, cost: 1340, margin: 29.1 },
-  { id: 5, date: '2026-04-07', client: 'Souq Express', orderNum: '#1843', amount: 2560, cost: 1720, margin: 32.8 },
-  { id: 6, date: '2026-04-07', client: 'Phoenicia Hotel', orderNum: '#1841', amount: 5480, cost: 3650, margin: 33.4 },
-  { id: 7, date: '2026-04-06', client: 'Green Basket', orderNum: '#1840', amount: 1650, cost: 1180, margin: 28.5 },
-  { id: 8, date: '2026-04-06', client: 'Byblos Bay', orderNum: '#1839', amount: 2340, cost: 1580, margin: 32.5 },
-  { id: 9, date: '2026-04-05', client: 'Al Mandaloun', orderNum: '#1838', amount: 2980, cost: 2010, margin: 32.6 },
-  { id: 10, date: '2026-04-05', client: 'Le Petit Chef', orderNum: '#1837', amount: 3150, cost: 2120, margin: 32.7 },
-];
-
-const mockInvoices = [
-  { id: 1, invoiceNum: 'INV-4821', client: 'Al Mandaloun', amount: 12480, date: '2026-04-01', dueDate: '2026-04-15', status: 'Paid' },
-  { id: 2, invoiceNum: 'INV-4822', client: 'Le Petit Chef', amount: 9640, date: '2026-04-01', dueDate: '2026-04-15', status: 'Sent' },
-  { id: 3, invoiceNum: 'INV-4823', client: 'Karam Beirut', amount: 14200, date: '2026-04-01', dueDate: '2026-04-15', status: 'Paid' },
-  { id: 4, invoiceNum: 'INV-4824', client: 'Fresh Market', amount: 7850, date: '2026-04-01', dueDate: '2026-04-15', status: 'Overdue' },
-  { id: 5, invoiceNum: 'INV-4825', client: 'Souq Express', amount: 11200, date: '2026-04-01', dueDate: '2026-04-15', status: 'Draft' },
-  { id: 6, invoiceNum: 'INV-4826', client: 'Phoenicia Hotel', amount: 18400, date: '2026-04-01', dueDate: '2026-04-15', status: 'Sent' },
-];
-
 const transactionColumns = [
   { accessorKey: 'date', header: 'Date' },
   { accessorKey: 'client', header: 'Client' },
@@ -130,40 +67,32 @@ function Reports() {
 
   const dashboard = dashboardData || {};
 
-  const revenueTrend = revenueData
-    ? revenueData.map((r) => ({
-        date: r.period,
-        revenue: r.revenue || 0,
-        cost: 0,
-      }))
-    : mockRevenueTrend;
+  const revenueTrend = (revenueData || []).map((r) => ({
+    date: r.period,
+    revenue: r.revenue || 0,
+    cost: 0,
+  }));
 
-  const gradeRevenue = costVsRevenueData
-    ? costVsRevenueData
-    : mockGradeRevenue;
+  const gradeRevenue = costVsRevenueData || [];
 
-  const topClients = topClientsData
-    ? topClientsData.map((c) => ({
-        name: c.client?.businessName || '',
-        revenue: c.totalRevenue || 0,
-      }))
-    : mockTopClients;
+  const topClients = (topClientsData || []).map((c) => ({
+    name: c.client?.businessName || '',
+    revenue: c.totalRevenue || 0,
+  }));
 
-  const invoices = invoicesData?.data
-    ? invoicesData.data.map((inv) => ({
-        id: inv.id,
-        invoiceNum: inv.invoiceNumber || `INV-${inv.id}`,
-        client: inv.client?.businessName || '',
-        amount: inv.totalAmount || 0,
-        date: inv.issueDate ? inv.issueDate.split('T')[0] : '',
-        dueDate: inv.dueDate ? inv.dueDate.split('T')[0] : '',
-        status: inv.status || 'Draft',
-      }))
-    : mockInvoices;
+  const invoices = (invoicesData?.data || []).map((inv) => ({
+    id: inv.id,
+    invoiceNum: inv.invoiceNumber || `INV-${inv.id}`,
+    client: inv.client?.businessName || '',
+    amount: inv.totalAmount || 0,
+    date: inv.issueDate ? inv.issueDate.split('T')[0] : '',
+    dueDate: inv.dueDate ? inv.dueDate.split('T')[0] : '',
+    status: inv.status || 'Draft',
+  }));
 
-  const totalRevenue = dashboard.totalRevenue ?? mockTransactions.reduce((s, t) => s + t.amount, 0);
-  const totalCost = dashboard.totalCost ?? mockTransactions.reduce((s, t) => s + t.cost, 0);
-  const grossMargin = dashboard.grossMargin ?? ((totalRevenue - totalCost) / totalRevenue * 100).toFixed(1);
+  const totalRevenue = dashboard.totalRevenue ?? 0;
+  const totalCost = dashboard.totalCost ?? 0;
+  const grossMargin = dashboard.grossMargin ?? (totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue * 100).toFixed(1) : '0.0');
   const invoicesOutstanding = dashboard.invoicesOutstanding ?? invoices.filter((i) => i.status !== 'Paid').reduce((s, i) => s + i.amount, 0);
 
   return (
@@ -238,12 +167,9 @@ function Reports() {
         <ChartCard title="Cost Breakdown" subtitle="By category">
           <ResponsiveContainer width="100%" height={280}>
             <PieChart>
-              <Pie data={mockCostBreakdown} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={3} dataKey="value"
+              <Pie data={[]} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={3} dataKey="value"
                 label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
               >
-                {mockCostBreakdown.map((entry, i) => (
-                  <Cell key={entry.name} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                ))}
               </Pie>
               <RechartsTooltip contentStyle={{ backgroundColor: '#143535', border: '1px solid #1A3F3F', borderRadius: '8px', color: '#E8F5F3' }} formatter={(v) => formatCurrency(v)} />
             </PieChart>
@@ -288,8 +214,7 @@ function Reports() {
             <h3 className="text-lg font-semibold text-brand-primary mb-4">Transaction Log</h3>
             <DataTable
               columns={transactionColumns}
-              data={mockTransactions}
-
+              data={[]}
               searchPlaceholder="Search transactions..."
               searchColumn="client"
             />
