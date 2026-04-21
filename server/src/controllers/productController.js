@@ -72,6 +72,16 @@ async function createProduct(req, res, next) {
   try {
     const data = createProductSchema.parse(req.body);
 
+    const gradesToCreate = data.qualityGrades && data.qualityGrades.length > 0
+      ? data.qualityGrades.map((qg) => ({
+          grade: qg.grade,
+          clientFacingGrade: qg.clientFacingGrade,
+          price: qg.price,
+          currentStock: qg.currentStock || 0,
+        }))
+      // Default hidden grade so clients can place orders before pricing is configured
+      : [{ grade: 'A', clientFacingGrade: 'QUALITY_A', price: 0, currentStock: 0 }];
+
     const product = await prisma.product.create({
       data: {
         name: data.name,
@@ -80,16 +90,7 @@ async function createProduct(req, res, next) {
         category: data.category,
         unit: data.unit,
         imageUrl: data.imageUrl,
-        qualityGrades: data.qualityGrades
-          ? {
-              create: data.qualityGrades.map((qg) => ({
-                grade: qg.grade,
-                clientFacingGrade: qg.clientFacingGrade,
-                price: qg.price,
-                currentStock: qg.currentStock || 0,
-              })),
-            }
-          : undefined,
+        qualityGrades: { create: gradesToCreate },
       },
       include: {
         qualityGrades: true,

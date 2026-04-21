@@ -1,20 +1,18 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Plus, ShoppingCart, Minus, Trash2, Calendar, FileText, ChevronDown, Download, Package,
+  Plus, ShoppingCart, Minus, Trash2, Calendar, Package,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { DataTable } from '@/components/tables/DataTable';
-import { OrderForm } from '@/components/forms/OrderForm';
 import { useFetch } from '@/hooks/useFetch';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/services/api';
-import { formatCurrency, formatDate, getStatusColor } from '@/utils/helpers';
+import { formatDate, getStatusColor } from '@/utils/helpers';
 import { toast } from 'sonner';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
@@ -22,7 +20,6 @@ const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }
 const activeOrderColumns = [
   { accessorKey: 'orderRef', header: 'Order #', cell: ({ row }) => `#${row.original.orderNumber || row.original.orderRef || row.original.id}` },
   { accessorKey: 'items', header: 'Items', cell: ({ row }) => `${row.original._count?.items ?? row.original.items ?? 0} items` },
-  { accessorKey: 'total', header: 'Total', cell: ({ row }) => formatCurrency(row.original.total) },
   { accessorKey: 'deliveryDate', header: 'Delivery Date', cell: ({ row }) => formatDate(row.original.deliveryDate) },
   { accessorKey: 'status', header: 'Status', cell: ({ row }) => <Badge variant={getStatusColor(row.original.status)}>{row.original.status}</Badge> },
 ];
@@ -30,19 +27,9 @@ const activeOrderColumns = [
 const historyColumns = [
   { accessorKey: 'orderRef', header: 'Order #', cell: ({ row }) => `#${row.original.orderNumber || row.original.orderRef || row.original.id}` },
   { accessorKey: 'items', header: 'Items', cell: ({ row }) => `${row.original._count?.items ?? row.original.items ?? 0} items` },
-  { accessorKey: 'total', header: 'Total', cell: ({ row }) => formatCurrency(row.original.total) },
   { accessorKey: 'deliveryDate', header: 'Delivered', cell: ({ row }) => formatDate(row.original.deliveryDate) },
   { accessorKey: 'createdAt', header: 'Placed', cell: ({ row }) => formatDate(row.original.createdAt) },
   { accessorKey: 'status', header: 'Status', cell: ({ row }) => <Badge variant="success">{row.original.status}</Badge> },
-  {
-    accessorKey: 'id',
-    header: '',
-    cell: () => (
-      <Button variant="outline" size="sm">
-        <Download className="w-3 h-3 mr-1" /> Invoice
-      </Button>
-    ),
-  },
 ];
 
 function Orders() {
@@ -59,7 +46,8 @@ function Orders() {
 
   const refetch = () => { refetchActive(); refetchHistory(); };
 
-  // Map API products to the shape the UI expects (active only)
+  // Map API products to the shape the UI expects (active only). Pricing is hidden from clients
+  // for now; we just use the first quality grade on each product as the order reference.
   const products = (productsData?.data || []).filter((p) => p.isActive !== false).map((p) => ({
     id: p.id,
     name: p.name,
@@ -67,22 +55,24 @@ function Orders() {
     subDescription: p.subDescription || '',
     category: p.category,
     unit: p.unit,
-    image: p.image || null,
-    tiers: (p.qualityGrades || []).map((qg) => ({
-      grade: qg.clientFacingGrade || qg.grade,
-      price: qg.price,
-      qualityGradeId: qg.id,
-    })),
+    qualityGradeId: (p.qualityGrades || [])[0]?.id || null,
   }));
 
-  const addToCart = (product, tier) => {
-    const key = `${product.id}-${tier.grade}`;
+  const addToCart = (product) => {
+    if (!product.qualityGradeId) return;
     setCart((prev) => {
-      const existing = prev.find((c) => c.key === key);
+      const existing = prev.find((c) => c.productId === product.id);
       if (existing) {
-        return prev.map((c) => c.key === key ? { ...c, qty: c.qty + 1 } : c);
+        return prev.map((c) => c.productId === product.id ? { ...c, qty: c.qty + 1 } : c);
       }
-      return [...prev, { key, productId: product.id, qualityGradeId: tier.qualityGradeId, name: product.name, grade: tier.grade, price: tier.price, qty: 1 }];
+      return [...prev, {
+        key: product.id,
+        productId: product.id,
+        qualityGradeId: product.qualityGradeId,
+        name: product.name,
+        unit: product.unit,
+        qty: 1,
+      }];
     });
   };
 
@@ -98,8 +88,6 @@ function Orders() {
     setCart((prev) => prev.filter((c) => c.key !== key));
   };
 
-  const subtotal = cart.reduce((s, c) => s + c.price * c.qty, 0);
-
   const handleSubmitOrder = async () => {
     if (cart.length === 0) return;
     setSubmitting(true);
@@ -108,7 +96,6 @@ function Orders() {
         productId: c.productId,
         qualityGradeId: c.qualityGradeId,
         quantity: c.qty,
-        unitPrice: c.price,
       }));
       await api.post('/orders', {
         clientId,
@@ -195,28 +182,15 @@ function Orders() {
                           {product.subDescription && (
                             <p className="text-brand-muted text-xs mb-3">{product.subDescription}</p>
                           )}
-                          {product.tiers.length === 0 ? (
-                            <p className="text-brand-muted text-xs italic mt-2">Pricing coming soon</p>
-                          ) : (
-                            <div className="space-y-2 mt-3">
-                              {product.tiers.map((tier) => (
-                                <div key={tier.grade} className="flex items-center justify-between">
-                                  <div>
-                                    <Badge variant="outline" className="text-xs">{tier.grade}</Badge>
-                                    <span className="text-brand-accent font-semibold text-sm ml-2">{formatCurrency(tier.price)}/{product.unit || 'kg'}</span>
-                                  </div>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => addToCart(product, tier)}
-                                    className="h-7 text-xs"
-                                  >
-                                    <Plus className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => addToCart(product)}
+                            disabled={!product.qualityGradeId}
+                            className="w-full mt-3 h-8 text-xs"
+                          >
+                            <Plus className="w-3 h-3 mr-1" /> Add to cart
+                          </Button>
                         </CardContent>
                       </Card>
                     ))}
@@ -243,7 +217,7 @@ function Orders() {
                             <div key={item.key} className="flex items-center justify-between p-2 bg-brand-elevated rounded-lg">
                               <div className="flex-1 min-w-0">
                                 <p className="text-brand-primary text-sm font-medium truncate">{item.name}</p>
-                                <p className="text-brand-muted text-xs">{item.grade} - {formatCurrency(item.price)}/kg</p>
+                                {item.unit && <p className="text-brand-muted text-xs">{item.unit}</p>}
                               </div>
                               <div className="flex items-center gap-2 ml-2">
                                 <button onClick={() => updateQty(item.key, -1)} className="w-6 h-6 rounded bg-brand-base flex items-center justify-center text-brand-secondary hover:text-brand-primary">
@@ -262,11 +236,6 @@ function Orders() {
                         </div>
 
                         <div className="mt-4 pt-4 border-t border-brand-border">
-                          <div className="flex items-center justify-between mb-4">
-                            <span className="text-brand-secondary font-medium">Subtotal</span>
-                            <span className="text-brand-accent font-bold text-lg">{formatCurrency(subtotal)}</span>
-                          </div>
-
                           <div className="space-y-3">
                             <div>
                               <label className="block text-brand-secondary text-xs mb-1">
