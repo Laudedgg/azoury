@@ -25,6 +25,13 @@ const CATEGORIES = [
   { value: 'OTHER', label: 'Other' },
 ];
 
+const UNITS = [
+  { value: 'kg', label: 'Kg' },
+  { value: 'piece', label: 'Piece' },
+  { value: 'bags', label: 'Bags' },
+  { value: 'box', label: 'Box' },
+];
+
 const emptyProductForm = {
   name: '',
   description: '',
@@ -115,7 +122,7 @@ function Products() {
       header: 'Category',
       cell: ({ row }) => <Badge variant="outline">{CATEGORIES.find((c) => c.value === row.original.category)?.label || row.original.category}</Badge>,
     },
-    { accessorKey: 'unit', header: 'Unit' },
+    { accessorKey: 'unit', header: 'Unit', cell: ({ row }) => UNITS.find((u) => u.value === row.original.unit)?.label || row.original.unit },
     {
       accessorKey: 'isActive',
       header: 'Status',
@@ -212,7 +219,14 @@ function Products() {
               </div>
               <div>
                 <label className="block text-brand-secondary text-sm mb-1">Unit *</label>
-                <Input value={form.unit} onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))} placeholder="kg / lb / pcs" />
+                <Select value={form.unit} onValueChange={(v) => setForm((f) => ({ ...f, unit: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                  <SelectContent>
+                    {UNITS.map((u) => (
+                      <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
