@@ -59,8 +59,8 @@ function Orders() {
 
   const refetch = () => { refetchActive(); refetchHistory(); };
 
-  // Map API products to the shape the UI expects
-  const products = (productsData?.data || []).map((p) => ({
+  // Map API products to the shape the UI expects (active only)
+  const products = (productsData?.data || []).filter((p) => p.isActive !== false).map((p) => ({
     id: p.id,
     name: p.name,
     description: p.description || '',

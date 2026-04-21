@@ -11,14 +11,18 @@ const {
   updateQualityGradePrice,
 } = require('../controllers/productController');
 
-router.use(authenticate);
-router.use(requireRole('SUPER_ADMIN', 'PURCHASE_MANAGER', 'OPERATIONS_MANAGER'));
+const adminOnly = requireRole('SUPER_ADMIN', 'PURCHASE_MANAGER', 'OPERATIONS_MANAGER');
 
+router.use(authenticate);
+
+// Catalog reads are available to any authenticated user (including client roles)
 router.get('/', listProducts);
 router.get('/:id', getProduct);
-router.post('/', createProduct);
-router.put('/:id', updateProduct);
-router.delete('/:id', deleteProduct);
-router.patch('/grades/:gradeId', updateQualityGradePrice);
+
+// Writes are restricted to internal admin roles
+router.post('/', adminOnly, createProduct);
+router.put('/:id', adminOnly, updateProduct);
+router.delete('/:id', adminOnly, deleteProduct);
+router.patch('/grades/:gradeId', adminOnly, updateQualityGradePrice);
 
 module.exports = router;
