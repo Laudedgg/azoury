@@ -140,7 +140,7 @@ async function createUser(req, res, next) {
 
 async function updateUser(req, res, next) {
   try {
-    const { email, firstName, lastName, phone, clientId } = req.body;
+    const { email, firstName, lastName, phone, clientId, role } = req.body;
 
     const user = await prisma.user.update({
       where: { id: req.params.id },
@@ -150,6 +150,7 @@ async function updateUser(req, res, next) {
         ...(lastName && { lastName }),
         ...(phone !== undefined && { phone }),
         ...(clientId !== undefined && { clientId }),
+        ...(role && { role }),
       },
       select: {
         id: true,
@@ -161,6 +162,16 @@ async function updateUser(req, res, next) {
         phone: true,
         clientId: true,
         updatedAt: true,
+      },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'UPDATE_USER',
+        entityType: 'User',
+        entityId: user.id,
+        metadata: { email: user.email, role: user.role },
       },
     });
 

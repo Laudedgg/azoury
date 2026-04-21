@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { UserPlus, Shield, Building2, Check, X, ChevronDown, Loader2, Copy, Plus } from 'lucide-react';
+import { UserPlus, Shield, Building2, Check, X, ChevronDown, Loader2, Copy, Plus, Pencil, UserX, UserCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -40,36 +40,7 @@ const emptyClientForm = {
   adminFirstName: '', adminLastName: '', adminEmail: '', adminPhone: '', adminPassword: '',
 };
 const emptyClientStaffForm = { firstName: '', lastName: '', email: '', role: 'CLIENT_STAFF', phone: '', password: '' };
-
-const staffColumns = [
-  {
-    accessorKey: 'name',
-    header: 'User',
-    cell: ({ row }) => (
-      <div className="flex items-center gap-3">
-        <Avatar className="h-8 w-8">
-          <AvatarFallback>{getInitials(row.original.name)}</AvatarFallback>
-        </Avatar>
-        <div>
-          <p className="font-medium text-brand-primary">{row.original.name}</p>
-          <p className="text-xs text-brand-muted">{row.original.email}</p>
-        </div>
-      </div>
-    ),
-  },
-  {
-    accessorKey: 'role',
-    header: 'Role',
-    cell: ({ row }) => <Badge variant="outline">{ROLES[row.original.role]?.label || row.original.role}</Badge>,
-  },
-  {
-    accessorKey: 'status',
-    header: 'Status',
-    cell: ({ row }) => <Badge variant={row.original.status === 'Active' ? 'success' : 'error'}>{row.original.status}</Badge>,
-  },
-  { accessorKey: 'lastLogin', header: 'Last Login' },
-  { accessorKey: 'phone', header: 'Phone' },
-];
+const emptyEditForm = { firstName: '', lastName: '', email: '', role: '', phone: '' };
 
 const clientColumns = [
   { accessorKey: 'businessName', header: 'Business Name' },
@@ -101,6 +72,9 @@ function Users() {
   const [loadingStaff, setLoadingStaff] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [approvingId, setApprovingId] = useState(null);
+  const [togglingId, setTogglingId] = useState(null);
+  const [editDialog, setEditDialog] = useState(null); // { user, parentClientId? }
+  const [editForm, setEditForm] = useState(emptyEditForm);
 
   const [staffForm, setStaffForm] = useState(emptyStaffForm);
   const [clientForm, setClientForm] = useState(emptyClientForm);
@@ -113,9 +87,12 @@ function Users() {
     .filter((u) => INTERNAL_ROLES.includes(u.role) || u.role === 'DRIVER')
     .map((u) => ({
       id: u.id,
+      firstName: u.firstName,
+      lastName: u.lastName,
       name: `${u.firstName} ${u.lastName}`,
       email: u.email,
       role: u.role,
+      isActive: u.isActive,
       status: u.isActive ? 'Active' : 'Inactive',
       lastLogin: u.lastLogin || '-',
       phone: u.phone || '-',
@@ -263,6 +240,63 @@ function Users() {
     }
   };
 
+  const openEditUser = (user, parentClientId) => {
+    setEditDialog({ user, parentClientId });
+    setEditForm({
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      email: user.email || '',
+      role: user.role || '',
+      phone: user.phone || '',
+    });
+  };
+
+  const handleEditUser = async () => {
+    if (!editDialog) return;
+    if (!editForm.firstName || !editForm.email || !editForm.role) {
+      toast.error('First name, email, and role are required');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await api.put(`/users/${editDialog.user.id}`, {
+        firstName: editForm.firstName,
+        lastName: editForm.lastName,
+        email: editForm.email,
+        role: editForm.role,
+        phone: editForm.phone,
+      });
+      toast.success('User updated');
+      setEditDialog(null);
+      if (editDialog.parentClientId) {
+        await refetchClientStaff(editDialog.parentClientId);
+      } else {
+        refetchUsers();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to update user');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleToggleActive = async (userId, parentClientId) => {
+    setTogglingId(userId);
+    try {
+      await api.patch(`/users/${userId}/toggle-active`);
+      toast.success('Status updated');
+      if (parentClientId) {
+        await refetchClientStaff(parentClientId);
+      } else {
+        refetchUsers();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to update status');
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   const handleApproveClient = async (e, clientId) => {
     e.stopPropagation();
     setApprovingId(clientId);
@@ -309,7 +343,69 @@ function Users() {
             <Card>
               <CardContent className="p-6">
                 <DataTable
-                  columns={staffColumns}
+                  columns={[
+                    {
+                      accessorKey: 'name',
+                      header: 'User',
+                      cell: ({ row }) => (
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback>{getInitials(row.original.name)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium text-brand-primary">{row.original.name}</p>
+                            <p className="text-xs text-brand-muted">{row.original.email}</p>
+                          </div>
+                        </div>
+                      ),
+                    },
+                    {
+                      accessorKey: 'role',
+                      header: 'Role',
+                      cell: ({ row }) => <Badge variant="outline">{ROLES[row.original.role]?.label || row.original.role}</Badge>,
+                    },
+                    {
+                      accessorKey: 'status',
+                      header: 'Status',
+                      cell: ({ row }) => <Badge variant={row.original.isActive ? 'success' : 'error'}>{row.original.status}</Badge>,
+                    },
+                    { accessorKey: 'phone', header: 'Phone' },
+                    {
+                      id: 'actions',
+                      header: '',
+                      cell: ({ row }) => (
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2"
+                            onClick={() => openEditUser(row.original)}
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className={`h-7 px-2 ${row.original.isActive ? 'text-brand-error' : 'text-brand-success'}`}
+                            disabled={togglingId === row.original.id}
+                            onClick={() => {
+                              const action = row.original.isActive ? 'Deactivate' : 'Reactivate';
+                              if (!window.confirm(`${action} ${row.original.name}?`)) return;
+                              handleToggleActive(row.original.id);
+                            }}
+                          >
+                            {togglingId === row.original.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : row.original.isActive ? (
+                              <UserX className="w-3 h-3" />
+                            ) : (
+                              <UserCheck className="w-3 h-3" />
+                            )}
+                          </Button>
+                        </div>
+                      ),
+                    },
+                  ]}
                   data={staff}
                   searchPlaceholder="Search staff..."
                   searchColumn="name"
@@ -433,18 +529,52 @@ function Users() {
                             {(clientStaff[client.id] || []).map((s) => {
                               const displayName = s.firstName ? `${s.firstName} ${s.lastName}` : (s.name || 'Unknown');
                               return (
-                                <div key={s.id} className="flex items-center justify-between p-2 bg-brand-elevated rounded-lg">
-                                  <div className="flex items-center gap-2">
-                                    <Avatar className="h-6 w-6">
+                                <div key={s.id} className="flex items-center justify-between gap-2 p-2 bg-brand-elevated rounded-lg">
+                                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                                    <Avatar className="h-6 w-6 shrink-0">
                                       <AvatarFallback className="text-xs">{getInitials(displayName)}</AvatarFallback>
                                     </Avatar>
-                                    <span className="text-brand-primary text-sm">{displayName}</span>
-                                    <Badge variant="outline" className="text-xs">{ROLES[s.role]?.label || s.role}</Badge>
-                                    <span className="text-brand-muted text-xs">{s.email}</span>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-brand-primary text-sm truncate">{displayName}</span>
+                                        <Badge variant="outline" className="text-[10px]">{ROLES[s.role]?.label || s.role}</Badge>
+                                      </div>
+                                      <span className="text-brand-muted text-xs truncate block">{s.email}</span>
+                                    </div>
                                   </div>
-                                  <Badge variant={s.isActive ? 'success' : 'default'} className="text-xs">
-                                    {s.isActive ? 'Active' : 'Inactive'}
-                                  </Badge>
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <Badge variant={s.isActive ? 'success' : 'default'} className="text-[10px]">
+                                      {s.isActive ? 'Active' : 'Inactive'}
+                                    </Badge>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 px-2"
+                                      onClick={(e) => { e.stopPropagation(); openEditUser(s, client.id); }}
+                                    >
+                                      <Pencil className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className={`h-7 px-2 ${s.isActive ? 'text-brand-error' : 'text-brand-success'}`}
+                                      disabled={togglingId === s.id}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const action = s.isActive ? 'Deactivate' : 'Reactivate';
+                                        if (!window.confirm(`${action} ${displayName}?`)) return;
+                                        handleToggleActive(s.id, client.id);
+                                      }}
+                                    >
+                                      {togglingId === s.id ? (
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                      ) : s.isActive ? (
+                                        <UserX className="w-3 h-3" />
+                                      ) : (
+                                        <UserCheck className="w-3 h-3" />
+                                      )}
+                                    </Button>
+                                  </div>
                                 </div>
                               );
                             })}
@@ -662,6 +792,61 @@ function Users() {
               {submitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Adding...</> : 'Add User'}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Dialog */}
+      <Dialog open={!!editDialog} onOpenChange={(open) => { if (!open) setEditDialog(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+          </DialogHeader>
+          {editDialog && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-brand-secondary text-sm mb-1">First Name *</label>
+                  <Input value={editForm.firstName} onChange={(e) => setEditForm((f) => ({ ...f, firstName: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="block text-brand-secondary text-sm mb-1">Last Name</label>
+                  <Input value={editForm.lastName} onChange={(e) => setEditForm((f) => ({ ...f, lastName: e.target.value }))} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-brand-secondary text-sm mb-1">Email *</label>
+                <Input type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-brand-secondary text-sm mb-1">Role *</label>
+                <Select value={editForm.role} onValueChange={(val) => setEditForm((f) => ({ ...f, role: val }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {editDialog.parentClientId ? (
+                      <>
+                        <SelectItem value="CLIENT_ADMIN">Client Admin</SelectItem>
+                        <SelectItem value="CLIENT_STAFF">Client Staff</SelectItem>
+                      </>
+                    ) : (
+                      <>
+                        {INTERNAL_ROLES.map((r) => (
+                          <SelectItem key={r} value={r}>{ROLES[r]?.label || r}</SelectItem>
+                        ))}
+                        <SelectItem value="DRIVER">Driver</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="block text-brand-secondary text-sm mb-1">Phone</label>
+                <Input value={editForm.phone} onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))} />
+              </div>
+              <Button className="w-full" onClick={handleEditUser} disabled={submitting}>
+                {submitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : 'Save Changes'}
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </motion.div>
