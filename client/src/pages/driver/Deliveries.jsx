@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   MapPin, Clock, CheckCircle, Phone, Navigation, Package, Camera,
-  AlertTriangle, ChevronDown, ChevronUp, Truck, FileText, PenLine,
+  AlertTriangle, ChevronDown, ChevronUp, Truck, FileText, PenLine, Gauge,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -30,6 +30,8 @@ function Deliveries() {
   const [issueType, setIssueType] = useState('');
   const [issueNotes, setIssueNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [kmDialog, setKmDialog] = useState(null); // { deliveryId, action: 'start' | 'end' }
+  const [kmValue, setKmValue] = useState('');
   const canvasRef = useRef(null);
 
   const { data: apiData, refetch } = useFetch('/dispatches?page=1&limit=20');
@@ -38,6 +40,10 @@ function Deliveries() {
   const rawDispatches = apiData?.data || [];
   const deliveries = rawDispatches.map((d) => ({
     id: d.id,
+    rawStatus: d.status,
+    startKm: d.startKm ?? null,
+    endKm: d.endKm ?? null,
+    truckPlate: d.truck?.plateNumber || '',
     client: d.items?.[0]?.clientOrder?.client?.businessName || 'Client',
     address: d.items?.[0]?.clientOrder?.client?.address || '',
     orderRef: `#${d.id}`,
@@ -77,6 +83,34 @@ function Deliveries() {
       refetch();
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to confirm delivery');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openKmDialog = (deliveryId, action) => {
+    setKmDialog({ deliveryId, action });
+    setKmValue('');
+  };
+
+  const handleKmSubmit = async () => {
+    if (!kmDialog) return;
+    const km = Number(kmValue);
+    if (!kmValue || Number.isNaN(km) || km < 0) {
+      toast.error('Enter a valid odometer reading');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const status = kmDialog.action === 'start' ? 'IN_TRANSIT' : 'COMPLETED';
+      await api.patch(`/dispatches/${kmDialog.deliveryId}/status`, { status, km });
+      toast.success(kmDialog.action === 'start' ? 'Trip started' : 'Trip ended');
+      setKmDialog(null);
+      setKmValue('');
+      refetch();
+    } catch (err) {
+      const resp = err?.response?.data;
+      toast.error(resp?.error || resp?.message || 'Failed to update trip');
     } finally {
       setSubmitting(false);
     }
@@ -187,6 +221,36 @@ function Deliveries() {
                     </div>
                   </div>
                   <Badge variant={getStatusColor(delivery.status)}>{delivery.status}</Badge>
+                </div>
+
+                {/* Trip odometer controls */}
+                <div className="ml-11 mb-3 p-2 bg-brand-elevated/50 rounded-lg border border-brand-border">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Gauge className="w-3.5 h-3.5 text-brand-accent" />
+                    <span className="text-brand-secondary text-xs font-medium">Trip Odometer</span>
+                    {delivery.truckPlate && <span className="text-brand-muted text-[10px] ml-auto">{delivery.truckPlate}</span>}
+                  </div>
+                  {delivery.startKm != null && (
+                    <p className="text-brand-muted text-[11px]">Start: <span className="text-brand-primary font-medium">{delivery.startKm} km</span></p>
+                  )}
+                  {delivery.endKm != null && (
+                    <p className="text-brand-muted text-[11px]">End: <span className="text-brand-primary font-medium">{delivery.endKm} km</span>
+                      {delivery.startKm != null && (
+                        <span className="ml-2 text-brand-accent">Δ {(delivery.endKm - delivery.startKm).toFixed(1)} km</span>
+                      )}
+                    </p>
+                  )}
+                  {delivery.rawStatus !== 'COMPLETED' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full mt-2 h-7 text-xs"
+                      onClick={() => openKmDialog(delivery.id, delivery.startKm == null ? 'start' : 'end')}
+                    >
+                      <Gauge className="w-3 h-3 mr-1" />
+                      {delivery.startKm == null ? 'Start Trip (log km)' : 'End Trip (log km)'}
+                    </Button>
+                  )}
                 </div>
 
                 <div className="space-y-2 text-sm ml-11">
@@ -389,6 +453,42 @@ function Deliveries() {
               </div>
               <Button variant="destructive" className="w-full" onClick={handleReportIssue} disabled={submitting}>
                 <AlertTriangle className="w-4 h-4 mr-2" /> {submitting ? 'Submitting...' : 'Submit Issue Report'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Km Odometer Dialog */}
+      {kmDialog && (
+        <Dialog open onOpenChange={() => { setKmDialog(null); setKmValue(''); }}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>
+                {kmDialog.action === 'start' ? 'Start Trip' : 'End Trip'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-brand-secondary text-sm">
+                {kmDialog.action === 'start'
+                  ? 'Enter the truck odometer reading before leaving.'
+                  : 'Enter the truck odometer reading on return.'}
+              </p>
+              <div>
+                <label className="block text-brand-secondary text-sm mb-1">Odometer (km)</label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.1"
+                  min="0"
+                  autoFocus
+                  placeholder="e.g. 12345"
+                  value={kmValue}
+                  onChange={(e) => setKmValue(e.target.value)}
+                />
+              </div>
+              <Button className="w-full" onClick={handleKmSubmit} disabled={submitting}>
+                <Gauge className="w-4 h-4 mr-2" /> {submitting ? 'Saving...' : (kmDialog.action === 'start' ? 'Start Trip' : 'End Trip')}
               </Button>
             </div>
           </DialogContent>

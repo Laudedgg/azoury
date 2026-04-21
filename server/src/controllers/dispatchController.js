@@ -86,14 +86,20 @@ async function assignOrders(req, res, next) {
 
 async function updateStatus(req, res, next) {
   try {
-    const { status } = req.body;
+    const { status, km } = req.body;
 
     const updateData = { status };
+    const kmNumber = km !== undefined && km !== null && km !== '' ? Number(km) : null;
+    if (kmNumber !== null && (Number.isNaN(kmNumber) || kmNumber < 0)) {
+      return res.status(400).json({ error: 'km must be a non-negative number' });
+    }
 
     if (status === 'IN_TRANSIT') {
       updateData.departedAt = new Date();
+      if (kmNumber !== null) updateData.startKm = kmNumber;
     } else if (status === 'COMPLETED') {
       updateData.completedAt = new Date();
+      if (kmNumber !== null) updateData.endKm = kmNumber;
     }
 
     const dispatch = await prisma.dispatch.update({
@@ -104,6 +110,16 @@ async function updateStatus(req, res, next) {
         truck: { select: { id: true, plateNumber: true } },
       },
     });
+
+    // Propagate latest odometer reading to the fleet vehicle for consumption tracking
+    if (status === 'COMPLETED' && kmNumber !== null) {
+      try {
+        await prisma.fleetVehicle.update({
+          where: { id: dispatch.truckId },
+          data: { mileage: kmNumber },
+        });
+      } catch (_) { /* ignore if truck missing */ }
+    }
 
     // If loading, update all dispatch items to LOADED
     if (status === 'LOADING') {
