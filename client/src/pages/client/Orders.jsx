@@ -90,6 +90,10 @@ function Orders() {
 
   const handleSubmitOrder = async () => {
     if (cart.length === 0) return;
+    if (!deliveryDate) {
+      toast.error('Please pick a delivery date');
+      return;
+    }
     setSubmitting(true);
     try {
       const items = cart.map((c) => ({
@@ -109,7 +113,8 @@ function Orders() {
       setInstructions('');
       refetch();
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to place order');
+      const resp = err?.response?.data;
+      toast.error(resp?.error || resp?.details?.[0]?.message || resp?.message || 'Failed to place order');
     } finally {
       setSubmitting(false);
     }
@@ -121,7 +126,8 @@ function Orders() {
       toast.success('Order cancelled successfully');
       refetch();
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to cancel order');
+      const resp = err?.response?.data;
+      toast.error(resp?.error || resp?.message || 'Failed to cancel order');
     }
   };
 
@@ -239,9 +245,15 @@ function Orders() {
                           <div className="space-y-3">
                             <div>
                               <label className="block text-brand-secondary text-xs mb-1">
-                                <Calendar className="w-3 h-3 inline mr-1" /> Delivery Date
+                                <Calendar className="w-3 h-3 inline mr-1" /> Delivery Date *
                               </label>
-                              <Input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} />
+                              <Input
+                                type="date"
+                                value={deliveryDate}
+                                onChange={(e) => setDeliveryDate(e.target.value)}
+                                min={new Date().toISOString().split('T')[0]}
+                                required
+                              />
                             </div>
                             <div>
                               <label className="block text-brand-secondary text-xs mb-1">Special Instructions</label>
@@ -257,7 +269,7 @@ function Orders() {
 
                           <Button
                             className="w-full mt-4"
-                            disabled={submitting || cart.length === 0}
+                            disabled={submitting || cart.length === 0 || !deliveryDate}
                             onClick={handleSubmitOrder}
                           >
                             {submitting ? 'Submitting...' : 'Submit Order'}
