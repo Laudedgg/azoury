@@ -76,6 +76,7 @@ async function createProduct(req, res, next) {
       data: {
         name: data.name,
         description: data.description,
+        subDescription: data.subDescription,
         category: data.category,
         unit: data.unit,
         imageUrl: data.imageUrl,
@@ -113,13 +114,14 @@ async function createProduct(req, res, next) {
 
 async function updateProduct(req, res, next) {
   try {
-    const { name, description, category, unit, imageUrl, isActive } = req.body;
+    const { name, description, subDescription, category, unit, imageUrl, isActive } = req.body;
 
     const product = await prisma.product.update({
       where: { id: req.params.id },
       data: {
         ...(name && { name }),
         ...(description !== undefined && { description }),
+        ...(subDescription !== undefined && { subDescription }),
         ...(category && { category }),
         ...(unit && { unit }),
         ...(imageUrl !== undefined && { imageUrl }),

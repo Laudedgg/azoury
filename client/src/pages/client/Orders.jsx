@@ -63,6 +63,10 @@ function Orders() {
   const products = (productsData?.data || []).map((p) => ({
     id: p.id,
     name: p.name,
+    description: p.description || '',
+    subDescription: p.subDescription || '',
+    category: p.category,
+    unit: p.unit,
     image: p.image || null,
     tiers: (p.qualityGrades || []).map((qg) => ({
       grade: qg.clientFacingGrade || qg.grade,
@@ -165,36 +169,59 @@ function Orders() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Product Catalog */}
               <div className="lg:col-span-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {products.map((product) => (
-                    <Card key={product.id}>
-                      <CardContent className="p-4">
-                        <div className="w-full h-24 bg-brand-elevated rounded-lg flex items-center justify-center mb-3">
-                          <Package className="w-8 h-8 text-brand-muted" />
-                        </div>
-                        <p className="text-brand-primary font-semibold text-sm mb-3">{product.name}</p>
-                        <div className="space-y-2">
-                          {product.tiers.map((tier) => (
-                            <div key={tier.grade} className="flex items-center justify-between">
-                              <div>
-                                <Badge variant="outline" className="text-xs">{tier.grade}</Badge>
-                                <span className="text-brand-accent font-semibold text-sm ml-2">{formatCurrency(tier.price)}/kg</span>
-                              </div>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => addToCart(product, tier)}
-                                className="h-7 text-xs"
-                              >
-                                <Plus className="w-3 h-3" />
-                              </Button>
+                {products.length === 0 ? (
+                  <Card className="border-dashed">
+                    <CardContent className="p-6 text-center">
+                      <Package className="w-10 h-10 mx-auto text-brand-muted mb-3" />
+                      <p className="text-brand-primary font-medium">No products available yet</p>
+                      <p className="text-brand-muted text-sm mt-1">The catalog will appear here once products are added.</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {products.map((product) => (
+                      <Card key={product.id}>
+                        <CardContent className="p-4">
+                          <div className="w-full h-24 bg-brand-elevated rounded-lg flex items-center justify-center mb-3">
+                            <Package className="w-8 h-8 text-brand-muted" />
+                          </div>
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <p className="text-brand-primary font-semibold text-sm">{product.name}</p>
+                            {product.unit && <Badge variant="outline" className="text-[10px] shrink-0">{product.unit}</Badge>}
+                          </div>
+                          {product.description && (
+                            <p className="text-brand-secondary text-xs mb-0.5">{product.description}</p>
+                          )}
+                          {product.subDescription && (
+                            <p className="text-brand-muted text-xs mb-3">{product.subDescription}</p>
+                          )}
+                          {product.tiers.length === 0 ? (
+                            <p className="text-brand-muted text-xs italic mt-2">Pricing coming soon</p>
+                          ) : (
+                            <div className="space-y-2 mt-3">
+                              {product.tiers.map((tier) => (
+                                <div key={tier.grade} className="flex items-center justify-between">
+                                  <div>
+                                    <Badge variant="outline" className="text-xs">{tier.grade}</Badge>
+                                    <span className="text-brand-accent font-semibold text-sm ml-2">{formatCurrency(tier.price)}/{product.unit || 'kg'}</span>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => addToCart(product, tier)}
+                                    className="h-7 text-xs"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Shopping Cart Sidebar */}

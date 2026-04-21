@@ -178,14 +178,15 @@ model Client {
 }
 
 model Product {
-  id          String          @id @default(uuid())
-  name        String
-  description String?
-  category    ProductCategory
-  unit        String
-  imageUrl    String?
-  isActive    Boolean         @default(true)
-  createdAt   DateTime        @default(now())
+  id             String          @id @default(uuid())
+  name           String
+  description    String?
+  subDescription String?
+  category       ProductCategory
+  unit           String
+  imageUrl       String?
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
 
   qualityGrades      QualityGrade[]
   purchaseItems      PurchaseItem[]

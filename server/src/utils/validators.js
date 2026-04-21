@@ -39,6 +39,7 @@ const createOrderSchema = z.object({
 const createProductSchema = z.object({
   name: z.string().min(1, 'Product name is required'),
   description: z.string().optional(),
+  subDescription: z.string().optional(),
   category: z.enum([
     'FRUITS',
     'VEGETABLES',
