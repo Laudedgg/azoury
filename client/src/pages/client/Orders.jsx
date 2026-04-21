@@ -37,7 +37,6 @@ function Orders() {
   const clientId = user?.clientId;
   const [cart, setCart] = useState([]);
   const [deliveryDate, setDeliveryDate] = useState('');
-  const [instructions, setInstructions] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const { data: productsData } = useFetch('/products?page=1&limit=100');
@@ -72,6 +71,7 @@ function Orders() {
         name: product.name,
         unit: product.unit,
         qty: 1,
+        note: '',
       }];
     });
   };
@@ -88,6 +88,10 @@ function Orders() {
     setCart((prev) => prev.filter((c) => c.key !== key));
   };
 
+  const updateNote = (key, note) => {
+    setCart((prev) => prev.map((c) => c.key === key ? { ...c, note } : c));
+  };
+
   const handleSubmitOrder = async () => {
     if (cart.length === 0) return;
     if (!deliveryDate) {
@@ -100,17 +104,16 @@ function Orders() {
         productId: c.productId,
         qualityGradeId: c.qualityGradeId,
         quantity: c.qty,
+        specialInstructions: c.note?.trim() || undefined,
       }));
       await api.post('/orders', {
         clientId,
         deliveryDate,
-        specialInstructions: instructions,
         items,
       });
       toast.success('Order placed successfully!');
       setCart([]);
       setDeliveryDate('');
-      setInstructions('');
       refetch();
     } catch (err) {
       const resp = err?.response?.data;
@@ -218,25 +221,33 @@ function Orders() {
                       <p className="text-brand-muted text-sm text-center py-8">Cart is empty. Add products to get started.</p>
                     ) : (
                       <>
-                        <div className="space-y-3 max-h-80 overflow-y-auto">
+                        <div className="space-y-3 max-h-96 overflow-y-auto">
                           {cart.map((item) => (
-                            <div key={item.key} className="flex items-center justify-between p-2 bg-brand-elevated rounded-lg">
-                              <div className="flex-1 min-w-0">
-                                <p className="text-brand-primary text-sm font-medium truncate">{item.name}</p>
-                                {item.unit && <p className="text-brand-muted text-xs">{item.unit}</p>}
+                            <div key={item.key} className="p-2 bg-brand-elevated rounded-lg space-y-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-brand-primary text-sm font-medium truncate">{item.name}</p>
+                                  {item.unit && <p className="text-brand-muted text-xs">{item.unit}</p>}
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <button onClick={() => updateQty(item.key, -1)} className="w-6 h-6 rounded bg-brand-base flex items-center justify-center text-brand-secondary hover:text-brand-primary">
+                                    <Minus className="w-3 h-3" />
+                                  </button>
+                                  <span className="text-brand-primary text-sm font-medium w-6 text-center">{item.qty}</span>
+                                  <button onClick={() => updateQty(item.key, 1)} className="w-6 h-6 rounded bg-brand-base flex items-center justify-center text-brand-secondary hover:text-brand-primary">
+                                    <Plus className="w-3 h-3" />
+                                  </button>
+                                  <button onClick={() => removeFromCart(item.key)} className="w-6 h-6 rounded flex items-center justify-center text-brand-error hover:bg-brand-error/10">
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-2 ml-2">
-                                <button onClick={() => updateQty(item.key, -1)} className="w-6 h-6 rounded bg-brand-base flex items-center justify-center text-brand-secondary hover:text-brand-primary">
-                                  <Minus className="w-3 h-3" />
-                                </button>
-                                <span className="text-brand-primary text-sm font-medium w-6 text-center">{item.qty}</span>
-                                <button onClick={() => updateQty(item.key, 1)} className="w-6 h-6 rounded bg-brand-base flex items-center justify-center text-brand-secondary hover:text-brand-primary">
-                                  <Plus className="w-3 h-3" />
-                                </button>
-                                <button onClick={() => removeFromCart(item.key)} className="w-6 h-6 rounded flex items-center justify-center text-brand-error hover:bg-brand-error/10">
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </div>
+                              <Input
+                                placeholder="Note for this item (optional)"
+                                value={item.note || ''}
+                                onChange={(e) => updateNote(item.key, e.target.value)}
+                                className="h-8 text-xs"
+                              />
                             </div>
                           ))}
                         </div>
@@ -253,16 +264,6 @@ function Orders() {
                                 onChange={(e) => setDeliveryDate(e.target.value)}
                                 min={new Date().toISOString().split('T')[0]}
                                 required
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-brand-secondary text-xs mb-1">Special Instructions</label>
-                              <textarea
-                                className="w-full bg-brand-elevated border border-brand-border rounded-lg p-2 text-brand-primary text-sm focus:outline-none focus:ring-1 focus:ring-brand-accent resize-none"
-                                rows={2}
-                                placeholder="Any special requests..."
-                                value={instructions}
-                                onChange={(e) => setInstructions(e.target.value)}
                               />
                             </div>
                           </div>

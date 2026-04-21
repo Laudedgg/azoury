@@ -324,14 +324,15 @@ model ClientOrder {
 }
 
 model OrderItem {
-  id              String   @id @default(uuid())
-  clientOrderId   String
-  productId       String
-  qualityGradeId  String
-  quantity        Float
-  unitPrice       Float
-  fulfilledQuantity Float  @default(0)
-  createdAt       DateTime @default(now())
+  id                  String   @id @default(uuid())
+  clientOrderId       String
+  productId           String
+  qualityGradeId      String
+  quantity            Float
+  unitPrice           Float
+  fulfilledQuantity   Float    @default(0)
+  specialInstructions String?
+  createdAt           DateTime @default(now())
 
   clientOrder  ClientOrder  @relation(fields: [clientOrderId], references: [id], onDelete: Cascade)
   product      Product      @relation(fields: [productId], references: [id])

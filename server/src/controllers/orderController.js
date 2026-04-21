@@ -34,6 +34,7 @@ async function createOrder(req, res, next) {
         qualityGradeId: item.qualityGradeId,
         quantity: item.quantity,
         unitPrice: grade.price,
+        specialInstructions: item.specialInstructions || null,
       };
     });
 

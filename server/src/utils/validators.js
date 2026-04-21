@@ -31,6 +31,7 @@ const createOrderSchema = z.object({
         productId: z.string().uuid('Invalid product ID'),
         qualityGradeId: z.string().uuid('Invalid quality grade ID'),
         quantity: z.number().positive('Quantity must be positive'),
+        specialInstructions: z.string().optional(),
       })
     )
     .min(1, 'At least one item is required'),
