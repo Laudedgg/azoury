@@ -78,12 +78,13 @@ async function getClient(req, res, next) {
 
 async function createClient(req, res, next) {
   try {
-    const { businessName, businessType, contactPerson, email, phone, address } = req.body;
+    const { businessName, businessType, businessTypeOther, contactPerson, email, phone, address } = req.body;
 
     const client = await prisma.client.create({
       data: {
         businessName,
         businessType,
+        businessTypeOther: businessType === 'OTHER' ? (businessTypeOther || null) : null,
         contactPerson,
         email,
         phone,
@@ -110,13 +111,14 @@ async function createClient(req, res, next) {
 
 async function updateClient(req, res, next) {
   try {
-    const { businessName, businessType, contactPerson, email, phone, address } = req.body;
+    const { businessName, businessType, businessTypeOther, contactPerson, email, phone, address } = req.body;
 
     const client = await prisma.client.update({
       where: { id: req.params.id },
       data: {
         ...(businessName && { businessName }),
         ...(businessType && { businessType }),
+        ...(businessTypeOther !== undefined && { businessTypeOther }),
         ...(contactPerson && { contactPerson }),
         ...(email && { email }),
         ...(phone && { phone }),

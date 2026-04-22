@@ -24,6 +24,9 @@ enum BusinessType {
   RESTAURANT
   SUPERMARKET
   GROCERY
+  HOSPITAL
+  UNIVERSITY
+  SCHOOL
   OTHER
 }
 
@@ -157,14 +160,15 @@ model User {
 }
 
 model Client {
-  id            String       @id @default(uuid())
-  businessName  String
-  businessType  BusinessType
-  contactPerson String
-  email         String       @unique
-  phone         String
-  address       String
-  isApproved    Boolean      @default(false)
+  id                String       @id @default(uuid())
+  businessName      String
+  businessType      BusinessType
+  businessTypeOther String?
+  contactPerson     String
+  email             String       @unique
+  phone             String
+  address           String
+  isApproved        Boolean      @default(false)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 

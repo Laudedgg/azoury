@@ -22,6 +22,9 @@ const BUSINESS_TYPES = [
   { value: 'RESTAURANT', label: 'Restaurant' },
   { value: 'SUPERMARKET', label: 'Supermarket' },
   { value: 'GROCERY', label: 'Grocery' },
+  { value: 'HOSPITAL', label: 'Hospital' },
+  { value: 'UNIVERSITY', label: 'University' },
+  { value: 'SCHOOL', label: 'School' },
   { value: 'OTHER', label: 'Other' },
 ];
 
@@ -36,7 +39,7 @@ function generatePassword(len = 12) {
 
 const emptyStaffForm = { firstName: '', lastName: '', email: '', role: '', phone: '', password: '' };
 const emptyClientForm = {
-  businessName: '', businessType: '', contactPerson: '', email: '', phone: '', address: '',
+  businessName: '', businessType: '', businessTypeOther: '', contactPerson: '', email: '', phone: '', address: '',
   adminFirstName: '', adminLastName: '', adminEmail: '', adminPhone: '', adminPassword: '',
 };
 const emptyClientStaffForm = { firstName: '', lastName: '', email: '', role: 'CLIENT_STAFF', phone: '', password: '' };
@@ -98,10 +101,14 @@ function Users() {
       phone: u.phone || '-',
     }));
 
+  const typeLabelFor = (c) => {
+    if (c.businessType === 'OTHER' && c.businessTypeOther) return c.businessTypeOther;
+    return BUSINESS_TYPES.find((t) => t.value === c.businessType)?.label || c.businessType || 'Other';
+  };
   const clients = (clientsData?.data || []).map((c) => ({
     id: c.id,
     businessName: c.businessName,
-    type: c.businessType || 'OTHER',
+    type: typeLabelFor(c),
     contact: c.contactPerson || '-',
     email: c.email || '-',
     phone: c.phone || '-',
@@ -177,11 +184,16 @@ function Users() {
       toast.error('Admin password must be at least 6 characters');
       return;
     }
+    if (clientForm.businessType === 'OTHER' && !clientForm.businessTypeOther.trim()) {
+      toast.error('Please describe the business type');
+      return;
+    }
     setSubmitting(true);
     try {
       const clientRes = await api.post('/clients', {
         businessName: clientForm.businessName,
         businessType: clientForm.businessType,
+        businessTypeOther: clientForm.businessType === 'OTHER' ? clientForm.businessTypeOther.trim() : undefined,
         contactPerson: clientForm.contactPerson,
         email: clientForm.email,
         phone: clientForm.phone,
@@ -674,6 +686,16 @@ function Users() {
                     </SelectContent>
                   </Select>
                 </div>
+                {clientForm.businessType === 'OTHER' && (
+                  <div className="col-span-2">
+                    <label className="block text-brand-secondary text-sm mb-1">Describe business type *</label>
+                    <Input
+                      value={clientForm.businessTypeOther}
+                      onChange={(e) => setClientForm((f) => ({ ...f, businessTypeOther: e.target.value }))}
+                      placeholder="e.g. Catering service, Hotel, Event hall"
+                    />
+                  </div>
+                )}
                 <div>
                   <label className="block text-brand-secondary text-sm mb-1">Contact Person *</label>
                   <Input value={clientForm.contactPerson} onChange={(e) => setClientForm((f) => ({ ...f, contactPerson: e.target.value }))} />

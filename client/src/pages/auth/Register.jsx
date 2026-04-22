@@ -14,12 +14,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 const step1Schema = z.object({
   businessName: z.string().min(2, 'Business name is required'),
-  businessType: z.enum(['RESTAURANT', 'SUPERMARKET', 'GROCERY', 'OTHER'], {
+  businessType: z.enum(['RESTAURANT', 'SUPERMARKET', 'GROCERY', 'HOSPITAL', 'UNIVERSITY', 'SCHOOL', 'OTHER'], {
     errorMap: () => ({ message: 'Select a business type' }),
   }),
+  businessTypeOther: z.string().optional(),
   address: z.string().min(4, 'Address is required'),
   email: z.string().email('Invalid email address'),
   phone: z.string().min(8, 'Valid phone number required'),
+}).refine((data) => data.businessType !== 'OTHER' || (data.businessTypeOther && data.businessTypeOther.trim().length > 0), {
+  message: 'Tell us about your business type',
+  path: ['businessTypeOther'],
 });
 
 const step2Schema = z.object({
@@ -36,6 +40,9 @@ const businessTypes = [
   { value: 'RESTAURANT', label: 'Restaurant' },
   { value: 'SUPERMARKET', label: 'Supermarket' },
   { value: 'GROCERY', label: 'Grocery Store' },
+  { value: 'HOSPITAL', label: 'Hospital' },
+  { value: 'UNIVERSITY', label: 'University' },
+  { value: 'SCHOOL', label: 'School' },
   { value: 'OTHER', label: 'Other' },
 ];
 
@@ -101,7 +108,7 @@ function Register() {
 
   const step1Form = useForm({
     resolver: zodResolver(step1Schema),
-    defaultValues: { businessName: '', businessType: '', address: '', email: '', phone: '' },
+    defaultValues: { businessName: '', businessType: '', businessTypeOther: '', address: '', email: '', phone: '' },
   });
 
   const step2Form = useForm({
@@ -125,6 +132,7 @@ function Register() {
         phone: formData.phone,
         businessName: formData.businessName,
         businessType: formData.businessType,
+        businessTypeOther: formData.businessType === 'OTHER' ? (formData.businessTypeOther || '').trim() : undefined,
         contactPerson: `${data.firstName} ${data.lastName}`.trim(),
         businessEmail: formData.email,
         businessPhone: formData.phone,
@@ -251,6 +259,14 @@ function Register() {
                       </Select>
                       {step1Form.formState.errors.businessType && <p className="text-brand-error text-xs mt-1">{step1Form.formState.errors.businessType.message}</p>}
                     </div>
+
+                    {step1Form.watch('businessType') === 'OTHER' && (
+                      <div>
+                        <Label className="block mb-1.5 text-sm">Describe your business</Label>
+                        <Input {...step1Form.register('businessTypeOther')} placeholder="e.g. Catering service, Hotel, Event hall" className="h-11" />
+                        {step1Form.formState.errors.businessTypeOther && <p className="text-brand-error text-xs mt-1">{step1Form.formState.errors.businessTypeOther.message}</p>}
+                      </div>
+                    )}
 
                     <div>
                       <Label className="block mb-1.5 text-sm">Business Address</Label>

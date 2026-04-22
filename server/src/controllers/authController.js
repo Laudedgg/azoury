@@ -75,6 +75,7 @@ async function register(req, res, next) {
         data: {
           businessName: data.businessName,
           businessType: data.businessType,
+          businessTypeOther: data.businessType === 'OTHER' ? (data.businessTypeOther || null) : null,
           contactPerson: data.contactPerson,
           email: data.businessEmail,
           phone: data.businessPhone,
