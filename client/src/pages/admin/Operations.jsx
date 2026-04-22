@@ -2,13 +2,13 @@ import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Truck, MapPin, DollarSign, RotateCcw, AlertTriangle, Package, Check, X,
+  ClipboardList, Loader2, ChevronDown,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { DataTable } from '@/components/tables/DataTable';
 import { useFetch } from '@/hooks/useFetch';
@@ -18,26 +18,11 @@ import { formatCurrency } from '@/utils/helpers';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
-const statusVariant = (s) => ({ Pending: 'warning', Preparing: 'accent', Ready: 'success', Dispatched: 'accent', 'In Transit': 'accent', Planned: 'default', 'Under Review': 'warning', Approved: 'success', Rejected: 'error' }[s] || 'default');
+const statusVariant = (s) => ({ Pending: 'warning', Confirmed: 'accent', Preparing: 'accent', Ready: 'success', Dispatched: 'accent', 'In Transit': 'accent', Delivered: 'success', Planned: 'default', 'Under Review': 'warning', Approved: 'success', Rejected: 'error' }[s] || 'default');
 
-const makeOrderColumns = (onStatusUpdate) => [
-  { accessorKey: 'client', header: 'Client' },
-  { accessorKey: 'orderNum', header: 'Order #' },
-  { accessorKey: 'items', header: 'Items' },
-  { accessorKey: 'status', header: 'Status', cell: ({ row }) => <Badge variant={statusVariant(row.original.status)}>{row.original.status}</Badge> },
-  { accessorKey: 'priority', header: 'Priority', cell: ({ row }) => <Badge variant={row.original.priority === 'High' ? 'error' : row.original.priority === 'Medium' ? 'warning' : 'default'}>{row.original.priority}</Badge> },
-  {
-    id: 'action',
-    header: 'Action',
-    cell: ({ row }) => {
-      const s = row.original.status;
-      if (s === 'Pending') return <Button size="sm" onClick={() => onStatusUpdate(row.original.id, 'CONFIRMED')}>Confirm</Button>;
-      if (s === 'Confirmed') return <Button size="sm" onClick={() => onStatusUpdate(row.original.id, 'PREPARING')}>Prepare</Button>;
-      if (s === 'Preparing') return <Button size="sm" onClick={() => onStatusUpdate(row.original.id, 'READY')}>Mark Ready</Button>;
-      return null;
-    },
-  },
-];
+const UNIT_LABELS = { kg: 'Kg', piece: 'Piece', bags: 'Bags', box: 'Box' };
+const prettyUnit = (u) => UNIT_LABELS[u] || u || 'unit';
+const titleCase = (s) => s ? s.charAt(0) + s.slice(1).toLowerCase() : '';
 
 const routeColumns = [
   { accessorKey: 'truck', header: 'Truck' },
@@ -82,36 +67,34 @@ const urgentColumns = [
 ];
 
 function Operations() {
-  const [prepMode, setPrepMode] = useState(null);
-  const [checklist, setChecklist] = useState([]);
   const [returnDialog, setReturnDialog] = useState(null);
   const [returnComment, setReturnComment] = useState('');
+  const [expandedClient, setExpandedClient] = useState(null);
+  const [prepareOrder, setPrepareOrder] = useState(null);
+  const [prepareItems, setPrepareItems] = useState([]);
+  const [loadingPrepare, setLoadingPrepare] = useState(false);
+  const [savingPrepare, setSavingPrepare] = useState(false);
 
-  // Fetch orders for dispatch center
-  const { data: ordersData, refetch: refetchOrders } = useFetch('/orders?status=PENDING,CONFIRMED,PREPARING');
-  // Fetch dispatches for route planning
+  const { data: ordersData, refetch: refetchOrders } = useFetch('/orders?status=PENDING,CONFIRMED,PREPARING,READY&limit=200');
   const { data: dispatchesData } = useFetch('/dispatches');
-  // Fetch fleet for truck list
   const { data: fleetData } = useFetch('/fleet');
-  // Fetch products with grades for pricing
   const { data: productsData } = useFetch('/products');
-  // Fetch returns
   const { data: returnsData, refetch: refetchReturns } = useFetch('/orders/returns');
 
-  // Map orders API data to display shape
-  const ordersItems = useMemo(() => {
-    const raw = ordersData?.data || ordersData || [];
-    return raw.map((o) => ({
-      id: o.id,
-      client: o.client?.name || o.client || '',
-      orderNum: `#${o.id}`,
-      items: o._count?.items || o.items?.length || 0,
-      status: o.status ? o.status.charAt(0) + o.status.slice(1).toLowerCase() : 'Pending',
-      priority: o.priority || 'Medium',
-    }));
-  }, [ordersData]);
+  // Raw orders with per-client grouping
+  const rawOrders = ordersData?.data || ordersData || [];
 
-  // Map dispatches to routes shape
+  // Group orders by client business name
+  const ordersByClient = useMemo(() => {
+    const buckets = {};
+    for (const o of rawOrders) {
+      const key = o.client?.businessName || o.client || 'Unknown';
+      if (!buckets[key]) buckets[key] = { clientName: key, orders: [] };
+      buckets[key].orders.push(o);
+    }
+    return Object.values(buckets).sort((a, b) => a.clientName.localeCompare(b.clientName));
+  }, [rawOrders]);
+
   const routesItems = useMemo(() => {
     const raw = dispatchesData?.data || dispatchesData || [];
     return raw.map((d) => ({
@@ -120,28 +103,26 @@ function Operations() {
       driver: d.driver?.name || d.driver || '',
       clients: d.routeOrder || '',
       stops: d._count?.items || 0,
-      status: d.status ? d.status.charAt(0) + d.status.slice(1).toLowerCase() : 'Planned',
+      status: d.status ? titleCase(d.status) : 'Planned',
     }));
   }, [dispatchesData]);
 
-  // Map fleet to truck cards
   const truckCards = useMemo(() => {
     const raw = fleetData?.data || fleetData || [];
     return raw.map((v) => ({
       plate: v.plateNumber || v.plate || '',
       model: v.model || '',
-      status: v.status ? v.status.charAt(0) + v.status.slice(1).toLowerCase().replace('_', ' ') : 'Available',
+      status: v.status ? titleCase(v.status).replace('_', ' ') : 'Available',
     }));
   }, [fleetData]);
 
-  // Map products to pricing shape
   const pricingItems = useMemo(() => {
     const raw = productsData?.data || productsData || [];
     return raw.map((p) => {
       const grades = p.qualityGrades || [];
-      const extraGrade = grades.find((g) => g.name === 'Extra' || g.grade === 'Extra');
-      const qualityAGrade = grades.find((g) => g.name === 'Quality A' || g.grade === 'A');
-      const qualityCGrade = grades.find((g) => g.name === 'Cooking' || g.grade === 'C');
+      const extraGrade = grades.find((g) => g.grade === 'Extra' || g.clientFacingGrade === 'EXTRA');
+      const qualityAGrade = grades.find((g) => g.grade === 'A' || g.clientFacingGrade === 'QUALITY_A');
+      const qualityCGrade = grades.find((g) => g.grade === 'C' || g.clientFacingGrade === 'QUALITY_C');
       return {
         id: p.id,
         product: p.name,
@@ -153,12 +134,11 @@ function Operations() {
     });
   }, [productsData]);
 
-  // Map returns data
   const returnsItems = useMemo(() => {
     const raw = returnsData?.data || returnsData || [];
     return raw.map((r) => ({
       id: r.id,
-      client: r.clientOrder?.client?.name || '',
+      client: r.clientOrder?.client?.businessName || r.clientOrder?.client?.name || '',
       orderNum: r.clientOrderId ? `#${r.clientOrderId}` : '',
       type: r.type || 'Return',
       reason: r.reason || '',
@@ -169,10 +149,10 @@ function Operations() {
   const handleStatusUpdate = async (orderId, status) => {
     try {
       await api.patch(`/orders/${orderId}/status`, { status });
-      toast.success(`Order status updated to ${status}`);
+      toast.success(`Order ${titleCase(status)}`);
       refetchOrders();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update status');
+      toast.error(err.response?.data?.error || err.response?.data?.message || 'Failed to update status');
     }
   };
 
@@ -183,25 +163,75 @@ function Operations() {
         opsManagerApproval: approval,
         opsManagerComment: returnComment,
       });
-      toast.success(`Return ${approval.toLowerCase()} successfully`);
+      toast.success(`Return ${approval.toLowerCase()}`);
       setReturnDialog(null);
       setReturnComment('');
       refetchReturns();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update return');
+      toast.error(err.response?.data?.error || 'Failed to update return');
     }
   };
 
-  const orderColumns = useMemo(() => makeOrderColumns(handleStatusUpdate), []);
-  const returnColumns = useMemo(() => makeReturnColumns(setReturnDialog), []);
+  const openPrepareDialog = async (orderId) => {
+    setLoadingPrepare(true);
+    setPrepareOrder({ id: orderId, _loading: true });
+    try {
+      const res = await api.get(`/orders/${orderId}`);
+      const o = res.data;
+      setPrepareOrder(o);
+      setPrepareItems((o.items || []).map((it) => ({
+        orderItemId: it.id,
+        productName: it.product?.name || '',
+        grade: it.qualityGrade?.clientFacingGrade || it.qualityGrade?.grade || '',
+        unit: it.product?.unit || 'kg',
+        ordered: it.quantity,
+        real: (it.fulfilledQuantity ?? it.quantity ?? 0).toString(),
+        stock: it.qualityGrade?.currentStock ?? 0,
+      })));
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to load order');
+      setPrepareOrder(null);
+    } finally {
+      setLoadingPrepare(false);
+    }
+  };
 
-  const togglePick = (id) => setChecklist((prev) => prev.map((i) => i.id === id ? { ...i, picked: !i.picked } : i));
+  const closePrepareDialog = () => {
+    setPrepareOrder(null);
+    setPrepareItems([]);
+  };
+
+  const handleSavePrepare = async () => {
+    if (!prepareOrder || prepareOrder._loading) return;
+    for (const it of prepareItems) {
+      const v = Number(it.real);
+      if (Number.isNaN(v) || v < 0) {
+        toast.error(`Enter a valid real quantity for ${it.productName}`);
+        return;
+      }
+    }
+    setSavingPrepare(true);
+    try {
+      await api.patch(`/orders/${prepareOrder.id}/prepare`, {
+        items: prepareItems.map((it) => ({ orderItemId: it.orderItemId, realQuantity: Number(it.real) })),
+      });
+      toast.success('Order prepared — inventory updated');
+      closePrepareDialog();
+      refetchOrders();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to prepare order');
+    } finally {
+      setSavingPrepare(false);
+    }
+  };
+
+  const returnColumns = useMemo(() => makeReturnColumns(setReturnDialog), []);
 
   return (
     <motion.div initial="initial" animate="animate" variants={{ animate: { transition: { staggerChildren: 0.08 } } }} className="space-y-4 lg:space-y-6">
       <motion.div variants={fadeInUp} className="hidden lg:block">
         <h1 className="text-2xl font-bold text-brand-primary">Operations Management</h1>
-        <p className="text-brand-secondary text-sm mt-1">Dispatch, routing, pricing, and returns</p>
+        <p className="text-brand-secondary text-sm mt-1">Dispatch per client, routing, pricing, and returns</p>
       </motion.div>
 
       <motion.div variants={fadeInUp}>
@@ -214,51 +244,75 @@ function Operations() {
             <TabsTrigger value="urgent"><AlertTriangle className="w-4 h-4 mr-2" /> Urgent</TabsTrigger>
           </TabsList>
 
-          {/* Tab 1: Dispatch */}
-          <TabsContent value="dispatch" className="mt-6 space-y-6">
-            <div className="flex items-center gap-3">
-              <Button variant={prepMode === 'product' ? 'default' : 'outline'} onClick={() => setPrepMode(prepMode === 'product' ? null : 'product')}>
-                <Package className="w-4 h-4 mr-2" /> Prepare by Product
-              </Button>
-              <Button variant={prepMode === 'client' ? 'default' : 'outline'} onClick={() => setPrepMode(prepMode === 'client' ? null : 'client')}>
-                <Truck className="w-4 h-4 mr-2" /> Prepare by Client
-              </Button>
-            </div>
-
-            <Card>
-              <CardContent className="p-6">
-                <DataTable columns={orderColumns} data={ordersItems} searchPlaceholder="Search orders..." searchColumn="client" />
-              </CardContent>
-            </Card>
-
-            {prepMode && (
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-brand-primary font-semibold mb-4">
-                    Pick List -- {prepMode === 'product' ? 'By Product' : 'Al Mandaloun #1847'}
-                  </h3>
-                  <div className="space-y-2">
-                    {checklist.map((item) => (
-                      <div
-                        key={item.id}
-                        className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${
-                          item.picked ? 'bg-brand-success/10 border-brand-success/30' : 'bg-brand-elevated border-brand-border hover:border-brand-accent/30'
-                        }`}
-                        onClick={() => togglePick(item.id)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-5 h-5 rounded flex items-center justify-center border ${item.picked ? 'bg-brand-success border-brand-success' : 'border-brand-border'}`}>
-                            {item.picked && <Check className="w-3 h-3 text-white" />}
-                          </div>
-                          <span className={`text-sm ${item.picked ? 'text-brand-success line-through' : 'text-brand-primary'}`}>{item.product}</span>
-                        </div>
-                        <span className="text-brand-secondary text-sm">{item.qty} kg</span>
-                      </div>
-                    ))}
-                  </div>
+          {/* Tab 1: Dispatch — grouped by client */}
+          <TabsContent value="dispatch" className="mt-6 space-y-3">
+            {ordersByClient.length === 0 ? (
+              <Card className="border-dashed">
+                <CardContent className="p-6 text-center">
+                  <Package className="w-10 h-10 mx-auto text-brand-muted mb-3" />
+                  <p className="text-brand-primary font-medium">No open orders</p>
+                  <p className="text-brand-muted text-sm mt-1">Orders placed by clients will appear here grouped per client.</p>
                 </CardContent>
               </Card>
-            )}
+            ) : ordersByClient.map(({ clientName, orders }) => {
+              const isExpanded = expandedClient === clientName;
+              const totalItems = orders.reduce((s, o) => s + (o._count?.items || o.items?.length || 0), 0);
+              return (
+                <Card key={clientName}>
+                  <CardContent className="p-4">
+                    <button
+                      className="flex items-center justify-between w-full text-left"
+                      onClick={() => setExpandedClient(isExpanded ? null : clientName)}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-lg bg-brand-accent/10 flex items-center justify-center shrink-0">
+                          <Truck className="w-4 h-4 text-brand-accent" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-brand-primary font-semibold truncate">{clientName}</p>
+                          <p className="text-brand-muted text-xs">{orders.length} order{orders.length === 1 ? '' : 's'} · {totalItems} items</p>
+                        </div>
+                      </div>
+                      <ChevronDown className={`w-4 h-4 text-brand-muted transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {isExpanded && (
+                      <div className="mt-4 pt-4 border-t border-brand-border space-y-2">
+                        {orders.map((o) => {
+                          const s = titleCase(o.status);
+                          return (
+                            <div key={o.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-brand-elevated rounded-lg">
+                              <div className="min-w-0">
+                                <p className="text-brand-primary text-sm font-medium">Order #{o.id.slice(0, 8)}</p>
+                                <p className="text-brand-muted text-xs">
+                                  {o._count?.items || 0} items
+                                  {o.deliveryDate && ` · Deliver ${new Date(o.deliveryDate).toLocaleDateString()}`}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <Badge variant={statusVariant(s)}>{s}</Badge>
+                                {o.status === 'PENDING' && (
+                                  <Button size="sm" onClick={() => handleStatusUpdate(o.id, 'CONFIRMED')}>Confirm</Button>
+                                )}
+                                {['CONFIRMED', 'PREPARING', 'READY'].includes(o.status) && (
+                                  <Button size="sm" variant="outline" onClick={() => openPrepareDialog(o.id)}>
+                                    <ClipboardList className="w-3 h-3 mr-1" />
+                                    {o.status === 'READY' ? 'Adjust' : 'Prepare'}
+                                  </Button>
+                                )}
+                                {['CONFIRMED', 'PREPARING'].includes(o.status) && (
+                                  <Button size="sm" onClick={() => handleStatusUpdate(o.id, 'READY')}>Mark Ready</Button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </TabsContent>
 
           {/* Tab 2: Routes */}
@@ -340,6 +394,93 @@ function Operations() {
           </TabsContent>
         </Tabs>
       </motion.div>
+
+      {/* Prepare Order Dialog */}
+      <Dialog open={!!prepareOrder} onOpenChange={(o) => { if (!o) closePrepareDialog(); }}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              Prepare Order {prepareOrder && !prepareOrder._loading && `· ${prepareOrder.client?.businessName || ''}`}
+            </DialogTitle>
+          </DialogHeader>
+          {loadingPrepare || prepareOrder?._loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-brand-secondary text-sm">
+                Record the <span className="text-brand-primary font-semibold">real quantity</span> picked per line.
+                Inventory updates live and the real quantity is what the client is billed for.
+              </p>
+
+              <div className="space-y-2">
+                {prepareItems.map((it, idx) => {
+                  const real = Number(it.real) || 0;
+                  const projectedStock = it.stock - (real - (prepareOrder?.items?.[idx]?.fulfilledQuantity || 0));
+                  const lowStock = real > it.stock;
+                  return (
+                    <div key={it.orderItemId} className="p-3 bg-brand-elevated rounded-lg border border-brand-border">
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div className="min-w-0">
+                          <p className="text-brand-primary font-medium text-sm truncate">{it.productName}</p>
+                          <div className="flex items-center gap-2 flex-wrap text-xs text-brand-muted mt-0.5">
+                            <Badge variant="outline" className="text-[10px]">{it.grade}</Badge>
+                            <span>Unit: {prettyUnit(it.unit)}</span>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-brand-muted text-[10px]">Ordered</p>
+                          <p className="text-brand-primary font-semibold">{it.ordered} {prettyUnit(it.unit)}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-brand-secondary text-xs mb-1">
+                            Real {it.unit === 'kg' ? 'weight' : 'count'} ({prettyUnit(it.unit)}) *
+                          </label>
+                          <Input
+                            type="number"
+                            inputMode={it.unit === 'kg' ? 'decimal' : 'numeric'}
+                            step={it.unit === 'kg' ? '0.1' : '1'}
+                            min="0"
+                            value={it.real}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setPrepareItems((prev) => prev.map((x, i) => i === idx ? { ...x, real: v } : x));
+                            }}
+                            className={lowStock ? 'border-brand-warning' : ''}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-brand-secondary text-xs mb-1">Stock after</label>
+                          <div className={`h-10 flex items-center px-3 rounded-md border ${lowStock ? 'border-brand-warning bg-brand-warning/5 text-brand-warning' : 'border-brand-border bg-brand-base text-brand-primary'} text-sm`}>
+                            {projectedStock.toFixed(it.unit === 'kg' ? 1 : 0)} {prettyUnit(it.unit)}
+                            {lowStock && <AlertTriangle className="w-3.5 h-3.5 ml-2" />}
+                          </div>
+                          <p className="text-[10px] text-brand-muted mt-1">Current stock: {it.stock} {prettyUnit(it.unit)}</p>
+                        </div>
+                      </div>
+                      {Number(it.real) !== it.ordered && (
+                        <p className="text-[11px] text-brand-accent mt-2">
+                          Adjustment: {(Number(it.real) - it.ordered).toFixed(it.unit === 'kg' ? 1 : 0)} {prettyUnit(it.unit)} vs ordered
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" className="flex-1" onClick={closePrepareDialog} disabled={savingPrepare}>Cancel</Button>
+                <Button className="flex-1" onClick={handleSavePrepare} disabled={savingPrepare}>
+                  {savingPrepare ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : 'Save & Update Inventory'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

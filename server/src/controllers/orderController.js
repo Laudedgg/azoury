@@ -141,7 +141,7 @@ async function getOrder(req, res, next) {
         items: {
           include: {
             product: { select: { id: true, name: true, unit: true, category: true } },
-            qualityGrade: { select: { id: true, grade: true, clientFacingGrade: true, price: true } },
+            qualityGrade: { select: { id: true, grade: true, clientFacingGrade: true, price: true, currentStock: true } },
           },
         },
         dispatchItems: {
@@ -168,6 +168,105 @@ async function getOrder(req, res, next) {
     }
 
     res.json(order);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function prepareOrder(req, res, next) {
+  try {
+    const { items } = req.body;
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'items array is required' });
+    }
+
+    const order = await prisma.clientOrder.findUnique({
+      where: { id: req.params.id },
+      include: { items: true },
+    });
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    // Map provided real quantities back to the actual OrderItems
+    const updates = [];
+    for (const inbound of items) {
+      const existing = order.items.find((it) => it.id === inbound.orderItemId);
+      if (!existing) {
+        return res.status(400).json({ error: `Unknown order item: ${inbound.orderItemId}` });
+      }
+      const realQty = Number(inbound.realQuantity);
+      if (Number.isNaN(realQty) || realQty < 0) {
+        return res.status(400).json({ error: 'realQuantity must be a non-negative number' });
+      }
+      updates.push({ existing, realQty });
+    }
+
+    // Apply in a transaction: update OrderItem.fulfilledQuantity, adjust stock, log movement
+    await prisma.$transaction(async (tx) => {
+      for (const { existing, realQty } of updates) {
+        const delta = realQty - (existing.fulfilledQuantity || 0);
+
+        await tx.orderItem.update({
+          where: { id: existing.id },
+          data: { fulfilledQuantity: realQty },
+        });
+
+        if (delta !== 0) {
+          await tx.qualityGrade.update({
+            where: { id: existing.qualityGradeId },
+            data: { currentStock: { decrement: delta } },
+          });
+
+          await tx.inventoryMovement.create({
+            data: {
+              productId: existing.productId,
+              qualityGradeId: existing.qualityGradeId,
+              type: 'SALE_OUT',
+              quantity: -delta,
+              reference: `Order ${order.id}`,
+              notes: `Prepared for client order (real vs ordered)`,
+              createdById: req.user.id,
+            },
+          });
+        }
+      }
+
+      // Recalculate totalAmount from real quantities for accurate billing
+      const refreshed = await tx.orderItem.findMany({ where: { clientOrderId: order.id } });
+      const newTotal = refreshed.reduce((s, i) => s + (i.fulfilledQuantity || 0) * (i.unitPrice || 0), 0);
+
+      await tx.clientOrder.update({
+        where: { id: order.id },
+        data: {
+          status: 'PREPARING',
+          totalAmount: Math.round(newTotal * 100) / 100,
+        },
+      });
+
+      await tx.activityLog.create({
+        data: {
+          userId: req.user.id,
+          action: 'PREPARE_ORDER',
+          entityType: 'ClientOrder',
+          entityId: order.id,
+          metadata: { itemCount: updates.length, newTotal },
+        },
+      });
+    });
+
+    const updated = await prisma.clientOrder.findUnique({
+      where: { id: order.id },
+      include: {
+        client: { select: { id: true, businessName: true } },
+        items: {
+          include: {
+            product: { select: { id: true, name: true, unit: true } },
+            qualityGrade: { select: { id: true, grade: true, clientFacingGrade: true, price: true, currentStock: true } },
+          },
+        },
+      },
+    });
+
+    res.json(updated);
   } catch (error) {
     next(error);
   }
@@ -537,6 +636,7 @@ module.exports = {
   listOrders,
   getOrder,
   updateStatus,
+  prepareOrder,
   cancelOrder,
   getCombinedOrdersView,
   getReturnAmendments,

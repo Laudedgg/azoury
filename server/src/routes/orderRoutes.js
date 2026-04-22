@@ -6,6 +6,7 @@ const {
   listOrders,
   getOrder,
   updateStatus,
+  prepareOrder,
   cancelOrder,
   getCombinedOrdersView,
   getReturnAmendments,
@@ -23,6 +24,7 @@ router.patch('/returns/:id', updateReturnAmendment);
 router.get('/:id', getOrder);
 router.post('/', createOrder);
 router.patch('/:id/status', updateStatus);
+router.patch('/:id/prepare', prepareOrder);
 router.patch('/:id/cancel', cancelOrder);
 
 module.exports = router;
