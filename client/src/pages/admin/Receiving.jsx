@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Scale, ClipboardList, Plus, Check, Clock, AlertCircle } from 'lucide-react';
+import { Package, ClipboardList, Plus, Check, Clock, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -13,10 +13,19 @@ import { toast } from 'sonner';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
+const UNIT_LABELS = { kg: 'Kg', piece: 'Piece', bags: 'Bags', box: 'Box' };
+const prettyUnit = (u) => UNIT_LABELS[u] || u || 'unit';
+const isWeight = (u) => u === 'kg';
+const quantityLabel = (u) => (isWeight(u) ? `Weight (${prettyUnit(u)})` : `Count (${prettyUnit(u)})`);
+
 const weighInColumns = [
   { accessorKey: 'product', header: 'Product' },
   { accessorKey: 'po', header: 'PO #' },
-  { accessorKey: 'weight', header: 'Recorded Weight (kg)' },
+  {
+    accessorKey: 'quantity',
+    header: 'Received',
+    cell: ({ row }) => `${row.original.quantity} ${prettyUnit(row.original.unit)}`,
+  },
   { accessorKey: 'time', header: 'Time' },
   { accessorKey: 'recordedBy', header: 'Recorded By' },
 ];
@@ -24,7 +33,7 @@ const weighInColumns = [
 function Receiving() {
   const [selectedProduct, setSelectedProduct] = useState('');
   const [selectedGradeId, setSelectedGradeId] = useState('');
-  const [weight, setWeight] = useState('');
+  const [quantity, setQuantity] = useState('');
   const [reference, setReference] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -35,15 +44,17 @@ function Receiving() {
 
   const products = productsData?.data || productsData || [];
   const currentProduct = products.find((p) => p.id === selectedProduct);
+  const currentUnit = currentProduct?.unit || 'kg';
 
-  // Build weigh-ins from recent PURCHASE_IN movements
+  // Build receivings from recent PURCHASE_IN movements
   const weighIns = (movementsData?.data || [])
     .filter((m) => m.type === 'PURCHASE_IN')
     .map((m) => ({
       id: m.id,
       product: m.product?.name || '',
+      unit: m.product?.unit || 'kg',
       po: m.reference || '',
-      weight: m.quantity,
+      quantity: m.quantity,
       time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '',
       recordedBy: m.createdBy?.name || '',
     }));
@@ -56,6 +67,7 @@ function Receiving() {
       productId: item.product.id,
       qualityGradeId: g.id,
       product: item.product.name,
+      unit: item.product.unit || 'kg',
       grade: g.clientFacingGrade || g.grade,
       systemCount: g.currentStock,
       physicalCount: '',
@@ -77,8 +89,8 @@ function Receiving() {
   const countStatus = completedCount === totalCount ? 'Completed' : completedCount > 0 ? 'In Progress' : 'Not Started';
 
   const handleRecordWeight = async () => {
-    if (!selectedProduct || !selectedGradeId || !weight) {
-      toast.error('Please select a product, grade, and enter weight');
+    if (!selectedProduct || !selectedGradeId || !quantity) {
+      toast.error(`Please select a product, grade, and enter ${isWeight(currentUnit) ? 'weight' : 'count'}`);
       return;
     }
     setSubmitting(true);
@@ -87,15 +99,15 @@ function Receiving() {
         productId: selectedProduct,
         qualityGradeId: selectedGradeId,
         type: 'PURCHASE_IN',
-        quantity: Number(weight),
+        quantity: Number(quantity),
         reference: reference,
       });
-      toast.success('Weight recorded');
-      setWeight('');
+      toast.success('Receiving recorded');
+      setQuantity('');
       setReference('');
       refetchMovements();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to record weight');
+      toast.error(err.response?.data?.error || err.response?.data?.message || 'Failed to record receiving');
     } finally {
       setSubmitting(false);
     }
@@ -129,10 +141,19 @@ function Receiving() {
   const inventoryColumns = [
     { accessorKey: 'product', header: 'Product' },
     { accessorKey: 'grade', header: 'Grade' },
-    { accessorKey: 'systemCount', header: 'System Count (kg)' },
+    {
+      accessorKey: 'unit',
+      header: 'Unit',
+      cell: ({ row }) => <Badge variant="outline" className="text-[10px]">{prettyUnit(row.original.unit)}</Badge>,
+    },
+    {
+      accessorKey: 'systemCount',
+      header: 'System',
+      cell: ({ row }) => `${row.original.systemCount} ${prettyUnit(row.original.unit)}`,
+    },
     {
       accessorKey: 'physicalCount',
-      header: 'Physical Count (kg)',
+      header: 'Physical',
       cell: ({ row }) => (
         <Input
           type="number"
@@ -177,16 +198,21 @@ function Receiving() {
     >
       <motion.div variants={fadeInUp} className="hidden lg:block">
         <h1 className="text-2xl font-bold text-brand-primary">Receiving Dashboard</h1>
-        <p className="text-brand-secondary text-sm mt-1">Product weighing and daily inventory counts</p>
+        <p className="text-brand-secondary text-sm mt-1">Log incoming products by weight or unit count</p>
       </motion.div>
 
-      {/* Section 1: Incoming Product Weighing */}
+      {/* Section 1: Incoming Products */}
       <motion.div variants={fadeInUp}>
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2 mb-6">
-              <Scale className="w-5 h-5 text-brand-accent" />
-              <h2 className="text-lg font-semibold text-brand-primary">Incoming Product Weighing</h2>
+              <Package className="w-5 h-5 text-brand-accent" />
+              <h2 className="text-lg font-semibold text-brand-primary">Incoming Products</h2>
+              {currentProduct && (
+                <Badge variant="outline" className="ml-auto text-[10px]">
+                  Unit: {prettyUnit(currentUnit)}
+                </Badge>
+              )}
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
@@ -198,7 +224,9 @@ function Receiving() {
                   </SelectTrigger>
                   <SelectContent>
                     {products.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name} <span className="text-brand-muted text-xs">({prettyUnit(p.unit)})</span>
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -217,18 +245,24 @@ function Receiving() {
                 </Select>
               </div>
               <div>
-                <label className="block text-brand-secondary text-sm mb-1">Weight (kg)</label>
+                <label className="block text-brand-secondary text-sm mb-1">{quantityLabel(currentUnit)}</label>
                 <Input
                   type="number"
-                  step="0.1"
-                  placeholder="0.0"
-                  value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
+                  inputMode={isWeight(currentUnit) ? 'decimal' : 'numeric'}
+                  step={isWeight(currentUnit) ? '0.1' : '1'}
+                  min="0"
+                  placeholder={isWeight(currentUnit) ? '0.0' : '0'}
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
                 />
               </div>
+              <div>
+                <label className="block text-brand-secondary text-sm mb-1">Reference (PO#)</label>
+                <Input placeholder="Optional" value={reference} onChange={(e) => setReference(e.target.value)} />
+              </div>
               <div className="flex items-end col-span-2 sm:col-span-1">
-                <Button className="w-full sm:w-auto" onClick={handleRecordWeight} disabled={submitting}>
-                  <Plus className="w-4 h-4 mr-1" /> {submitting ? 'Recording...' : 'Record Weight'}
+                <Button className="w-full" onClick={handleRecordWeight} disabled={submitting}>
+                  <Plus className="w-4 h-4 mr-1" /> {submitting ? 'Recording...' : (isWeight(currentUnit) ? 'Record Weight' : 'Record Count')}
                 </Button>
               </div>
             </div>
