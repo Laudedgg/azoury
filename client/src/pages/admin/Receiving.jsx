@@ -14,6 +14,12 @@ import { toast } from 'sonner';
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
 const UNIT_LABELS = { kg: 'Kg', piece: 'Piece', bags: 'Bags', box: 'Box' };
+const UNIT_OPTIONS = [
+  { value: 'kg', label: 'Weight (Kg)' },
+  { value: 'piece', label: 'Piece' },
+  { value: 'bags', label: 'Bags' },
+  { value: 'box', label: 'Box' },
+];
 const prettyUnit = (u) => UNIT_LABELS[u] || u || 'unit';
 const isWeight = (u) => u === 'kg';
 const quantityLabel = (u) => (isWeight(u) ? `Weight (${prettyUnit(u)})` : `Count (${prettyUnit(u)})`);
@@ -33,6 +39,7 @@ const weighInColumns = [
 function Receiving() {
   const [selectedProduct, setSelectedProduct] = useState('');
   const [selectedGradeId, setSelectedGradeId] = useState('');
+  const [selectedUnit, setSelectedUnit] = useState('kg');
   const [quantity, setQuantity] = useState('');
   const [reference, setReference] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -44,7 +51,14 @@ function Receiving() {
 
   const products = productsData?.data || productsData || [];
   const currentProduct = products.find((p) => p.id === selectedProduct);
-  const currentUnit = currentProduct?.unit || 'kg';
+
+  // When a product is picked, pre-fill the unit dropdown with its configured unit
+  const onPickProduct = (v) => {
+    setSelectedProduct(v);
+    setSelectedGradeId('');
+    const prod = products.find((p) => p.id === v);
+    if (prod?.unit && UNIT_LABELS[prod.unit]) setSelectedUnit(prod.unit);
+  };
 
   // Build receivings from recent PURCHASE_IN movements
   const weighIns = (movementsData?.data || [])
@@ -90,7 +104,7 @@ function Receiving() {
 
   const handleRecordWeight = async () => {
     if (!selectedProduct || !selectedGradeId || !quantity) {
-      toast.error(`Please select a product, grade, and enter ${isWeight(currentUnit) ? 'weight' : 'count'}`);
+      toast.error(`Please select a product, grade, and enter ${isWeight(selectedUnit) ? 'weight' : 'count'}`);
       return;
     }
     setSubmitting(true);
@@ -208,25 +222,18 @@ function Receiving() {
             <div className="flex items-center gap-2 mb-6">
               <Package className="w-5 h-5 text-brand-accent" />
               <h2 className="text-lg font-semibold text-brand-primary">Incoming Products</h2>
-              {currentProduct && (
-                <Badge variant="outline" className="ml-auto text-[10px]">
-                  Unit: {prettyUnit(currentUnit)}
-                </Badge>
-              )}
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
               <div>
                 <label className="block text-brand-secondary text-sm mb-1">Product</label>
-                <Select value={selectedProduct} onValueChange={(v) => { setSelectedProduct(v); setSelectedGradeId(''); }}>
+                <Select value={selectedProduct} onValueChange={onPickProduct}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select product..." />
                   </SelectTrigger>
                   <SelectContent>
                     {products.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name} <span className="text-brand-muted text-xs">({prettyUnit(p.unit)})</span>
-                      </SelectItem>
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -245,13 +252,26 @@ function Receiving() {
                 </Select>
               </div>
               <div>
-                <label className="block text-brand-secondary text-sm mb-1">{quantityLabel(currentUnit)}</label>
+                <label className="block text-brand-secondary text-sm mb-1">Unit</label>
+                <Select value={selectedUnit} onValueChange={setSelectedUnit}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {UNIT_OPTIONS.map((u) => (
+                      <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="block text-brand-secondary text-sm mb-1">{quantityLabel(selectedUnit)}</label>
                 <Input
                   type="number"
-                  inputMode={isWeight(currentUnit) ? 'decimal' : 'numeric'}
-                  step={isWeight(currentUnit) ? '0.1' : '1'}
+                  inputMode={isWeight(selectedUnit) ? 'decimal' : 'numeric'}
+                  step={isWeight(selectedUnit) ? '0.1' : '1'}
                   min="0"
-                  placeholder={isWeight(currentUnit) ? '0.0' : '0'}
+                  placeholder={isWeight(selectedUnit) ? '0.0' : '0'}
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
                 />
@@ -260,9 +280,9 @@ function Receiving() {
                 <label className="block text-brand-secondary text-sm mb-1">Reference (PO#)</label>
                 <Input placeholder="Optional" value={reference} onChange={(e) => setReference(e.target.value)} />
               </div>
-              <div className="flex items-end col-span-2 sm:col-span-1">
+              <div className="flex items-end col-span-2 sm:col-span-3 lg:col-span-1">
                 <Button className="w-full" onClick={handleRecordWeight} disabled={submitting}>
-                  <Plus className="w-4 h-4 mr-1" /> {submitting ? 'Recording...' : (isWeight(currentUnit) ? 'Record Weight' : 'Record Count')}
+                  <Plus className="w-4 h-4 mr-1" /> {submitting ? 'Recording...' : (isWeight(selectedUnit) ? 'Record Weight' : 'Record Count')}
                 </Button>
               </div>
             </div>
