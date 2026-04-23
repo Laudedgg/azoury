@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, ShoppingCart, Settings2, ShieldCheck, PackageCheck,
-  Truck, Bus, Warehouse, Users, BarChart3, Trash2, Package,
+  Truck, Bus, Warehouse, Users, BarChart3, Trash2, Package, Receipt,
   ChevronLeft, ChevronRight, LogOut, Sun, Moon, MoreVertical,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -48,6 +48,7 @@ export const navSections = [
     title: 'Admin',
     items: [
       { label: 'Users', icon: Users, path: '/admin/users', permission: 'users' },
+      { label: 'Billing', icon: Receipt, path: '/admin/billing', permission: 'billing' },
       { label: 'Reports', icon: BarChart3, path: '/admin/reports', permission: 'reports' },
     ],
   },

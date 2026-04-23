@@ -12,3 +12,15 @@
   ::-webkit-scrollbar-thumb { @apply bg-brand-muted rounded-full; }
   ::-webkit-scrollbar-thumb:hover { @apply bg-brand-secondary; }
 }
+
+/* Print styles — hide app chrome, render a clean document */
+@media print {
+  @page { margin: 1.4cm; }
+  html, body { background: white !important; color: black !important; }
+  body * { color: black !important; background: transparent !important; box-shadow: none !important; }
+  .no-print, .no-print * { display: none !important; }
+  main { overflow: visible !important; padding: 0 !important; height: auto !important; }
+  aside, header[class*="sticky"], nav[class*="fixed"] { display: none !important; }
+  table { page-break-inside: auto; }
+  tr { page-break-inside: avoid; }
+}

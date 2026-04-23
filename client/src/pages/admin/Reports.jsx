@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  DollarSign, TrendingUp, Users, FileText, Download, Calendar,
+  DollarSign, TrendingUp, Users, FileText, Download, Calendar, Printer, AlertTriangle,
 } from 'lucide-react';
+import { printTable } from '@/utils/print';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
@@ -64,6 +65,44 @@ function Reports() {
   const { data: costVsRevenueData } = useFetch('/reports/cost-vs-revenue');
   const { data: topClientsData } = useFetch('/reports/top-clients?limit=10');
   const { data: invoicesData } = useFetch('/reports/invoices');
+  const { data: missingItemsData } = useFetch('/reports/missing-items');
+  const missingRows = (missingItemsData || []).map((m) => ({
+    ...m,
+    orderedFmt: `${m.ordered} ${m.unit === 'kg' ? 'Kg' : (m.unit || '').charAt(0).toUpperCase() + (m.unit || '').slice(1)}`,
+    stockFmt: `${m.currentStock} ${m.unit === 'kg' ? 'Kg' : (m.unit || '').charAt(0).toUpperCase() + (m.unit || '').slice(1)}`,
+    missingFmt: `${m.missing} ${m.unit === 'kg' ? 'Kg' : (m.unit || '').charAt(0).toUpperCase() + (m.unit || '').slice(1)}`,
+  }));
+  const missingColumns = [
+    { accessorKey: 'productName', header: 'Product' },
+    { accessorKey: 'grade', header: 'Grade', cell: ({ row }) => <Badge variant="outline">{row.original.grade}</Badge> },
+    { accessorKey: 'ordered', header: 'Ordered (open)', cell: ({ row }) => row.original.orderedFmt },
+    { accessorKey: 'currentStock', header: 'In stock', cell: ({ row }) => row.original.stockFmt },
+    {
+      accessorKey: 'missing',
+      header: 'Missing',
+      cell: ({ row }) => (
+        <span className={row.original.missing > 0 ? 'text-brand-error font-semibold' : 'text-brand-success'}>
+          {row.original.missingFmt}
+        </span>
+      ),
+    },
+  ];
+  const missingCount = missingRows.filter((r) => r.missing > 0).length;
+
+  const handlePrintMissing = () => {
+    printTable({
+      title: 'Missing Items Report',
+      subtitle: 'Open orders vs inventory stock',
+      columns: [
+        { key: 'productName', label: 'Product' },
+        { key: 'grade', label: 'Grade' },
+        { key: 'orderedFmt', label: 'Ordered (open)', align: 'right' },
+        { key: 'stockFmt', label: 'In Stock', align: 'right' },
+        { key: 'missingFmt', label: 'Missing', align: 'right' },
+      ],
+      rows: missingRows,
+    });
+  };
 
   const dashboard = dashboardData || {};
 
@@ -217,6 +256,34 @@ function Reports() {
               data={[]}
               searchPlaceholder="Search transactions..."
               searchColumn="client"
+            />
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Missing Items (orders combined vs stock) */}
+      <motion.div variants={fadeInUp}>
+        <Card>
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className={`w-5 h-5 ${missingCount > 0 ? 'text-brand-error' : 'text-brand-muted'}`} />
+                <h3 className="text-lg font-semibold text-brand-primary">Missing Items</h3>
+                {missingCount > 0 && <Badge variant="error" className="text-[10px]">{missingCount} short</Badge>}
+              </div>
+              <Button variant="outline" size="sm" className="no-print w-full sm:w-auto" onClick={handlePrintMissing}>
+                <Printer className="w-3 h-3 mr-1" /> Print
+              </Button>
+            </div>
+            <p className="text-brand-secondary text-xs mb-3">
+              Sum of open-order quantities per product/grade compared against current inventory.
+              Positive "Missing" means you need to procure more.
+            </p>
+            <DataTable
+              columns={missingColumns}
+              data={missingRows}
+              searchPlaceholder="Search product..."
+              searchColumn="productName"
             />
           </CardContent>
         </Card>

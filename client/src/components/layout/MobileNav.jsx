@@ -19,6 +19,7 @@ const pageTitleMap = {
   '/admin/products': 'Products',
   '/admin/users': 'Users',
   '/admin/reports': 'Reports',
+  '/admin/billing': 'Billing',
   '/admin/waste': 'Waste',
   '/portal': 'Portal',
   '/portal/orders': 'Orders',

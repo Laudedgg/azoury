@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Package, ClipboardList, Plus, Check, Clock, AlertCircle } from 'lucide-react';
+import { Package, ClipboardList, Plus, Check, Clock, AlertCircle, Printer } from 'lucide-react';
+import { printTable } from '@/utils/print';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -210,9 +211,29 @@ function Receiving() {
       variants={{ animate: { transition: { staggerChildren: 0.08 } } }}
       className="space-y-4 lg:space-y-8"
     >
-      <motion.div variants={fadeInUp} className="hidden lg:block">
-        <h1 className="text-2xl font-bold text-brand-primary">Receiving Dashboard</h1>
-        <p className="text-brand-secondary text-sm mt-1">Log incoming products by weight or unit count</p>
+      <motion.div variants={fadeInUp} className="flex flex-col-reverse gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="hidden lg:block">
+          <h1 className="text-2xl font-bold text-brand-primary">Receiving Dashboard</h1>
+          <p className="text-brand-secondary text-sm mt-1">Log incoming products by weight or unit count</p>
+        </div>
+        <Button
+          variant="outline"
+          className="w-full lg:w-auto no-print"
+          onClick={() => printTable({
+            title: 'Receiving Log',
+            subtitle: 'Incoming products',
+            columns: [
+              { key: 'product', label: 'Product' },
+              { key: 'po', label: 'PO #' },
+              { key: 'qtyFmt', label: 'Received', align: 'right' },
+              { key: 'time', label: 'Time' },
+              { key: 'recordedBy', label: 'Recorded By' },
+            ],
+            rows: weighIns.map((w) => ({ ...w, qtyFmt: `${w.quantity} ${prettyUnit(w.unit)}` })),
+          })}
+        >
+          <Printer className="w-4 h-4 mr-2" /> Print log
+        </Button>
       </motion.div>
 
       {/* Section 1: Incoming Products */}

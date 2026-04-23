@@ -6,7 +6,7 @@ export const ROLES = {
   RECEIVING: { value: 'RECEIVING', label: 'Receiving Team', permissions: ['dashboard', 'receiving', 'inventory'] },
   LOGISTICS_TEAM: { value: 'LOGISTICS_TEAM', label: 'Logistics Team', permissions: ['dashboard', 'logistics'] },
   DRIVER: { value: 'DRIVER', label: 'Driver', permissions: ['deliveries'] },
-  ACCOUNTANT: { value: 'ACCOUNTANT', label: 'Accountant', permissions: ['dashboard', 'reports'] },
+  ACCOUNTANT: { value: 'ACCOUNTANT', label: 'Accountant', permissions: ['dashboard', 'reports', 'billing'] },
   CLIENT_ADMIN: { value: 'CLIENT_ADMIN', label: 'Client Admin', permissions: ['portal', 'orders', 'account'] },
   CLIENT_STAFF: { value: 'CLIENT_STAFF', label: 'Client Staff', permissions: ['portal', 'orders', 'account'] },
 };

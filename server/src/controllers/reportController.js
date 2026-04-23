@@ -401,6 +401,68 @@ async function updateInvoiceStatus(req, res, next) {
   }
 }
 
+async function missingItems(req, res, next) {
+  try {
+    // All line items on open orders (not delivered/cancelled)
+    const openItems = await prisma.orderItem.findMany({
+      where: {
+        clientOrder: {
+          status: { in: ['PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'DISPATCHED'] },
+        },
+      },
+      select: {
+        productId: true,
+        qualityGradeId: true,
+        quantity: true,
+        fulfilledQuantity: true,
+      },
+    });
+
+    if (openItems.length === 0) return res.json([]);
+
+    // Aggregate by product+grade
+    const byKey = {};
+    for (const it of openItems) {
+      const key = `${it.productId}:${it.qualityGradeId}`;
+      if (!byKey[key]) {
+        byKey[key] = { productId: it.productId, qualityGradeId: it.qualityGradeId, ordered: 0, fulfilled: 0 };
+      }
+      byKey[key].ordered += it.quantity || 0;
+      byKey[key].fulfilled += it.fulfilledQuantity || 0;
+    }
+
+    const gradeIds = [...new Set(Object.values(byKey).map((b) => b.qualityGradeId))];
+    const grades = await prisma.qualityGrade.findMany({
+      where: { id: { in: gradeIds } },
+      include: { product: { select: { id: true, name: true, unit: true } } },
+    });
+    const gradeMap = new Map(grades.map((g) => [g.id, g]));
+
+    const rows = Object.values(byKey).map(({ productId, qualityGradeId, ordered, fulfilled }) => {
+      const g = gradeMap.get(qualityGradeId);
+      const stillNeeded = Math.max(0, ordered - fulfilled);
+      const currentStock = g?.currentStock ?? 0;
+      const missing = Math.max(0, stillNeeded - currentStock);
+      return {
+        productId,
+        qualityGradeId,
+        productName: g?.product?.name || '',
+        unit: g?.product?.unit || 'kg',
+        grade: g?.clientFacingGrade || g?.grade || '',
+        ordered,
+        fulfilled,
+        stillNeeded,
+        currentStock,
+        missing,
+      };
+    }).sort((a, b) => b.missing - a.missing || b.stillNeeded - a.stillNeeded);
+
+    res.json(rows);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getDashboardKPIs,
   revenueByPeriod,
@@ -411,4 +473,5 @@ module.exports = {
   getActivityFeed,
   getInvoices,
   updateInvoiceStatus,
+  missingItems,
 };

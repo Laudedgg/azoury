@@ -12,6 +12,7 @@ const {
   getActivityFeed,
   getInvoices,
   updateInvoiceStatus,
+  missingItems,
 } = require('../controllers/reportController');
 
 router.use(authenticate);
@@ -22,6 +23,7 @@ const financialRoles = ['SUPER_ADMIN', 'ACCOUNTANT'];
 // Accessible to all internal roles
 router.get('/dashboard', requireRole(...internalRoles), getDashboardKPIs);
 router.get('/activity', requireRole(...internalRoles), getActivityFeed);
+router.get('/missing-items', requireRole(...internalRoles), missingItems);
 
 // Financial reports - restricted to SUPER_ADMIN and ACCOUNTANT
 router.get('/revenue', requireRole(...financialRoles), revenueByPeriod);

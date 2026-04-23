@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Plus, ShoppingCart, Minus, Trash2, Calendar, Package,
+  Plus, ShoppingCart, Minus, Trash2, Calendar, Package, Printer,
 } from 'lucide-react';
+import { printInvoice, printTable } from '@/utils/print';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -24,12 +25,21 @@ const activeOrderColumns = [
   { accessorKey: 'status', header: 'Status', cell: ({ row }) => <Badge variant={getStatusColor(row.original.status)}>{row.original.status}</Badge> },
 ];
 
-const historyColumns = [
+const makeHistoryColumns = (onPrint) => [
   { accessorKey: 'orderRef', header: 'Order #', cell: ({ row }) => `#${row.original.orderNumber || row.original.orderRef || row.original.id}` },
   { accessorKey: 'items', header: 'Items', cell: ({ row }) => `${row.original._count?.items ?? row.original.items ?? 0} items` },
   { accessorKey: 'deliveryDate', header: 'Delivered', cell: ({ row }) => formatDate(row.original.deliveryDate) },
   { accessorKey: 'createdAt', header: 'Placed', cell: ({ row }) => formatDate(row.original.createdAt) },
   { accessorKey: 'status', header: 'Status', cell: ({ row }) => <Badge variant="success">{row.original.status}</Badge> },
+  {
+    id: 'actions',
+    header: '',
+    cell: ({ row }) => (
+      <Button variant="outline" size="sm" onClick={() => onPrint(row.original.id)}>
+        <Printer className="w-3 h-3 mr-1" /> Print
+      </Button>
+    ),
+  },
 ];
 
 function Orders() {
@@ -122,6 +132,17 @@ function Orders() {
       setSubmitting(false);
     }
   };
+
+  const handlePrintOrder = async (orderId) => {
+    try {
+      const res = await api.get(`/orders/${orderId}`);
+      printInvoice(res.data);
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Failed to load order for printing');
+    }
+  };
+
+  const historyColumns = React.useMemo(() => makeHistoryColumns(handlePrintOrder), []);
 
   const handleCancelOrder = async (orderId) => {
     try {
