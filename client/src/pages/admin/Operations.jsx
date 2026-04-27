@@ -2,13 +2,14 @@ import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Truck, MapPin, DollarSign, RotateCcw, AlertTriangle, Package, Check, X,
-  ClipboardList, Loader2, ChevronDown,
+  ClipboardList, Loader2, ChevronDown, Plus,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { DataTable } from '@/components/tables/DataTable';
 import { useFetch } from '@/hooks/useFetch';
@@ -74,12 +75,18 @@ function Operations() {
   const [prepareItems, setPrepareItems] = useState([]);
   const [loadingPrepare, setLoadingPrepare] = useState(false);
   const [savingPrepare, setSavingPrepare] = useState(false);
+  const [dispatchDialog, setDispatchDialog] = useState(false);
+  const [dispatchForm, setDispatchForm] = useState({ driverId: '', truckId: '', orderIds: [] });
+  const [creatingDispatch, setCreatingDispatch] = useState(false);
 
   const { data: ordersData, refetch: refetchOrders } = useFetch('/orders?status=PENDING,CONFIRMED,PREPARING,READY&limit=200');
-  const { data: dispatchesData } = useFetch('/dispatches');
+  const { data: dispatchesData, refetch: refetchDispatches } = useFetch('/dispatches');
   const { data: fleetData } = useFetch('/fleet');
   const { data: productsData } = useFetch('/products');
   const { data: returnsData, refetch: refetchReturns } = useFetch('/orders/returns');
+  const { data: driversData } = useFetch('/users/role/DRIVER');
+  const drivers = Array.isArray(driversData) ? driversData : (driversData?.data || []);
+  const readyOrders = (ordersData?.data || []).filter((o) => o.status === 'READY');
 
   // Raw orders with per-client grouping
   const rawOrders = ordersData?.data || ordersData || [];
@@ -201,6 +208,48 @@ function Operations() {
     setPrepareItems([]);
   };
 
+  const openDispatchDialog = () => {
+    setDispatchForm({ driverId: '', truckId: '', orderIds: [] });
+    setDispatchDialog(true);
+  };
+
+  const toggleOrderInDispatch = (orderId) => {
+    setDispatchForm((f) => ({
+      ...f,
+      orderIds: f.orderIds.includes(orderId)
+        ? f.orderIds.filter((id) => id !== orderId)
+        : [...f.orderIds, orderId],
+    }));
+  };
+
+  const handleCreateDispatch = async () => {
+    if (!dispatchForm.driverId || !dispatchForm.truckId) {
+      toast.error('Pick a driver and a truck');
+      return;
+    }
+    if (dispatchForm.orderIds.length === 0) {
+      toast.error('Select at least one ready order to dispatch');
+      return;
+    }
+    setCreatingDispatch(true);
+    try {
+      await api.post('/dispatches', {
+        driverId: dispatchForm.driverId,
+        truckId: dispatchForm.truckId,
+        orderIds: dispatchForm.orderIds,
+      });
+      toast.success('Dispatch created — driver will see it on their device');
+      setDispatchDialog(false);
+      setDispatchForm({ driverId: '', truckId: '', orderIds: [] });
+      refetchDispatches();
+      refetchOrders();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to create dispatch');
+    } finally {
+      setCreatingDispatch(false);
+    }
+  };
+
   const handleSavePrepare = async () => {
     if (!prepareOrder || prepareOrder._loading) return;
     for (const it of prepareItems) {
@@ -317,6 +366,16 @@ function Operations() {
 
           {/* Tab 2: Routes */}
           <TabsContent value="routes" className="mt-6 space-y-6">
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-brand-secondary text-sm">
+                Build a dispatch by picking a driver, a truck, and the ready orders to load.
+                The driver will see the assigned orders on their device.
+              </p>
+              <Button className="w-full sm:w-auto" onClick={openDispatchDialog} disabled={readyOrders.length === 0}>
+                <Plus className="w-4 h-4 mr-2" /> Create Dispatch
+              </Button>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {truckCards.map((t) => (
                 <Card key={t.plate}>
@@ -394,6 +453,85 @@ function Operations() {
           </TabsContent>
         </Tabs>
       </motion.div>
+
+      {/* Create Dispatch Dialog */}
+      <Dialog open={dispatchDialog} onOpenChange={setDispatchDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create Dispatch</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-brand-secondary text-sm mb-1">Driver *</label>
+                <Select value={dispatchForm.driverId} onValueChange={(v) => setDispatchForm((f) => ({ ...f, driverId: v }))}>
+                  <SelectTrigger><SelectValue placeholder={drivers.length === 0 ? 'No drivers' : 'Select driver...'} /></SelectTrigger>
+                  <SelectContent>
+                    {drivers.filter((d) => d.isActive !== false).map((d) => (
+                      <SelectItem key={d.id} value={d.id}>{d.firstName} {d.lastName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="block text-brand-secondary text-sm mb-1">Truck *</label>
+                <Select value={dispatchForm.truckId} onValueChange={(v) => setDispatchForm((f) => ({ ...f, truckId: v }))}>
+                  <SelectTrigger><SelectValue placeholder={(fleetData?.data || fleetData || []).length === 0 ? 'No trucks' : 'Select truck...'} /></SelectTrigger>
+                  <SelectContent>
+                    {(fleetData?.data || fleetData || []).map((v) => (
+                      <SelectItem key={v.id} value={v.id}>{v.plateNumber || v.plate} — {v.model}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-brand-secondary text-sm mb-2">Ready orders ({readyOrders.length})</p>
+              {readyOrders.length === 0 ? (
+                <p className="text-brand-muted text-xs italic">No orders are READY. Confirm and prepare orders first via Dispatch Center.</p>
+              ) : (
+                <div className="space-y-2 max-h-72 overflow-y-auto">
+                  {readyOrders.map((o) => {
+                    const checked = dispatchForm.orderIds.includes(o.id);
+                    return (
+                      <label
+                        key={o.id}
+                        className={`flex items-center justify-between gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${checked ? 'bg-brand-accent/10 border-brand-accent/40' : 'bg-brand-elevated border-brand-border hover:border-brand-accent/30'}`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleOrderInDispatch(o.id)}
+                            className="w-4 h-4 accent-brand-accent shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-brand-primary text-sm font-medium truncate">
+                              {o.client?.businessName || 'Unknown client'} · #{o.id.slice(0, 8)}
+                            </p>
+                            <p className="text-brand-muted text-xs">
+                              {o._count?.items || 0} items
+                              {o.deliveryDate && ` · Deliver ${new Date(o.deliveryDate).toLocaleDateString()}`}
+                            </p>
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" className="flex-1" onClick={() => setDispatchDialog(false)} disabled={creatingDispatch}>Cancel</Button>
+              <Button className="flex-1" onClick={handleCreateDispatch} disabled={creatingDispatch || dispatchForm.orderIds.length === 0}>
+                {creatingDispatch ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...</> : `Create Dispatch (${dispatchForm.orderIds.length})`}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Prepare Order Dialog */}
       <Dialog open={!!prepareOrder} onOpenChange={(o) => { if (!o) closePrepareDialog(); }}>
