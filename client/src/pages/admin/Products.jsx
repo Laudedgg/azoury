@@ -31,6 +31,7 @@ const UNITS = [
   { value: 'piece', label: 'Piece' },
   { value: 'bags', label: 'Bags' },
   { value: 'box', label: 'Box' },
+  { value: 'bunch', label: 'Bunch' },
 ];
 
 const emptyProductForm = {
@@ -41,23 +42,51 @@ const emptyProductForm = {
   unit: 'kg',
 };
 
-// Map various spellings/formats to canonical category enum values
-function normalizeCategory(raw) {
-  const s = String(raw || '').trim().toUpperCase().replace(/\s+/g, '_').replace(/-/g, '_');
-  if (CATEGORIES.find((c) => c.value === s)) return s;
-  // Friendly aliases
-  const aliases = {
-    FRUIT: 'FRUITS', VEGETABLE: 'VEGETABLES', VEG: 'VEGETABLES', MEAT: 'MEATS',
-    DRYGOODS: 'DRY_GOODS', DRY: 'DRY_GOODS', BEVERAGE: 'BEVERAGES', DRINKS: 'BEVERAGES',
-  };
-  return aliases[s] || s;
+// Spreadsheet rows often carry bilingual values like "FRUITS/فاكهة" or "BUNCH/باقة".
+// Split on common separators and try each piece against the normaliser.
+function splitBilingual(raw) {
+  return String(raw || '')
+    .split(/[\/|،,]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
+const CATEGORY_ALIASES = {
+  FRUIT: 'FRUITS', FRUITS: 'FRUITS', FRUIS: 'FRUITS', // common typo in source files
+  VEGETABLE: 'VEGETABLES', VEGETABLES: 'VEGETABLES', VEGTABLES: 'VEGETABLES', VEG: 'VEGETABLES',
+  VEGGIES: 'VEGETABLES', GREENS: 'VEGETABLES', HERBS: 'VEGETABLES', WEEDS: 'VEGETABLES',
+  MEAT: 'MEATS', MEATS: 'MEATS', POULTRY: 'MEATS', BEEF: 'MEATS', LAMB: 'MEATS', SEAFOOD: 'MEATS',
+  DAIRY: 'DAIRY',
+  DRYGOODS: 'DRY_GOODS', DRY: 'DRY_GOODS', DRY_GOODS: 'DRY_GOODS',
+  BEVERAGE: 'BEVERAGES', BEVERAGES: 'BEVERAGES', DRINKS: 'BEVERAGES',
+  FROZEN: 'FROZEN',
+  OTHER: 'OTHER',
+};
+
+function normalizeCategory(raw) {
+  for (const part of splitBilingual(raw)) {
+    const s = part.toUpperCase().replace(/\s+/g, '_').replace(/-/g, '_');
+    if (CATEGORIES.find((c) => c.value === s)) return s;
+    if (CATEGORY_ALIASES[s]) return CATEGORY_ALIASES[s];
+  }
+  return String(raw || '').trim().toUpperCase().replace(/\s+/g, '_').replace(/-/g, '_');
+}
+
+const UNIT_ALIASES = {
+  kg: 'kg', kgs: 'kg', kilogram: 'kg', kilograms: 'kg', kilo: 'kg',
+  piece: 'piece', pieces: 'piece', pcs: 'piece', pc: 'piece', pces: 'piece', unit: 'piece',
+  bags: 'bags', bag: 'bags', sack: 'bags', sacks: 'bags',
+  box: 'box', boxes: 'box', case: 'box', carton: 'box',
+  bunch: 'bunch', bunches: 'bunch',
+};
+
 function normalizeUnit(raw) {
-  const s = String(raw || '').trim().toLowerCase();
-  if (UNITS.find((u) => u.value === s)) return s;
-  const aliases = { kgs: 'kg', kilogram: 'kg', kilograms: 'kg', pcs: 'piece', pieces: 'piece', bag: 'bags', boxes: 'box' };
-  return aliases[s] || s;
+  for (const part of splitBilingual(raw)) {
+    const s = part.toLowerCase();
+    if (UNITS.find((u) => u.value === s)) return s;
+    if (UNIT_ALIASES[s]) return UNIT_ALIASES[s];
+  }
+  return String(raw || '').trim().toLowerCase();
 }
 
 function downloadTemplate() {
@@ -129,8 +158,15 @@ function Products() {
           return '';
         };
         const name = String(find(['name', 'productname', 'product']) || '').trim();
-        const description = String(find(['description', 'desc']) || '').trim();
-        const subDescription = String(find(['subdescription', 'subdesc', 'sub']) || '').trim();
+        let description = String(find(['description', 'desc']) || '').trim();
+        let subDescription = String(find(['subdescription', 'subdesc', 'sub']) || '').trim();
+        // If subDescription wasn't provided but description is bilingual ("AR / EN"),
+        // split the description on the first slash and put the second half in subDescription.
+        if (!subDescription && description.includes('/')) {
+          const idx2 = description.indexOf('/');
+          subDescription = description.slice(idx2 + 1).trim();
+          description = description.slice(0, idx2).trim();
+        }
         const category = normalizeCategory(find(['category', 'cat']));
         const unit = normalizeUnit(find(['unit', 'units']) || 'kg');
 

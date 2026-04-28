@@ -125,9 +125,11 @@ async function bulkCreateProducts(req, res, next) {
 
     const validCategories = new Set(['FRUITS', 'VEGETABLES', 'MEATS', 'DAIRY', 'DRY_GOODS', 'BEVERAGES', 'FROZEN', 'OTHER']);
 
-    // Pre-load all existing names (case-insensitive) for dedup
-    const existing = await prisma.product.findMany({ select: { name: true } });
-    const existingNames = new Set(existing.map((p) => (p.name || '').trim().toLowerCase()));
+    // Pre-load existing (name + description) keys for dedup so multiple
+    // varieties of the same product name can each be imported.
+    const existing = await prisma.product.findMany({ select: { name: true, description: true } });
+    const dedupKey = (name, desc) => `${(name || '').trim().toLowerCase()}|${(desc || '').trim().toLowerCase()}`;
+    const existingKeys = new Set(existing.map((p) => dedupKey(p.name, p.description)));
 
     const created = [];
     const skipped = [];
@@ -148,8 +150,11 @@ async function bulkCreateProducts(req, res, next) {
         errors.push({ row: rowNum, message: `Invalid category "${row.category}"` });
         continue;
       }
-      if (existingNames.has(name.toLowerCase())) {
-        skipped.push({ row: rowNum, name, reason: 'Duplicate name' });
+      const description = row.description ? String(row.description).trim() : '';
+      const subDescription = row.subDescription ? String(row.subDescription).trim() : '';
+      const key = dedupKey(name, description);
+      if (existingKeys.has(key)) {
+        skipped.push({ row: rowNum, name, reason: 'Duplicate (name + description)' });
         continue;
       }
 
@@ -157,8 +162,8 @@ async function bulkCreateProducts(req, res, next) {
         const product = await prisma.product.create({
           data: {
             name,
-            description: row.description ? String(row.description).trim() : undefined,
-            subDescription: row.subDescription ? String(row.subDescription).trim() : undefined,
+            description: description || undefined,
+            subDescription: subDescription || undefined,
             category,
             unit,
             qualityGrades: {
@@ -167,7 +172,7 @@ async function bulkCreateProducts(req, res, next) {
           },
           select: { id: true, name: true, category: true, unit: true },
         });
-        existingNames.add(name.toLowerCase());
+        existingKeys.add(key);
         created.push(product);
       } catch (err) {
         errors.push({ row: rowNum, message: err.message || 'Database error' });

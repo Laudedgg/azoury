@@ -14,12 +14,13 @@ import { toast } from 'sonner';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
-const UNIT_LABELS = { kg: 'Kg', piece: 'Piece', bags: 'Bags', box: 'Box' };
+const UNIT_LABELS = { kg: 'Kg', piece: 'Piece', bags: 'Bags', box: 'Box', bunch: 'Bunch' };
 const UNIT_OPTIONS = [
   { value: 'kg', label: 'Weight (Kg)' },
   { value: 'piece', label: 'Piece' },
   { value: 'bags', label: 'Bags' },
   { value: 'box', label: 'Box' },
+  { value: 'bunch', label: 'Bunch' },
 ];
 const prettyUnit = (u) => UNIT_LABELS[u] || u || 'unit';
 const isWeight = (u) => u === 'kg';
