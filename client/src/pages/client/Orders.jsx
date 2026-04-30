@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Plus, ShoppingCart, Minus, Trash2, Calendar, Package, Printer, Search, X,
+  Plus, ShoppingCart, Minus, Trash2, Calendar, Package, Printer, Search, X, RotateCcw,
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { printInvoice, printTable } from '@/utils/print';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -45,11 +47,19 @@ const makeHistoryColumns = (onPrint) => [
 function Orders() {
   const { user } = useAuth();
   const clientId = user?.clientId;
+  const role = user?.role;
+  const canPlace = role === 'CLIENT_ADMIN' || role === 'CLIENT_STAFF' || role === 'CLIENT_ORDERER';
+  const canReceive = role === 'CLIENT_ADMIN' || role === 'CLIENT_STAFF' || role === 'CLIENT_RECEIVER';
+  const defaultTab = canPlace ? 'place' : 'active';
+
   const [cart, setCart] = useState([]);
   const [deliveryDate, setDeliveryDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [productSearch, setProductSearch] = useState('');
   const [pendingQty, setPendingQty] = useState({}); // productId -> string
+  const [returnDialog, setReturnDialog] = useState(null); // { orderId, orderRef }
+  const [returnForm, setReturnForm] = useState({ type: 'RETURN', reason: '' });
+  const [submittingReturn, setSubmittingReturn] = useState(false);
 
   const { data: productsData } = useFetch('/products?page=1&limit=100');
   const { data: activeOrdersData, refetch: refetchActive } = useFetch('/orders?status=PENDING,CONFIRMED,PREPARING,DISPATCHED');
@@ -170,7 +180,59 @@ function Orders() {
     }
   };
 
-  const historyColumns = React.useMemo(() => makeHistoryColumns(handlePrintOrder), []);
+  const openReturnDialog = (order) => {
+    setReturnDialog({ orderId: order.id, orderRef: `#${order.id?.slice(0, 8)}` });
+    setReturnForm({ type: 'RETURN', reason: '' });
+  };
+
+  const handleSubmitReturn = async () => {
+    if (!returnForm.reason.trim()) {
+      toast.error('Please describe the reason');
+      return;
+    }
+    setSubmittingReturn(true);
+    try {
+      await api.post('/orders/returns', {
+        clientOrderId: returnDialog.orderId,
+        type: returnForm.type,
+        reason: returnForm.reason.trim(),
+      });
+      toast.success('Request submitted — our team will review it.');
+      setReturnDialog(null);
+      setReturnForm({ type: 'RETURN', reason: '' });
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Failed to submit request');
+    } finally {
+      setSubmittingReturn(false);
+    }
+  };
+
+  const historyColumns = React.useMemo(() => {
+    const cols = [
+      { accessorKey: 'orderRef', header: 'Order #', cell: ({ row }) => `#${row.original.orderNumber || row.original.orderRef || row.original.id}` },
+      { accessorKey: 'items', header: 'Items', cell: ({ row }) => `${row.original._count?.items ?? row.original.items ?? 0} items` },
+      { accessorKey: 'deliveryDate', header: 'Delivered', cell: ({ row }) => formatDate(row.original.deliveryDate) },
+      { accessorKey: 'createdAt', header: 'Placed', cell: ({ row }) => formatDate(row.original.createdAt) },
+      { accessorKey: 'status', header: 'Status', cell: ({ row }) => <Badge variant="success">{row.original.status}</Badge> },
+      {
+        id: 'actions',
+        header: '',
+        cell: ({ row }) => (
+          <div className="flex items-center justify-end gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => handlePrintOrder(row.original.id)}>
+              <Printer className="w-3 h-3 mr-1" /> Print
+            </Button>
+            {canReceive && (
+              <Button variant="outline" size="sm" className="text-brand-warning" onClick={() => openReturnDialog(row.original)}>
+                <RotateCcw className="w-3 h-3 mr-1" /> Return
+              </Button>
+            )}
+          </div>
+        ),
+      },
+    ];
+    return cols;
+  }, [canReceive]);
 
   const handleCancelOrder = async (orderId) => {
     try {
@@ -196,11 +258,13 @@ function Orders() {
       </motion.div>
 
       <motion.div variants={fadeInUp}>
-        <Tabs defaultValue="place">
+        <Tabs defaultValue={defaultTab}>
           <TabsList>
-            <TabsTrigger value="place">
-              <ShoppingCart className="w-4 h-4 mr-2" /> Place Order
-            </TabsTrigger>
+            {canPlace && (
+              <TabsTrigger value="place">
+                <ShoppingCart className="w-4 h-4 mr-2" /> Place Order
+              </TabsTrigger>
+            )}
             <TabsTrigger value="active">
               Active Orders
             </TabsTrigger>
@@ -210,7 +274,7 @@ function Orders() {
           </TabsList>
 
           {/* Place Order Tab */}
-          <TabsContent value="place" className="mt-6">
+          {canPlace && <TabsContent value="place" className="mt-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Product Catalog */}
               <div className="lg:col-span-2 space-y-4">
@@ -396,7 +460,7 @@ function Orders() {
                 </Card>
               </div>
             </div>
-          </TabsContent>
+          </TabsContent>}
 
           {/* Active Orders Tab */}
           <TabsContent value="active" className="mt-6">
@@ -406,9 +470,18 @@ function Orders() {
                   columns={[...activeOrderColumns, {
                     accessorKey: 'actions',
                     header: '',
-                    cell: ({ row }) => ['PENDING', 'CONFIRMED'].includes(row.original.status) ? (
-                      <Button variant="outline" size="sm" onClick={() => handleCancelOrder(row.original.id)}>Cancel</Button>
-                    ) : null,
+                    cell: ({ row }) => (
+                      <div className="flex items-center justify-end gap-1.5">
+                        {canPlace && ['PENDING', 'CONFIRMED'].includes(row.original.status) && (
+                          <Button variant="outline" size="sm" onClick={() => handleCancelOrder(row.original.id)}>Cancel</Button>
+                        )}
+                        {canReceive && ['DISPATCHED', 'DELIVERED'].includes(row.original.status) && (
+                          <Button variant="outline" size="sm" className="text-brand-warning" onClick={() => openReturnDialog(row.original)}>
+                            <RotateCcw className="w-3 h-3 mr-1" /> Return
+                          </Button>
+                        )}
+                      </div>
+                    ),
                   }]}
                   data={activeOrdersData?.data || []}
                   searchPlaceholder="Search orders..."
@@ -433,6 +506,40 @@ function Orders() {
           </TabsContent>
         </Tabs>
       </motion.div>
+
+      {/* Return / refund request dialog */}
+      <Dialog open={!!returnDialog} onOpenChange={(open) => { if (!open) setReturnDialog(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Request return or refund {returnDialog?.orderRef ? `· ${returnDialog.orderRef}` : ''}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-brand-secondary text-sm mb-1">Type</label>
+              <Select value={returnForm.type} onValueChange={(v) => setReturnForm((f) => ({ ...f, type: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="RETURN">Return — send products back</SelectItem>
+                  <SelectItem value="AMENDMENT">Amendment — request adjustment / refund</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="block text-brand-secondary text-sm mb-1">Reason *</label>
+              <textarea
+                rows={4}
+                value={returnForm.reason}
+                onChange={(e) => setReturnForm((f) => ({ ...f, reason: e.target.value }))}
+                className="w-full bg-brand-elevated border border-brand-border rounded-lg p-3 text-brand-primary text-sm focus:outline-none focus:ring-1 focus:ring-brand-accent resize-none"
+                placeholder="Tell us what happened so we can process this quickly..."
+              />
+            </div>
+            <Button className="w-full" onClick={handleSubmitReturn} disabled={submittingReturn || !returnForm.reason.trim()}>
+              {submittingReturn ? 'Submitting...' : 'Submit request'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

@@ -7,12 +7,14 @@ export const ROLES = {
   LOGISTICS_TEAM: { value: 'LOGISTICS_TEAM', label: 'Logistics Team', permissions: ['dashboard', 'logistics'] },
   DRIVER: { value: 'DRIVER', label: 'Driver', permissions: ['deliveries'] },
   ACCOUNTANT: { value: 'ACCOUNTANT', label: 'Accountant', permissions: ['dashboard', 'reports', 'billing'] },
-  CLIENT_ADMIN: { value: 'CLIENT_ADMIN', label: 'Client Admin', permissions: ['portal', 'orders', 'account'] },
-  CLIENT_STAFF: { value: 'CLIENT_STAFF', label: 'Client Staff', permissions: ['portal', 'orders', 'account'] },
+  CLIENT_ADMIN: { value: 'CLIENT_ADMIN', label: 'Client Admin', permissions: ['portal', 'orders', 'account', 'team', 'place', 'receive'] },
+  CLIENT_STAFF: { value: 'CLIENT_STAFF', label: 'Client Staff', permissions: ['portal', 'orders', 'account', 'place', 'receive'] },
+  CLIENT_ORDERER: { value: 'CLIENT_ORDERER', label: 'Order Placer', permissions: ['portal', 'orders', 'account', 'place'] },
+  CLIENT_RECEIVER: { value: 'CLIENT_RECEIVER', label: 'Receiver / Tracker', permissions: ['portal', 'orders', 'account', 'receive'] },
 };
 
 export const INTERNAL_ROLES = ['SUPER_ADMIN', 'PURCHASE_MANAGER', 'OPERATIONS_MANAGER', 'QUALITY_COST_CONTROL', 'RECEIVING', 'LOGISTICS_TEAM', 'ACCOUNTANT'];
-export const CLIENT_ROLES = ['CLIENT_ADMIN', 'CLIENT_STAFF'];
+export const CLIENT_ROLES = ['CLIENT_ADMIN', 'CLIENT_STAFF', 'CLIENT_ORDERER', 'CLIENT_RECEIVER'];
 export const DRIVER_ROLES = ['DRIVER'];
 
 export const ORDER_STATUSES = {

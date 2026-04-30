@@ -65,7 +65,7 @@ function Login() {
         return;
       }
       const role = data.user?.role;
-      if (role === 'CLIENT_ADMIN' || role === 'CLIENT_STAFF') {
+      if (['CLIENT_ADMIN', 'CLIENT_STAFF', 'CLIENT_ORDERER', 'CLIENT_RECEIVER'].includes(role)) {
         navigate('/portal');
       } else if (role === 'DRIVER') {
         navigate('/driver');

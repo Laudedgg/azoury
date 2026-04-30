@@ -19,6 +19,13 @@ import { getInitials } from '@/utils/helpers';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
+const TEAM_ROLE_LABELS = {
+  CLIENT_ADMIN: 'Admin',
+  CLIENT_STAFF: 'Full Access',
+  CLIENT_ORDERER: 'Order Placer',
+  CLIENT_RECEIVER: 'Receiver',
+};
+
 const staffColumns = [
   {
     accessorKey: 'name',
@@ -42,18 +49,17 @@ const staffColumns = [
   {
     accessorKey: 'role',
     header: 'Role',
-    cell: ({ row }) => <Badge variant="outline">{row.original.role}</Badge>,
+    cell: ({ row }) => <Badge variant="outline">{TEAM_ROLE_LABELS[row.original.role] || row.original.role}</Badge>,
   },
   {
-    accessorKey: 'canOrder',
-    header: 'Can Order',
+    accessorKey: 'isActive',
+    header: 'Status',
     cell: ({ row }) => (
-      <Badge variant={row.original.canOrder ? 'success' : 'default'}>
-        {row.original.canOrder ? 'Yes' : 'No'}
+      <Badge variant={row.original.isActive ? 'success' : 'default'}>
+        {row.original.isActive ? 'Active' : 'Inactive'}
       </Badge>
     ),
   },
-  { accessorKey: 'lastLogin', header: 'Last Login' },
 ];
 
 function Account() {
@@ -74,8 +80,9 @@ function Account() {
     businessType: 'Restaurant',
   });
   const [formInit, setFormInit] = useState(false);
+  const isAdmin = user?.role === 'CLIENT_ADMIN';
   const [addStaffDialog, setAddStaffDialog] = useState(false);
-  const [newStaff, setNewStaff] = useState({ firstName: '', lastName: '', email: '', password: '', role: '', phone: '' });
+  const [newStaff, setNewStaff] = useState({ firstName: '', lastName: '', email: '', password: '', role: 'CLIENT_ORDERER', phone: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [passwords, setPasswords] = useState({ current: '', newPass: '', confirm: '' });
   const [saving, setSaving] = useState(false);
@@ -118,14 +125,22 @@ function Account() {
 
   const handleAddStaff = async () => {
     if (!clientId) return;
+    if (!newStaff.firstName || !newStaff.email || !newStaff.password) {
+      toast.error('First name, email, and password are required');
+      return;
+    }
+    if (newStaff.password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
     try {
       await api.post(`/clients/${clientId}/staff`, newStaff);
-      toast.success('Staff member added');
+      toast.success('Team member added — they must change their password on first login.');
       setAddStaffDialog(false);
-      setNewStaff({ firstName: '', lastName: '', email: '', password: '', role: '', phone: '' });
+      setNewStaff({ firstName: '', lastName: '', email: '', password: '', role: 'CLIENT_ORDERER', phone: '' });
       refetchStaff();
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to add staff member');
+      toast.error(err?.response?.data?.error || err?.response?.data?.message || 'Failed to add team member');
     }
   };
 
@@ -230,28 +245,34 @@ function Account() {
         </Card>
       </motion.div>
 
-      {/* Staff Management */}
-      <motion.div variants={fadeInUp}>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Staff Management</CardTitle>
-              <CardDescription>Manage your team members and their permissions</CardDescription>
-            </div>
-            <Button onClick={() => setAddStaffDialog(true)}>
-              <UserPlus className="w-4 h-4 mr-2" /> Add Staff
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <DataTable
-              columns={staffColumns}
-              data={staff}
-              searchPlaceholder="Search staff..."
-              searchColumn="name"
-            />
-          </CardContent>
-        </Card>
-      </motion.div>
+      {/* Team Management — admin-only */}
+      {isAdmin && (
+        <motion.div variants={fadeInUp}>
+          <Card>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <CardTitle>Team Members</CardTitle>
+                <CardDescription>
+                  Add sub-logins for your team. Order Placers can browse and place orders.
+                  Receivers can track active deliveries and request returns or refunds.
+                  No financial data is exposed to either role.
+                </CardDescription>
+              </div>
+              <Button className="w-full sm:w-auto" onClick={() => setAddStaffDialog(true)}>
+                <UserPlus className="w-4 h-4 mr-2" /> Add team member
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <DataTable
+                columns={staffColumns}
+                data={staff}
+                searchPlaceholder="Search team..."
+                searchColumn="name"
+              />
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Password Change */}
       <motion.div variants={fadeInUp}>
@@ -308,16 +329,28 @@ function Account() {
         </Card>
       </motion.div>
 
-      {/* Add Staff Dialog */}
+      {/* Add Team Member Dialog */}
       <Dialog open={addStaffDialog} onOpenChange={setAddStaffDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Staff Member</DialogTitle>
+            <DialogTitle>Add team member</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <div>
+              <Label className="mb-1.5 block">Role *</Label>
+              <Select value={newStaff.role} onValueChange={(v) => setNewStaff({ ...newStaff, role: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CLIENT_ORDERER">Order Placer — browse catalog & place orders</SelectItem>
+                  <SelectItem value="CLIENT_RECEIVER">Receiver — track deliveries & request returns</SelectItem>
+                  <SelectItem value="CLIENT_STAFF">Full Access — both place and receive</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-brand-muted text-xs mt-1.5">No financial data (totals, prices, billing) is exposed to any of these roles.</p>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="mb-1.5 block">First Name</Label>
+                <Label className="mb-1.5 block">First Name *</Label>
                 <Input placeholder="First name" value={newStaff.firstName} onChange={(e) => setNewStaff({ ...newStaff, firstName: e.target.value })} />
               </div>
               <div>
@@ -326,28 +359,19 @@ function Account() {
               </div>
             </div>
             <div>
-              <Label className="mb-1.5 block">Email</Label>
+              <Label className="mb-1.5 block">Email *</Label>
               <Input type="email" placeholder="email@company.com" value={newStaff.email} onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })} />
-            </div>
-            <div>
-              <Label className="mb-1.5 block">Password</Label>
-              <Input type="password" placeholder="Temporary password" value={newStaff.password} onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })} />
             </div>
             <div>
               <Label className="mb-1.5 block">Phone</Label>
               <Input placeholder="+961 ..." value={newStaff.phone} onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })} />
             </div>
             <div>
-              <Label className="mb-1.5 block">Role</Label>
-              <Select value={newStaff.role} onValueChange={(v) => setNewStaff({ ...newStaff, role: v })}>
-                <SelectTrigger><SelectValue placeholder="Select role..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CLIENT_STAFF">Staff</SelectItem>
-                  <SelectItem value="CLIENT_ADMIN">Admin</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label className="mb-1.5 block">Temporary password *</Label>
+              <Input type="password" placeholder="Min 6 characters" value={newStaff.password} onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })} />
+              <p className="text-brand-muted text-xs mt-1.5">They will be required to change it on first login.</p>
             </div>
-            <Button className="w-full" onClick={handleAddStaff}>Add Staff Member</Button>
+            <Button className="w-full" onClick={handleAddStaff}>Add team member</Button>
           </div>
         </DialogContent>
       </Dialog>

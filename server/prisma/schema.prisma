@@ -18,6 +18,8 @@ enum UserRole {
   ACCOUNTANT
   CLIENT_ADMIN
   CLIENT_STAFF
+  CLIENT_ORDERER
+  CLIENT_RECEIVER
 }
 
 enum BusinessType {

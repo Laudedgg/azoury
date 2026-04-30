@@ -20,7 +20,7 @@ function ChangePassword() {
   const [loading, setLoading] = useState(false);
 
   const redirectByRole = (role) => {
-    if (role === 'CLIENT_ADMIN' || role === 'CLIENT_STAFF') navigate('/portal');
+    if (['CLIENT_ADMIN', 'CLIENT_STAFF', 'CLIENT_ORDERER', 'CLIENT_RECEIVER'].includes(role)) navigate('/portal');
     else if (role === 'DRIVER') navigate('/driver');
     else navigate('/admin');
   };

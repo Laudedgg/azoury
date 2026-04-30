@@ -14,15 +14,20 @@ const {
 } = require('../controllers/clientController');
 
 router.use(authenticate);
-router.use(requireRole('SUPER_ADMIN', 'OPERATIONS_MANAGER'));
 
-router.get('/', listClients);
-router.get('/:id', getClient);
-router.post('/', createClient);
-router.put('/:id', updateClient);
-router.delete('/:id', deleteClient);
-router.patch('/:id/approve', approveClient);
-router.get('/:id/staff', listClientStaff);
-router.post('/:id/staff', addStaffToClient);
+const adminScope = requireRole('SUPER_ADMIN', 'OPERATIONS_MANAGER');
+// Client admins can read/manage their OWN organization (controllers verify clientId match)
+const clientAdminScope = requireRole('SUPER_ADMIN', 'OPERATIONS_MANAGER', 'CLIENT_ADMIN');
+
+router.get('/', adminScope, listClients);
+router.post('/', adminScope, createClient);
+router.put('/:id', adminScope, updateClient);
+router.delete('/:id', adminScope, deleteClient);
+router.patch('/:id/approve', adminScope, approveClient);
+
+// Self-scoped for CLIENT_ADMIN; controllers reject cross-org access
+router.get('/:id', clientAdminScope, getClient);
+router.get('/:id/staff', clientAdminScope, listClientStaff);
+router.post('/:id/staff', clientAdminScope, addStaffToClient);
 
 module.exports = router;

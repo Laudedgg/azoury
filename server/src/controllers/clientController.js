@@ -48,6 +48,9 @@ async function listClients(req, res, next) {
 
 async function getClient(req, res, next) {
   try {
+    if (req.user.role === 'CLIENT_ADMIN' && req.params.id !== req.user.clientId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
     const client = await prisma.client.findUnique({
       where: { id: req.params.id },
       include: {
@@ -170,10 +173,13 @@ async function approveClient(req, res, next) {
 
 async function listClientStaff(req, res, next) {
   try {
+    if (req.user.role === 'CLIENT_ADMIN' && req.params.id !== req.user.clientId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
     const staff = await prisma.user.findMany({
       where: {
         clientId: req.params.id,
-        role: { in: ['CLIENT_ADMIN', 'CLIENT_STAFF'] },
+        role: { in: ['CLIENT_ADMIN', 'CLIENT_STAFF', 'CLIENT_ORDERER', 'CLIENT_RECEIVER'] },
       },
       select: {
         id: true,
@@ -198,8 +204,18 @@ async function addStaffToClient(req, res, next) {
   try {
     const { email, password, firstName, lastName, role, phone } = req.body;
 
-    if (!['CLIENT_ADMIN', 'CLIENT_STAFF'].includes(role)) {
-      return res.status(400).json({ error: 'Role must be CLIENT_ADMIN or CLIENT_STAFF' });
+    const allowedRoles = ['CLIENT_ADMIN', 'CLIENT_STAFF', 'CLIENT_ORDERER', 'CLIENT_RECEIVER'];
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({ error: `Role must be one of ${allowedRoles.join(', ')}` });
+    }
+
+    // Client admins can only manage staff inside their own organization
+    if (req.user.role === 'CLIENT_ADMIN' && req.params.id !== req.user.clientId) {
+      return res.status(403).json({ error: 'You can only add staff to your own organization' });
+    }
+    // Client admins cannot promote a sub-user to CLIENT_ADMIN
+    if (req.user.role === 'CLIENT_ADMIN' && role === 'CLIENT_ADMIN') {
+      return res.status(403).json({ error: 'Client admins cannot create another admin user' });
     }
 
     if (!password || password.length < 6) {
