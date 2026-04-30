@@ -1,8 +1,7 @@
 import React from 'react';
-import { Bell, Search } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/Avatar';
-import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -19,17 +18,6 @@ function Header() {
       {/* Left: Breadcrumbs */}
       <div className="flex-1">
         <Breadcrumbs />
-      </div>
-
-      {/* Center: Search */}
-      <div className="hidden md:flex items-center max-w-md w-full mx-4">
-        <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-brand-muted" />
-          <Input
-            placeholder="Search orders, products, clients..."
-            className="pl-10 bg-brand-surface/50 border-brand-border/50 h-9"
-          />
-        </div>
       </div>
 
       {/* Right: Notifications + User */}
