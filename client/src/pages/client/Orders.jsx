@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Plus, ShoppingCart, Minus, Trash2, Calendar, Package, Printer,
+  Plus, ShoppingCart, Minus, Trash2, Calendar, Package, Printer, Search, X,
 } from 'lucide-react';
 import { printInvoice, printTable } from '@/utils/print';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -48,6 +48,7 @@ function Orders() {
   const [cart, setCart] = useState([]);
   const [deliveryDate, setDeliveryDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [productSearch, setProductSearch] = useState('');
 
   const { data: productsData } = useFetch('/products?page=1&limit=100');
   const { data: activeOrdersData, refetch: refetchActive } = useFetch('/orders?status=PENDING,CONFIRMED,PREPARING,DISPATCHED');
@@ -57,7 +58,7 @@ function Orders() {
 
   // Map API products to the shape the UI expects (active only). Pricing is hidden from clients
   // for now; we just use the first quality grade on each product as the order reference.
-  const products = (productsData?.data || []).filter((p) => p.isActive !== false).map((p) => ({
+  const allProducts = (productsData?.data || []).filter((p) => p.isActive !== false).map((p) => ({
     id: p.id,
     name: p.name,
     description: p.description || '',
@@ -66,6 +67,17 @@ function Orders() {
     unit: p.unit,
     qualityGradeId: (p.qualityGrades || [])[0]?.id || null,
   }));
+
+  const products = (() => {
+    const q = productSearch.trim().toLowerCase();
+    if (!q) return allProducts;
+    return allProducts.filter((p) => (
+      p.name.toLowerCase().includes(q)
+      || p.description.toLowerCase().includes(q)
+      || p.subDescription.toLowerCase().includes(q)
+      || (p.category || '').toLowerCase().includes(q)
+    ));
+  })();
 
   const addToCart = (product) => {
     if (!product.qualityGradeId) return;
@@ -185,13 +197,42 @@ function Orders() {
           <TabsContent value="place" className="mt-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Product Catalog */}
-              <div className="lg:col-span-2">
-                {products.length === 0 ? (
+              <div className="lg:col-span-2 space-y-4">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted pointer-events-none" />
+                  <Input
+                    placeholder="Search products by name, description, or category..."
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    className="pl-10 pr-10"
+                  />
+                  {productSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setProductSearch('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-muted hover:text-brand-primary"
+                      aria-label="Clear search"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {allProducts.length === 0 ? (
                   <Card className="border-dashed">
                     <CardContent className="p-6 text-center">
                       <Package className="w-10 h-10 mx-auto text-brand-muted mb-3" />
                       <p className="text-brand-primary font-medium">No products available yet</p>
                       <p className="text-brand-muted text-sm mt-1">The catalog will appear here once products are added.</p>
+                    </CardContent>
+                  </Card>
+                ) : products.length === 0 ? (
+                  <Card className="border-dashed">
+                    <CardContent className="p-6 text-center">
+                      <Search className="w-10 h-10 mx-auto text-brand-muted mb-3" />
+                      <p className="text-brand-primary font-medium">No products match "{productSearch}"</p>
+                      <p className="text-brand-muted text-sm mt-1">Try a different search.</p>
                     </CardContent>
                   </Card>
                 ) : (
