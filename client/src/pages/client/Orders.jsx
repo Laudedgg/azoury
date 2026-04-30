@@ -269,45 +269,50 @@ function Orders() {
                           {product.subDescription && (
                             <p className="text-brand-muted text-xs mb-3">{product.subDescription}</p>
                           )}
-                          <div className="mt-3 flex items-center gap-2">
-                            <div className="flex items-center bg-brand-elevated rounded-md border border-brand-border">
-                              <button
-                                type="button"
-                                onClick={() => bumpQtyFor(product.id, -1)}
-                                className="w-7 h-8 flex items-center justify-center text-brand-secondary hover:text-brand-primary"
-                                aria-label="Decrease quantity"
+                          <div className="mt-3 space-y-1.5">
+                            <label className="text-[10px] uppercase tracking-wider text-brand-muted font-medium">
+                              Quantity (tap or type)
+                            </label>
+                            <div className="flex items-stretch gap-2">
+                              <div className="flex items-stretch rounded-md border border-brand-border overflow-hidden">
+                                <button
+                                  type="button"
+                                  onClick={() => bumpQtyFor(product.id, -1)}
+                                  className="w-7 flex items-center justify-center bg-brand-elevated text-brand-secondary hover:bg-brand-base hover:text-brand-primary border-r border-brand-border"
+                                  aria-label="Decrease quantity"
+                                >
+                                  <Minus className="w-3 h-3" />
+                                </button>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={pendingQty[product.id] ?? '1'}
+                                  onChange={(e) => setQtyFor(product.id, e.target.value)}
+                                  onFocus={(e) => e.target.select()}
+                                  onBlur={(e) => {
+                                    const n = Math.max(1, Math.floor(Number(e.target.value) || 1));
+                                    setQtyFor(product.id, String(n));
+                                  }}
+                                  className="w-14 h-8 text-center text-sm font-semibold px-1 bg-brand-base border-0 rounded-none focus-visible:ring-1 focus-visible:ring-brand-accent text-brand-primary"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => bumpQtyFor(product.id, 1)}
+                                  className="w-7 flex items-center justify-center bg-brand-elevated text-brand-secondary hover:bg-brand-base hover:text-brand-primary border-l border-brand-border"
+                                  aria-label="Increase quantity"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </button>
+                              </div>
+                              <Button
+                                size="sm"
+                                onClick={() => addToCart(product)}
+                                disabled={!product.qualityGradeId}
+                                className="flex-1 h-8 text-xs"
                               >
-                                <Minus className="w-3 h-3" />
-                              </button>
-                              <Input
-                                type="number"
-                                min="1"
-                                value={pendingQty[product.id] ?? '1'}
-                                onChange={(e) => setQtyFor(product.id, e.target.value)}
-                                onBlur={(e) => {
-                                  const n = Math.max(1, Math.floor(Number(e.target.value) || 1));
-                                  setQtyFor(product.id, String(n));
-                                }}
-                                className="w-12 h-8 text-center text-xs px-1 bg-transparent border-0 focus-visible:ring-0"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => bumpQtyFor(product.id, 1)}
-                                className="w-7 h-8 flex items-center justify-center text-brand-secondary hover:text-brand-primary"
-                                aria-label="Increase quantity"
-                              >
-                                <Plus className="w-3 h-3" />
-                              </button>
+                                <Plus className="w-3 h-3 mr-1" /> Add to cart
+                              </Button>
                             </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => addToCart(product)}
-                              disabled={!product.qualityGradeId}
-                              className="flex-1 h-8 text-xs"
-                            >
-                              <Plus className="w-3 h-3 mr-1" /> Add
-                            </Button>
                           </div>
                         </CardContent>
                       </Card>
