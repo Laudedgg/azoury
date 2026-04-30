@@ -49,6 +49,7 @@ function Orders() {
   const [deliveryDate, setDeliveryDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [productSearch, setProductSearch] = useState('');
+  const [pendingQty, setPendingQty] = useState({}); // productId -> string
 
   const { data: productsData } = useFetch('/products?page=1&limit=100');
   const { data: activeOrdersData, refetch: refetchActive } = useFetch('/orders?status=PENDING,CONFIRMED,PREPARING,DISPATCHED');
@@ -79,12 +80,25 @@ function Orders() {
     ));
   })();
 
+  const setQtyFor = (productId, value) => {
+    setPendingQty((m) => ({ ...m, [productId]: value }));
+  };
+  const bumpQtyFor = (productId, delta) => {
+    setPendingQty((m) => {
+      const current = Number(m[productId] ?? 1) || 0;
+      const next = Math.max(1, current + delta);
+      return { ...m, [productId]: String(next) };
+    });
+  };
+
   const addToCart = (product) => {
     if (!product.qualityGradeId) return;
+    const raw = pendingQty[product.id] ?? '1';
+    const qty = Math.max(1, Math.floor(Number(raw) || 0));
     setCart((prev) => {
       const existing = prev.find((c) => c.productId === product.id);
       if (existing) {
-        return prev.map((c) => c.productId === product.id ? { ...c, qty: c.qty + 1 } : c);
+        return prev.map((c) => c.productId === product.id ? { ...c, qty: c.qty + qty } : c);
       }
       return [...prev, {
         key: product.id,
@@ -92,10 +106,12 @@ function Orders() {
         qualityGradeId: product.qualityGradeId,
         name: product.name,
         unit: product.unit,
-        qty: 1,
+        qty,
         note: '',
       }];
     });
+    setPendingQty((m) => ({ ...m, [product.id]: '1' }));
+    toast.success(`Added ${qty} × ${product.name} to cart`);
   };
 
   const updateQty = (key, delta) => {
@@ -253,15 +269,46 @@ function Orders() {
                           {product.subDescription && (
                             <p className="text-brand-muted text-xs mb-3">{product.subDescription}</p>
                           )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => addToCart(product)}
-                            disabled={!product.qualityGradeId}
-                            className="w-full mt-3 h-8 text-xs"
-                          >
-                            <Plus className="w-3 h-3 mr-1" /> Add to cart
-                          </Button>
+                          <div className="mt-3 flex items-center gap-2">
+                            <div className="flex items-center bg-brand-elevated rounded-md border border-brand-border">
+                              <button
+                                type="button"
+                                onClick={() => bumpQtyFor(product.id, -1)}
+                                className="w-7 h-8 flex items-center justify-center text-brand-secondary hover:text-brand-primary"
+                                aria-label="Decrease quantity"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+                              <Input
+                                type="number"
+                                min="1"
+                                value={pendingQty[product.id] ?? '1'}
+                                onChange={(e) => setQtyFor(product.id, e.target.value)}
+                                onBlur={(e) => {
+                                  const n = Math.max(1, Math.floor(Number(e.target.value) || 1));
+                                  setQtyFor(product.id, String(n));
+                                }}
+                                className="w-12 h-8 text-center text-xs px-1 bg-transparent border-0 focus-visible:ring-0"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => bumpQtyFor(product.id, 1)}
+                                className="w-7 h-8 flex items-center justify-center text-brand-secondary hover:text-brand-primary"
+                                aria-label="Increase quantity"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => addToCart(product)}
+                              disabled={!product.qualityGradeId}
+                              className="flex-1 h-8 text-xs"
+                            >
+                              <Plus className="w-3 h-3 mr-1" /> Add
+                            </Button>
+                          </div>
                         </CardContent>
                       </Card>
                     ))}
