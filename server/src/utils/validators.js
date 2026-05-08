@@ -85,6 +85,7 @@ const updateOrderStatusSchema = z.object({
     'PENDING',
     'CONFIRMED',
     'PREPARING',
+    'READY',
     'DISPATCHED',
     'DELIVERED',
     'CANCELLED',
