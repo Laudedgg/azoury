@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Package, ClipboardList, Plus, Check, Clock, AlertCircle, Printer } from 'lucide-react';
+import { Package, ClipboardList, Plus, Check, Clock, AlertCircle, Printer, FileText, Loader2, ChevronDown } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { printTable } from '@/utils/print';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -46,10 +47,71 @@ function Receiving() {
   const [reference, setReference] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // PO receiving state
+  const [poDialog, setPoDialog] = useState(null); // full PO object
+  const [poReceived, setPoReceived] = useState({}); // poItemId -> string
+  const [savingPo, setSavingPo] = useState(false);
+  const [loadingPo, setLoadingPo] = useState(false);
+
   const { data: productsData } = useFetch('/products');
   const { data: stockData } = useFetch('/inventory/stock');
   const { data: movementsData, refetch: refetchMovements } = useFetch('/inventory/movements?page=1&limit=50');
   const { data: spotChecksData, refetch: refetchSpotChecks } = useFetch('/inventory/spot-checks');
+  const { data: poData, refetch: refetchPOs } = useFetch('/suppliers/purchase-orders?status=DRAFT');
+  const { data: poSentData, refetch: refetchPOsSent } = useFetch('/suppliers/purchase-orders?status=SENT');
+  const pendingPOs = [
+    ...((poData?.data || []).map((p) => ({ ...p, _statusLabel: 'Draft' }))),
+    ...((poSentData?.data || []).map((p) => ({ ...p, _statusLabel: 'Sent' }))),
+  ];
+
+  const openPoDialog = async (poId) => {
+    setLoadingPo(true);
+    try {
+      const res = await api.get(`/suppliers/purchase-orders/${poId}`);
+      setPoDialog(res.data);
+      const initial = {};
+      for (const it of res.data.items) {
+        initial[it.id] = String(it.receivedQuantity ?? it.quantity ?? '');
+      }
+      setPoReceived(initial);
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Failed to load purchase order');
+    } finally {
+      setLoadingPo(false);
+    }
+  };
+
+  const closePoDialog = () => { setPoDialog(null); setPoReceived({}); };
+
+  const handleReceivePO = async () => {
+    if (!poDialog) return;
+    const items = poDialog.items.map((it) => ({
+      id: it.id,
+      receivedQuantity: Number(poReceived[it.id] ?? 0),
+    }));
+    for (const it of items) {
+      if (Number.isNaN(it.receivedQuantity) || it.receivedQuantity < 0) {
+        toast.error('Received quantities must be non-negative numbers');
+        return;
+      }
+    }
+    setSavingPo(true);
+    try {
+      await api.patch(`/suppliers/purchase-orders/${poDialog.id}/status`, {
+        status: 'RECEIVED',
+        items,
+      });
+      toast.success('Purchase order received — inventory updated');
+      closePoDialog();
+      refetchPOs();
+      refetchPOsSent();
+      refetchMovements();
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Failed to mark received');
+    } finally {
+      setSavingPo(false);
+    }
+  };
 
   const products = productsData?.data || productsData || [];
   const currentProduct = products.find((p) => p.id === selectedProduct);
@@ -236,6 +298,114 @@ function Receiving() {
           <Printer className="w-4 h-4 mr-2" /> Print log
         </Button>
       </motion.div>
+
+      {/* Section 0: Receive Purchase Orders */}
+      <motion.div variants={fadeInUp}>
+        <Card className="border-brand-accent/30 bg-brand-accent/5">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <FileText className="w-5 h-5 text-brand-accent" />
+              <h2 className="text-lg font-semibold text-brand-primary">Receive Purchase Orders</h2>
+              <Badge variant="outline" className="ml-1 text-[10px]">{pendingPOs.length} pending</Badge>
+            </div>
+            <p className="text-brand-secondary text-xs mb-4">
+              Open each PO, enter what actually arrived per line, and submit. Inventory updates
+              automatically; missing items are flagged so purchasing can be notified.
+            </p>
+
+            {pendingPOs.length === 0 ? (
+              <p className="text-brand-muted text-sm py-4 text-center">
+                No purchase orders to receive right now. Purchasing can save buy lists from Combined Orders.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {pendingPOs.map((po) => (
+                  <Card key={po.id} className="border-brand-border hover:border-brand-accent/50 cursor-pointer transition-colors" onClick={() => openPoDialog(po.id)}>
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="font-mono text-brand-accent text-xs">PO {po.id.slice(0, 8)}</span>
+                        <Badge variant={po._statusLabel === 'Draft' ? 'warning' : 'accent'} className="text-[10px]">{po._statusLabel}</Badge>
+                      </div>
+                      <p className="text-brand-primary text-sm font-medium truncate">{po.supplier?.name || 'Unassigned supplier'}</p>
+                      <div className="flex items-center justify-between mt-1.5">
+                        <span className="text-brand-muted text-xs">{po._count?.items ?? 0} item{(po._count?.items ?? 0) === 1 ? '' : 's'}</span>
+                        <span className="text-brand-muted text-xs">{new Date(po.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* PO Receive Dialog */}
+      <Dialog open={!!poDialog} onOpenChange={(open) => { if (!open) closePoDialog(); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Receive PO {poDialog?.id?.slice(0, 8)}</DialogTitle>
+          </DialogHeader>
+          {loadingPo ? (
+            <div className="py-12 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-brand-accent" /></div>
+          ) : poDialog && (
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><p className="text-brand-muted text-xs">Supplier</p><p className="text-brand-primary font-medium">{poDialog.supplier?.name || 'Unassigned'}</p></div>
+                <div><p className="text-brand-muted text-xs">Created</p><p className="text-brand-primary">{new Date(poDialog.createdAt).toLocaleString()}</p></div>
+              </div>
+              {poDialog.notes && (
+                <div className="text-sm bg-brand-elevated p-3 rounded-lg">
+                  <p className="text-brand-muted text-xs mb-1">Notes</p>
+                  <p className="text-brand-primary">{poDialog.notes}</p>
+                </div>
+              )}
+              <div className="rounded-lg border border-brand-border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-brand-base">
+                    <tr>
+                      <th className="text-left px-3 py-2 text-xs uppercase tracking-wider text-brand-secondary">Product</th>
+                      <th className="text-right px-3 py-2 text-xs uppercase tracking-wider text-brand-secondary">Ordered</th>
+                      <th className="text-right px-3 py-2 text-xs uppercase tracking-wider text-brand-accent">Received</th>
+                      <th className="text-right px-3 py-2 text-xs uppercase tracking-wider text-brand-secondary">Missing</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {poDialog.items.map((it) => {
+                      const received = Number(poReceived[it.id] ?? 0) || 0;
+                      const missing = Math.max(0, (it.quantity || 0) - received);
+                      return (
+                        <tr key={it.id} className="border-t border-brand-border">
+                          <td className="px-3 py-2 text-brand-primary">{it.product?.name}</td>
+                          <td className="px-3 py-2 text-right text-brand-secondary">{it.quantity} {it.product?.unit || ''}</td>
+                          <td className="px-3 py-2 text-right">
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.1"
+                              value={poReceived[it.id] ?? ''}
+                              onChange={(e) => setPoReceived((m) => ({ ...m, [it.id]: e.target.value }))}
+                              className="w-24 h-8 text-right text-sm inline-block"
+                            />
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            {missing > 0
+                              ? <span className="text-brand-error font-medium">{missing} {it.product?.unit || ''}</span>
+                              : <span className="text-brand-success text-xs">OK</span>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <Button className="w-full" onClick={handleReceivePO} disabled={savingPo}>
+                {savingPo ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Updating inventory...</> : 'Mark Received & Update Inventory'}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Section 1: Incoming Products */}
       <motion.div variants={fadeInUp}>

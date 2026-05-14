@@ -13,26 +13,34 @@ const {
   getPriceComparison,
   createPurchaseOrder,
   listPurchaseOrders,
+  getPurchaseOrder,
   updatePurchaseOrderStatus,
   getPriceSurveys,
   createPriceSurvey,
 } = require('../controllers/supplierController');
 
 router.use(authenticate);
-router.use(requireRole('SUPER_ADMIN', 'PURCHASE_MANAGER', 'QUALITY_COST_CONTROL'));
 
-router.get('/', listSuppliers);
-router.get('/price-comparison', getPriceComparison);
-router.get('/price-surveys', getPriceSurveys);
-router.post('/price-surveys', createPriceSurvey);
-router.get('/purchase-orders', listPurchaseOrders);
-router.get('/:id', getSupplier);
-router.post('/', createSupplier);
-router.put('/:id', updateSupplier);
-router.delete('/:id', deleteSupplier);
-router.get('/:id/ratings', getRatingsHistory);
-router.post('/:id/ratings', addRating);
-router.post('/purchase-orders', createPurchaseOrder);
-router.patch('/purchase-orders/:id/status', updatePurchaseOrderStatus);
+// Most supplier admin actions stay scoped to purchasing/QC
+const supplierScope = requireRole('SUPER_ADMIN', 'PURCHASE_MANAGER', 'QUALITY_COST_CONTROL');
+// Receiving needs to view and mark POs received too
+const receivingScope = requireRole('SUPER_ADMIN', 'PURCHASE_MANAGER', 'QUALITY_COST_CONTROL', 'RECEIVING');
+
+router.get('/', supplierScope, listSuppliers);
+router.get('/price-comparison', supplierScope, getPriceComparison);
+router.get('/price-surveys', supplierScope, getPriceSurveys);
+router.post('/price-surveys', supplierScope, createPriceSurvey);
+
+router.get('/purchase-orders', receivingScope, listPurchaseOrders);
+router.get('/purchase-orders/:id', receivingScope, getPurchaseOrder);
+router.post('/purchase-orders', supplierScope, createPurchaseOrder);
+router.patch('/purchase-orders/:id/status', receivingScope, updatePurchaseOrderStatus);
+
+router.get('/:id', supplierScope, getSupplier);
+router.post('/', supplierScope, createSupplier);
+router.put('/:id', supplierScope, updateSupplier);
+router.delete('/:id', supplierScope, deleteSupplier);
+router.get('/:id/ratings', supplierScope, getRatingsHistory);
+router.post('/:id/ratings', supplierScope, addRating);
 
 module.exports = router;

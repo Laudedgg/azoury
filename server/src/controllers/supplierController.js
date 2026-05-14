@@ -350,29 +350,110 @@ async function listPurchaseOrders(req, res, next) {
   }
 }
 
+async function getPurchaseOrder(req, res, next) {
+  try {
+    const po = await prisma.purchaseOrder.findUnique({
+      where: { id: req.params.id },
+      include: {
+        supplier: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                unit: true,
+                qualityGrades: { orderBy: { createdAt: 'asc' }, take: 1 },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!po) return res.status(404).json({ error: 'Purchase order not found' });
+    res.json(po);
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function updatePurchaseOrderStatus(req, res, next) {
   try {
     const { status, items } = req.body;
 
-    const po = await prisma.purchaseOrder.update({
+    const existing = await prisma.purchaseOrder.findUnique({
       where: { id: req.params.id },
-      data: { status },
+      include: {
+        items: { include: { product: { include: { qualityGrades: { orderBy: { createdAt: 'asc' }, take: 1 } } } } },
+      },
+    });
+    if (!existing) return res.status(404).json({ error: 'Purchase order not found' });
+
+    await prisma.$transaction(async (tx) => {
+      await tx.purchaseOrder.update({
+        where: { id: req.params.id },
+        data: { status: status || existing.status },
+      });
+
+      if (Array.isArray(items) && items.length > 0) {
+        for (const item of items) {
+          const po = existing.items.find((i) => i.id === item.id);
+          if (!po) continue;
+          const received = Number(item.receivedQuantity);
+          if (!Number.isFinite(received) || received < 0) continue;
+
+          const prior = po.receivedQuantity || 0;
+          const delta = received - prior;
+
+          await tx.purchaseItem.update({
+            where: { id: item.id },
+            data: {
+              receivedQuantity: received,
+              receivedWeight: item.receivedWeight !== undefined ? Number(item.receivedWeight) : received,
+            },
+          });
+
+          if (delta !== 0 && po.product.qualityGrades.length > 0) {
+            const grade = po.product.qualityGrades[0];
+            await tx.qualityGrade.update({
+              where: { id: grade.id },
+              data: { currentStock: { increment: delta } },
+            });
+            await tx.inventoryMovement.create({
+              data: {
+                productId: po.productId,
+                qualityGradeId: grade.id,
+                type: 'PURCHASE_IN',
+                quantity: delta,
+                reference: `PO ${existing.id.slice(0, 8)}`,
+                notes: 'Received against purchase order',
+                createdById: req.user.id,
+              },
+            });
+          }
+        }
+      }
+
+      await tx.activityLog.create({
+        data: {
+          userId: req.user.id,
+          action: status === 'RECEIVED' ? 'RECEIVE_PURCHASE_ORDER' : 'UPDATE_PURCHASE_ORDER_STATUS',
+          entityType: 'PurchaseOrder',
+          entityId: existing.id,
+          metadata: { status, itemCount: items?.length || 0 },
+        },
+      });
     });
 
-    // If received, update received quantities and create inventory movements
-    if (status === 'RECEIVED' && items) {
-      for (const item of items) {
-        await prisma.purchaseItem.update({
-          where: { id: item.id },
-          data: {
-            receivedQuantity: item.receivedQuantity,
-            receivedWeight: item.receivedWeight,
-          },
-        });
-      }
-    }
-
-    res.json(po);
+    const refreshed = await prisma.purchaseOrder.findUnique({
+      where: { id: req.params.id },
+      include: {
+        supplier: { select: { id: true, name: true } },
+        items: { include: { product: { select: { id: true, name: true, unit: true } } } },
+      },
+    });
+    res.json(refreshed);
   } catch (error) {
     next(error);
   }
@@ -457,6 +538,7 @@ module.exports = {
   getPriceComparison,
   createPurchaseOrder,
   listPurchaseOrders,
+  getPurchaseOrder,
   updatePurchaseOrderStatus,
   getPriceSurveys,
   createPriceSurvey,
