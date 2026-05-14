@@ -344,6 +344,10 @@ async function getInvoices(req, res, next) {
     const where = {};
     if (status) where.status = status;
     if (clientId) where.clientId = clientId;
+    // Client users only ever see their own
+    if (['CLIENT_ADMIN', 'CLIENT_STAFF', 'CLIENT_ORDERER', 'CLIENT_RECEIVER'].includes(req.user.role)) {
+      where.clientId = req.user.clientId;
+    }
 
     const [invoices, total] = await Promise.all([
       prisma.invoice.findMany({
@@ -354,6 +358,7 @@ async function getInvoices(req, res, next) {
         include: {
           client: { select: { id: true, businessName: true } },
           clientOrder: { select: { id: true, totalAmount: true, status: true } },
+          approvedBy: { select: { id: true, firstName: true, lastName: true } },
         },
       }),
       prisma.invoice.count({ where }),
@@ -396,6 +401,91 @@ async function updateInvoiceStatus(req, res, next) {
     });
 
     res.json(invoice);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function approveInvoice(req, res, next) {
+  try {
+    const existing = await prisma.invoice.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ error: 'Invoice not found' });
+    if (existing.status !== 'DRAFT') {
+      return res.status(400).json({ error: 'Only DRAFT invoices can be approved' });
+    }
+    const invoice = await prisma.invoice.update({
+      where: { id: req.params.id },
+      data: {
+        status: 'SENT',
+        approvedAt: new Date(),
+        approvedById: req.user.id,
+      },
+      include: {
+        client: { select: { id: true, businessName: true } },
+        clientOrder: { select: { id: true, totalAmount: true, status: true } },
+        approvedBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+    await prisma.activityLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'APPROVE_INVOICE',
+        entityType: 'Invoice',
+        entityId: invoice.id,
+        metadata: { clientId: invoice.clientId, amount: invoice.amount },
+      },
+    });
+    res.json(invoice);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getClientStatement(req, res, next) {
+  try {
+    const clientId = req.params.id;
+    // Self-scope for clients
+    if (['CLIENT_ADMIN', 'CLIENT_STAFF', 'CLIENT_ORDERER', 'CLIENT_RECEIVER'].includes(req.user.role)) {
+      if (clientId !== req.user.clientId) return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const client = await prisma.client.findUnique({
+      where: { id: clientId },
+      select: { id: true, businessName: true, email: true, phone: true, address: true },
+    });
+    if (!client) return res.status(404).json({ error: 'Client not found' });
+
+    const invoices = await prisma.invoice.findMany({
+      where: { clientId, status: { in: ['SENT', 'PAID', 'OVERDUE'] } },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        clientOrder: { select: { id: true, deliveryDate: true } },
+        approvedBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+
+    const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const billed = invoices.reduce((s, i) => s + (i.amount || 0), 0);
+    const paid = invoices.filter((i) => i.status === 'PAID').reduce((s, i) => s + (i.amount || 0), 0);
+    const outstanding = billed - paid;
+    const overdue = invoices
+      .filter((i) => i.status !== 'PAID' && i.dueDate && new Date(i.dueDate) < now)
+      .reduce((s, i) => s + (i.amount || 0), 0);
+    const paidLast7 = invoices
+      .filter((i) => i.status === 'PAID' && i.paidAt && new Date(i.paidAt) >= oneWeekAgo)
+      .reduce((s, i) => s + (i.amount || 0), 0);
+    const paidThisMonth = invoices
+      .filter((i) => i.status === 'PAID' && i.paidAt && new Date(i.paidAt) >= monthStart)
+      .reduce((s, i) => s + (i.amount || 0), 0);
+
+    res.json({
+      client,
+      summary: { billed, paid, outstanding, overdue, paidLast7, paidThisMonth, count: invoices.length },
+      invoices,
+    });
   } catch (error) {
     next(error);
   }
@@ -464,6 +554,8 @@ async function missingItems(req, res, next) {
 }
 
 module.exports = {
+  approveInvoice,
+  getClientStatement,
   getDashboardKPIs,
   revenueByPeriod,
   costVsRevenueByGrade,

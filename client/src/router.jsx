@@ -54,6 +54,7 @@ const Waste = React.lazy(() => import('@/pages/admin/Waste'));
 const Portal = React.lazy(() => import('@/pages/client/Portal'));
 const Orders = React.lazy(() => import('@/pages/client/Orders'));
 const Account = React.lazy(() => import('@/pages/client/Account'));
+const Statement = React.lazy(() => import('@/pages/client/Statement'));
 
 // Driver pages
 const Deliveries = React.lazy(() => import('@/pages/driver/Deliveries'));
@@ -109,6 +110,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: wrap(Portal) },
       { path: 'orders', element: wrap(Orders) },
+      { path: 'statement', element: wrap(Statement) },
       { path: 'account', element: wrap(Account) },
     ],
   },

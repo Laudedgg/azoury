@@ -156,6 +156,7 @@ model User {
   spotChecks         SpotCheck[]         @relation("SpotCheckedBy")
   activityLogs       ActivityLog[]       @relation("ActivityUser")
   qcVerifications    OrderItem[]         @relation("QcVerifier")
+  approvedInvoices   Invoice[]           @relation("ApprovedInvoices")
 
   @@index([email])
   @@index([role])
@@ -589,10 +590,13 @@ model Invoice {
   status        InvoiceStatus @default(DRAFT)
   dueDate       DateTime
   paidAt        DateTime?
+  approvedAt    DateTime?
+  approvedById  String?
   createdAt     DateTime      @default(now())
 
   clientOrder ClientOrder @relation(fields: [clientOrderId], references: [id])
   client      Client      @relation(fields: [clientId], references: [id])
+  approvedBy  User?       @relation("ApprovedInvoices", fields: [approvedById], references: [id])
 
   @@index([clientOrderId])
   @@index([clientId])

@@ -12,6 +12,8 @@ const {
   getActivityFeed,
   getInvoices,
   updateInvoiceStatus,
+  approveInvoice,
+  getClientStatement,
   missingItems,
 } = require('../controllers/reportController');
 
@@ -32,8 +34,16 @@ router.get('/top-clients', requireRole(...financialRoles), topClients);
 router.get('/delivery-performance', requireRole(...financialRoles), deliveryPerformance);
 router.get('/margin-analysis', requireRole(...financialRoles), marginAnalysis);
 
-// Invoice endpoints - restricted to SUPER_ADMIN and ACCOUNTANT
-router.get('/invoices', requireRole(...financialRoles), getInvoices);
+// Invoice endpoints
+// View + payment status: accountants / super admin
+// Approve (DRAFT → SENT): operations manager / super admin / accountant
+// Client statement: clients view their own, internal financial roles view any
+const invoiceReadRoles = ['SUPER_ADMIN', 'ACCOUNTANT', 'OPERATIONS_MANAGER', 'CLIENT_ADMIN', 'CLIENT_STAFF', 'CLIENT_ORDERER', 'CLIENT_RECEIVER'];
+const invoiceApproveRoles = ['SUPER_ADMIN', 'ACCOUNTANT', 'OPERATIONS_MANAGER'];
+
+router.get('/invoices', requireRole(...invoiceReadRoles), getInvoices);
 router.patch('/invoices/:id', requireRole(...financialRoles), updateInvoiceStatus);
+router.patch('/invoices/:id/approve', requireRole(...invoiceApproveRoles), approveInvoice);
+router.get('/statement/:id', requireRole(...invoiceReadRoles), getClientStatement);
 
 module.exports = router;

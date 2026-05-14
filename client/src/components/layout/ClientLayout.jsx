@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, ShoppingBag, UserCircle, LogOut, ChevronLeft, ChevronRight, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, UserCircle, LogOut, ChevronLeft, ChevronRight, Sun, Moon, Receipt } from 'lucide-react';
 import { ProtectedRoute } from './ProtectedRoute';
 import { Header } from './Header';
 import { MobileNav } from './MobileNav';
@@ -16,6 +16,7 @@ import { cn, getInitials } from '@/utils/helpers';
 const clientNav = [
   { label: 'Portal', icon: LayoutDashboard, path: '/portal', end: true },
   { label: 'Orders', icon: ShoppingBag, path: '/portal/orders' },
+  { label: 'Statement', icon: Receipt, path: '/portal/statement' },
   { label: 'Account', icon: UserCircle, path: '/portal/account' },
 ];
 

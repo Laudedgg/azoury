@@ -398,6 +398,33 @@ async function updateStatus(req, res, next) {
       }
     }
 
+    // On DELIVERED, auto-generate a DRAFT invoice from the order's real quantities
+    if (status === 'DELIVERED' && previousStatus !== 'DELIVERED') {
+      const exists = await prisma.invoice.findFirst({
+        where: { clientOrderId: order.id },
+        select: { id: true },
+      });
+      if (!exists) {
+        const items = await prisma.orderItem.findMany({ where: { clientOrderId: order.id } });
+        // Use delivered (driver-captured) if present, else fulfilled, else ordered
+        const amount = items.reduce((s, it) => {
+          const q = (it.deliveredQuantity ?? it.fulfilledQuantity ?? it.quantity) || 0;
+          return s + q * (it.unitPrice || 0);
+        }, 0);
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 7);
+        await prisma.invoice.create({
+          data: {
+            clientOrderId: order.id,
+            clientId: order.clientId,
+            amount: Math.round(amount * 100) / 100,
+            status: 'DRAFT',
+            dueDate,
+          },
+        });
+      }
+    }
+
     await prisma.activityLog.create({
       data: {
         userId: req.user.id,

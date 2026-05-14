@@ -23,6 +23,7 @@ const pageTitleMap = {
   '/admin/waste': 'Waste',
   '/portal': 'Portal',
   '/portal/orders': 'Orders',
+  '/portal/statement': 'Statement',
   '/portal/account': 'Account',
   '/driver': 'Deliveries',
 };
