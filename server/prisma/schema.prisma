@@ -331,15 +331,19 @@ model ClientOrder {
 }
 
 model OrderItem {
-  id                  String   @id @default(uuid())
-  clientOrderId       String
-  productId           String
-  qualityGradeId      String
-  quantity            Float
-  unitPrice           Float
-  fulfilledQuantity   Float    @default(0)
-  specialInstructions String?
-  createdAt           DateTime @default(now())
+  id                     String   @id @default(uuid())
+  clientOrderId          String
+  productId              String
+  qualityGradeId         String
+  quantity               Float
+  unitPrice              Float
+  fulfilledQuantity      Float    @default(0)
+  fulfilledFromInventory Float?
+  fulfilledFromSupply    Float?
+  freeQuantity           Float?
+  sourceNote             String?
+  specialInstructions    String?
+  createdAt              DateTime @default(now())
 
   clientOrder  ClientOrder  @relation(fields: [clientOrderId], references: [id], onDelete: Cascade)
   product      Product      @relation(fields: [productId], references: [id])
@@ -373,16 +377,17 @@ model InventoryMovement {
 }
 
 model Dispatch {
-  id          String         @id @default(uuid())
-  driverId    String
-  truckId     String
-  status      DispatchStatus @default(PLANNING)
-  routeOrder  Json?
-  startKm     Float?
-  endKm       Float?
-  departedAt  DateTime?
-  completedAt DateTime?
-  createdAt   DateTime       @default(now())
+  id               String         @id @default(uuid())
+  driverId         String
+  truckId          String
+  status           DispatchStatus @default(PLANNING)
+  routeOrder       Json?
+  startKm          Float?
+  endKm            Float?
+  freeBonusProduct String?
+  departedAt       DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime       @default(now())
 
   driver User          @relation("DriverDispatches", fields: [driverId], references: [id])
   truck  FleetVehicle  @relation(fields: [truckId], references: [id])

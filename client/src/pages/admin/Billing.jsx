@@ -41,7 +41,10 @@ function Billing() {
     setLoadingId(orderId);
     try {
       const res = await api.get(`/orders/${orderId}`);
-      printInvoice(res.data);
+      const o = res.data;
+      // Lift the latest dispatch's freeBonusProduct up to the order for the invoice template
+      const dispatch = o.dispatchItems?.[0]?.dispatch;
+      printInvoice({ ...o, dispatch });
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to load order for printing');
     } finally {

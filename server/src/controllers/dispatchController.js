@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 async function createDispatch(req, res, next) {
   try {
-    const { driverId, truckId, orderIds, routeOrder } = req.body;
+    const { driverId, truckId, orderIds, routeOrder, freeBonusProduct } = req.body;
 
     if (!driverId || !truckId) {
       return res.status(400).json({ error: 'driverId and truckId are required' });
@@ -16,6 +16,7 @@ async function createDispatch(req, res, next) {
         driverId,
         truckId,
         routeOrder: routeOrder || null,
+        freeBonusProduct: freeBonusProduct?.trim() || null,
         items: orderIds
           ? {
               create: orderIds.map((orderId) => ({

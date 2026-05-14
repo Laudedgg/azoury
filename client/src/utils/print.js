@@ -44,16 +44,28 @@ function formatMoney(n) {
 
 export function printInvoice(order) {
   const items = order.items || [];
+  const anyBreakdown = items.some((it) => it.fulfilledFromInventory != null || it.fulfilledFromSupply != null || it.freeQuantity);
   const lines = items.map((it) => {
     const qty = (it.fulfilledQuantity ?? it.quantity) || 0;
     const price = it.unitPrice || 0;
     const line = qty * price;
     const unit = it.product?.unit || '';
     const grade = it.qualityGrade?.clientFacingGrade || it.qualityGrade?.grade || '';
+    const inv = it.fulfilledFromInventory;
+    const sup = it.fulfilledFromSupply;
+    const free = it.freeQuantity;
+    const breakdownBits = [];
+    if (inv != null && inv > 0) breakdownBits.push(`${inv} ${unit} inventory`);
+    if (sup != null && sup > 0) breakdownBits.push(`${sup} ${unit} new supply`);
+    if (free && free > 0) breakdownBits.push(`<b>+${free} ${unit} free</b>`);
+    const breakdownHtml = anyBreakdown
+      ? `<td>${breakdownBits.join(' · ') || '<span class="muted">—</span>'}${it.sourceNote ? `<div class="muted" style="margin-top:2px">${escapeHtml(it.sourceNote)}</div>` : ''}</td>`
+      : '';
     return `<tr>
       <td>${escapeHtml(it.product?.name || '')}</td>
       <td>${escapeHtml(grade)}</td>
       <td class="right">${qty} ${escapeHtml(unit)}</td>
+      ${breakdownHtml}
       <td class="right">${formatMoney(price)}</td>
       <td class="right">${formatMoney(line)}</td>
     </tr>`;
@@ -82,16 +94,24 @@ export function printInvoice(order) {
     </div>
     <table>
       <thead><tr>
-        <th>Product</th><th>Grade</th><th class="right">Real Qty</th><th class="right">Unit Price</th><th class="right">Line Total</th>
+        <th>Product</th><th>Grade</th><th class="right">Real Qty</th>
+        ${anyBreakdown ? '<th>Source</th>' : ''}
+        <th class="right">Unit Price</th><th class="right">Line Total</th>
       </tr></thead>
-      <tbody>${lines || '<tr><td colspan="5" class="muted">No items</td></tr>'}</tbody>
-      <tfoot><tr class="total-row"><td colspan="4" class="right">Total Due</td><td class="right">${formatMoney(total)}</td></tr></tfoot>
+      <tbody>${lines || `<tr><td colspan="${anyBreakdown ? 6 : 5}" class="muted">No items</td></tr>`}</tbody>
+      <tfoot><tr class="total-row"><td colspan="${anyBreakdown ? 5 : 4}" class="right">Total Due</td><td class="right">${formatMoney(total)}</td></tr></tfoot>
     </table>
     ${items.some((it) => it.specialInstructions) ? `
       <h2>Notes</h2>
       <ul style="font-size:12px; padding-left:18px;">
         ${items.filter((it) => it.specialInstructions).map((it) => `<li><b>${escapeHtml(it.product?.name)}:</b> ${escapeHtml(it.specialInstructions)}</li>`).join('')}
       </ul>
+    ` : ''}
+    ${order.dispatch?.freeBonusProduct || order.freeBonusProduct ? `
+      <h2>Free Bonus</h2>
+      <div style="font-size:13px; padding:8px 12px; border:1px dashed #999; border-radius:4px; background:#fafafa;">
+        <b>Complimentary:</b> ${escapeHtml(order.dispatch?.freeBonusProduct || order.freeBonusProduct)}
+      </div>
     ` : ''}
   `;
   openPrintWindow(`Invoice ${order.id?.slice(0, 8) || ''}`, html);

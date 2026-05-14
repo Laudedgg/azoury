@@ -147,7 +147,7 @@ async function getOrder(req, res, next) {
         dispatchItems: {
           include: {
             dispatch: {
-              select: { id: true, status: true, driverId: true },
+              select: { id: true, status: true, driverId: true, freeBonusProduct: true, startKm: true, endKm: true },
             },
           },
         },
@@ -197,23 +197,38 @@ async function prepareOrder(req, res, next) {
       if (Number.isNaN(realQty) || realQty < 0) {
         return res.status(400).json({ error: 'realQuantity must be a non-negative number' });
       }
-      updates.push({ existing, realQty });
+      updates.push({ existing, realQty, inbound });
     }
 
     // Apply in a transaction: update OrderItem.fulfilledQuantity, adjust stock, log movement
     await prisma.$transaction(async (tx) => {
-      for (const { existing, realQty } of updates) {
-        const delta = realQty - (existing.fulfilledQuantity || 0);
+      for (const { existing, realQty, inbound } of updates) {
+        // Inventory decrement is ONLY based on what the dispatcher tagged as "from inventory".
+        // Items "from new supply" never sat in inventory in the first place, and free items
+        // are tracked separately for the invoice (default: free deducts from inventory too).
+        const fromInventory = Number(inbound.fulfilledFromInventory ?? realQty) || 0;
+        const fromSupply = Number(inbound.fulfilledFromSupply ?? 0) || 0;
+        const freeQty = Number(inbound.freeQuantity ?? 0) || 0;
+        const sourceNote = inbound.sourceNote ? String(inbound.sourceNote).trim() : null;
+
+        const prior = existing.fulfilledFromInventory ?? existing.fulfilledQuantity ?? 0;
+        const inventoryDelta = (fromInventory + freeQty) - (prior + (existing.freeQuantity || 0));
 
         await tx.orderItem.update({
           where: { id: existing.id },
-          data: { fulfilledQuantity: realQty },
+          data: {
+            fulfilledQuantity: realQty,
+            fulfilledFromInventory: fromInventory,
+            fulfilledFromSupply: fromSupply,
+            freeQuantity: freeQty,
+            sourceNote: sourceNote,
+          },
         });
 
-        if (delta !== 0) {
+        if (inventoryDelta !== 0) {
           await tx.qualityGrade.update({
             where: { id: existing.qualityGradeId },
-            data: { currentStock: { decrement: delta } },
+            data: { currentStock: { decrement: inventoryDelta } },
           });
 
           await tx.inventoryMovement.create({
@@ -221,9 +236,9 @@ async function prepareOrder(req, res, next) {
               productId: existing.productId,
               qualityGradeId: existing.qualityGradeId,
               type: 'SALE_OUT',
-              quantity: -delta,
+              quantity: -inventoryDelta,
               reference: `Order ${order.id}`,
-              notes: `Prepared for client order (real vs ordered)`,
+              notes: `Prepared for client order (inventory + free)`,
               createdById: req.user.id,
             },
           });

@@ -186,15 +186,24 @@ function Operations() {
       const res = await api.get(`/orders/${orderId}`);
       const o = res.data;
       setPrepareOrder(o);
-      setPrepareItems((o.items || []).map((it) => ({
-        orderItemId: it.id,
-        productName: it.product?.name || '',
-        grade: it.qualityGrade?.clientFacingGrade || it.qualityGrade?.grade || '',
-        unit: it.product?.unit || 'kg',
-        ordered: it.quantity,
-        real: (it.fulfilledQuantity ?? it.quantity ?? 0).toString(),
-        stock: it.qualityGrade?.currentStock ?? 0,
-      })));
+      setPrepareItems((o.items || []).map((it) => {
+        const realDefault = (it.fulfilledQuantity ?? it.quantity ?? 0);
+        const fromInv = it.fulfilledFromInventory ?? realDefault;
+        const fromSup = it.fulfilledFromSupply ?? 0;
+        return {
+          orderItemId: it.id,
+          productName: it.product?.name || '',
+          grade: it.qualityGrade?.clientFacingGrade || it.qualityGrade?.grade || '',
+          unit: it.product?.unit || 'kg',
+          ordered: it.quantity,
+          real: realDefault.toString(),
+          fromInv: String(fromInv ?? ''),
+          fromSup: String(fromSup ?? ''),
+          freeQty: String(it.freeQuantity ?? ''),
+          sourceNote: it.sourceNote || '',
+          stock: it.qualityGrade?.currentStock ?? 0,
+        };
+      }));
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to load order');
       setPrepareOrder(null);
@@ -209,7 +218,7 @@ function Operations() {
   };
 
   const openDispatchDialog = () => {
-    setDispatchForm({ driverId: '', truckId: '', orderIds: [] });
+    setDispatchForm({ driverId: '', truckId: '', orderIds: [], freeBonusProduct: '' });
     setDispatchDialog(true);
   };
 
@@ -237,10 +246,11 @@ function Operations() {
         driverId: dispatchForm.driverId,
         truckId: dispatchForm.truckId,
         orderIds: dispatchForm.orderIds,
+        freeBonusProduct: dispatchForm.freeBonusProduct?.trim() || undefined,
       });
       toast.success('Dispatch created — driver will see it on their device');
       setDispatchDialog(false);
-      setDispatchForm({ driverId: '', truckId: '', orderIds: [] });
+      setDispatchForm({ driverId: '', truckId: '', orderIds: [], freeBonusProduct: '' });
       refetchDispatches();
       refetchOrders();
     } catch (err) {
@@ -253,16 +263,37 @@ function Operations() {
   const handleSavePrepare = async () => {
     if (!prepareOrder || prepareOrder._loading) return;
     for (const it of prepareItems) {
-      const v = Number(it.real);
-      if (Number.isNaN(v) || v < 0) {
+      const real = Number(it.real);
+      const fromInv = Number(it.fromInv || 0);
+      const fromSup = Number(it.fromSup || 0);
+      const freeQty = Number(it.freeQty || 0);
+      if (Number.isNaN(real) || real < 0) {
         toast.error(`Enter a valid real quantity for ${it.productName}`);
+        return;
+      }
+      if (Math.abs((fromInv + fromSup) - real) > 0.001) {
+        toast.error(`${it.productName}: Inventory + Supply (${fromInv + fromSup}) must equal Real Qty (${real})`);
+        return;
+      }
+      if (fromInv > (it.stock + (it.fulfilledFromInventory || 0))) {
+        // soft warning only — backend allows negative stock for over-deliver scenarios
+      }
+      if (Number.isNaN(freeQty) || freeQty < 0) {
+        toast.error(`Free qty must be non-negative for ${it.productName}`);
         return;
       }
     }
     setSavingPrepare(true);
     try {
       await api.patch(`/orders/${prepareOrder.id}/prepare`, {
-        items: prepareItems.map((it) => ({ orderItemId: it.orderItemId, realQuantity: Number(it.real) })),
+        items: prepareItems.map((it) => ({
+          orderItemId: it.orderItemId,
+          realQuantity: Number(it.real),
+          fulfilledFromInventory: Number(it.fromInv || 0),
+          fulfilledFromSupply: Number(it.fromSup || 0),
+          freeQuantity: Number(it.freeQty || 0),
+          sourceNote: it.sourceNote || undefined,
+        })),
       });
       toast.success('Order prepared — inventory updated');
       closePrepareDialog();
@@ -523,6 +554,16 @@ function Operations() {
               )}
             </div>
 
+            <div>
+              <label className="block text-brand-secondary text-sm mb-1">Free bonus product (optional)</label>
+              <Input
+                placeholder="e.g. 1 bag of parsley, sample of new mango — driver hands this over"
+                value={dispatchForm.freeBonusProduct || ''}
+                onChange={(e) => setDispatchForm((f) => ({ ...f, freeBonusProduct: e.target.value }))}
+              />
+              <p className="text-[10px] text-brand-muted mt-1">Logged on the dispatch + printed on the invoice.</p>
+            </div>
+
             <div className="flex gap-2 pt-2">
               <Button variant="outline" className="flex-1" onClick={() => setDispatchDialog(false)} disabled={creatingDispatch}>Cancel</Button>
               <Button className="flex-1" onClick={handleCreateDispatch} disabled={creatingDispatch || dispatchForm.orderIds.length === 0}>
@@ -585,7 +626,14 @@ function Operations() {
                             value={it.real}
                             onChange={(e) => {
                               const v = e.target.value;
-                              setPrepareItems((prev) => prev.map((x, i) => i === idx ? { ...x, real: v } : x));
+                              setPrepareItems((prev) => prev.map((x, i) => {
+                                if (i !== idx) return x;
+                                // Default the inventory portion to the full real qty when user retypes Real
+                                const realNum = Number(v) || 0;
+                                const curSup = Number(x.fromSup) || 0;
+                                const newFromInv = Math.max(0, realNum - curSup);
+                                return { ...x, real: v, fromInv: String(newFromInv) };
+                              }));
                             }}
                             className={lowStock ? 'border-brand-warning' : ''}
                           />
@@ -599,9 +647,78 @@ function Operations() {
                           <p className="text-[10px] text-brand-muted mt-1">Current stock: {it.stock} {prettyUnit(it.unit)}</p>
                         </div>
                       </div>
+
+                      {/* Source breakdown */}
+                      <div className="mt-3 grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="block text-brand-secondary text-[10px] uppercase tracking-wider mb-1">From Inventory</label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step={it.unit === 'kg' ? '0.1' : '1'}
+                            value={it.fromInv}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setPrepareItems((prev) => prev.map((x, i) => {
+                                if (i !== idx) return x;
+                                const inv = Number(v) || 0;
+                                const sup = Math.max(0, (Number(x.real) || 0) - inv);
+                                return { ...x, fromInv: v, fromSup: String(sup) };
+                              }));
+                            }}
+                            className="h-9 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-brand-secondary text-[10px] uppercase tracking-wider mb-1">From New Supply</label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step={it.unit === 'kg' ? '0.1' : '1'}
+                            value={it.fromSup}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setPrepareItems((prev) => prev.map((x, i) => {
+                                if (i !== idx) return x;
+                                const sup = Number(v) || 0;
+                                const inv = Math.max(0, (Number(x.real) || 0) - sup);
+                                return { ...x, fromSup: v, fromInv: String(inv) };
+                              }));
+                            }}
+                            className="h-9 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-brand-secondary text-[10px] uppercase tracking-wider mb-1">Free (extra)</label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step={it.unit === 'kg' ? '0.1' : '1'}
+                            value={it.freeQty}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setPrepareItems((prev) => prev.map((x, i) => i === idx ? { ...x, freeQty: v } : x));
+                            }}
+                            placeholder="0"
+                            className="h-9 text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <Input
+                          placeholder="Source note (optional) — e.g. mixed from cold room A + new supply box #3"
+                          value={it.sourceNote}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setPrepareItems((prev) => prev.map((x, i) => i === idx ? { ...x, sourceNote: v } : x));
+                          }}
+                          className="h-8 text-xs"
+                        />
+                      </div>
                       {Number(it.real) !== it.ordered && (
                         <p className="text-[11px] text-brand-accent mt-2">
                           Adjustment: {(Number(it.real) - it.ordered).toFixed(it.unit === 'kg' ? 1 : 0)} {prettyUnit(it.unit)} vs ordered
+                          {Number(it.freeQty) > 0 && <span className="ml-2 text-brand-success">· Free: +{Number(it.freeQty)} {prettyUnit(it.unit)}</span>}
                         </p>
                       )}
                     </div>

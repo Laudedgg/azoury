@@ -174,7 +174,9 @@ function Orders() {
   const handlePrintOrder = async (orderId) => {
     try {
       const res = await api.get(`/orders/${orderId}`);
-      printInvoice(res.data);
+      const o = res.data;
+      const dispatch = o.dispatchItems?.[0]?.dispatch;
+      printInvoice({ ...o, dispatch });
     } catch (err) {
       toast.error(err?.response?.data?.error || 'Failed to load order for printing');
     }
