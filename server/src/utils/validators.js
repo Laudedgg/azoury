@@ -67,14 +67,14 @@ const createProductSchema = z.object({
 });
 
 const createPurchaseOrderSchema = z.object({
-  supplierId: z.string().uuid('Invalid supplier ID'),
+  supplierId: z.string().uuid('Invalid supplier ID').optional().nullable(),
   notes: z.string().optional(),
   items: z
     .array(
       z.object({
         productId: z.string().uuid('Invalid product ID'),
         quantity: z.number().positive('Quantity must be positive'),
-        unitPrice: z.number().positive('Unit price must be positive'),
+        unitPrice: z.number().min(0, 'Unit price cannot be negative'),
       })
     )
     .min(1, 'At least one item is required'),

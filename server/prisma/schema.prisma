@@ -250,14 +250,14 @@ model Supplier {
 
 model PurchaseOrder {
   id          String              @id @default(uuid())
-  supplierId  String
+  supplierId  String?
   createdById String
   status      PurchaseOrderStatus @default(DRAFT)
   totalAmount Float               @default(0)
   notes       String?
   createdAt   DateTime            @default(now())
 
-  supplier         Supplier          @relation(fields: [supplierId], references: [id])
+  supplier         Supplier?         @relation(fields: [supplierId], references: [id])
   createdBy        User              @relation("CreatedByUser", fields: [createdById], references: [id])
   items            PurchaseItem[]
   supplierReceipts SupplierReceipt[]

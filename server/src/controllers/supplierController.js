@@ -274,7 +274,7 @@ async function createPurchaseOrder(req, res, next) {
 
     const po = await prisma.purchaseOrder.create({
       data: {
-        supplierId: data.supplierId,
+        supplierId: data.supplierId || null,
         createdById: req.user.id,
         totalAmount: Math.round(totalAmount * 100) / 100,
         notes: data.notes,

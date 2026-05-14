@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ShoppingBag, TrendingUp, ClipboardList, Receipt, Upload, Plus, FileText, Check, Printer, Download, X } from 'lucide-react';
+import { ShoppingBag, TrendingUp, ClipboardList, Receipt, Upload, Plus, FileText, Check, Printer, Download, X, MessageCircle, Loader2 } from 'lucide-react';
+import { printTable } from '@/utils/print';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, Legend,
@@ -38,6 +39,13 @@ function Purchasing() {
   const [surveyProduct, setSurveyProduct] = useState('');
   const [surveyPrice, setSurveyPrice] = useState('');
   const [surveyDate, setSurveyDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // Buy list editable quantities (overrides netToPurchase per product)
+  const [buyQty, setBuyQty] = useState({}); // productId -> string
+  const [saveBuyListOpen, setSaveBuyListOpen] = useState(false);
+  const [buyListSupplier, setBuyListSupplier] = useState('');
+  const [buyListNotes, setBuyListNotes] = useState('');
+  const [savingBuyList, setSavingBuyList] = useState(false);
 
   // Fetch combined orders (bare array)
   const { data: combinedData, refetch: refetchCombined } = useFetch('/orders/combined');
@@ -84,6 +92,91 @@ function Purchasing() {
   }, [comparisonData]);
 
   const itemsNeedingPurchase = combinedOrders.filter((o) => o.netToPurchase > 0);
+
+  // Effective quantity to buy per product (purchasing manager can override)
+  const effectiveBuyQty = (item) => {
+    const raw = buyQty[item.id];
+    if (raw === undefined || raw === '') return item.netToPurchase > 0 ? item.netToPurchase : 0;
+    const n = Number(raw);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  };
+
+  const buyListRows = combinedOrders.map((item) => ({
+    id: item.id,
+    productId: item.productId,
+    product: item.product,
+    unit: item.unit,
+    totalOrdered: item.totalOrdered,
+    currentStock: item.currentStock,
+    shortfall: item.netToPurchase,
+    orderQty: effectiveBuyQty(item),
+  }));
+  const buyListPositive = buyListRows.filter((r) => r.orderQty > 0);
+
+  const buyListWhatsAppText = () => {
+    const today = new Date().toLocaleDateString();
+    const lines = [
+      `*Azoury — Buy List*  (${today})`,
+      '',
+      ...buyListPositive.map((r) => `• ${r.product} — *${r.orderQty} ${r.unit}*`),
+      '',
+      `_${buyListPositive.length} item${buyListPositive.length === 1 ? '' : 's'}_`,
+    ];
+    return lines.join('\n');
+  };
+
+  const handlePrintBuyList = () => {
+    printTable({
+      title: 'Buy List',
+      subtitle: 'Aggregated needs across open orders (override applied)',
+      columns: [
+        { key: 'product', label: 'Product' },
+        { key: 'totalOrdered', label: 'Ordered', align: 'right' },
+        { key: 'currentStock', label: 'In Stock', align: 'right' },
+        { key: 'orderQtyFmt', label: 'TO BUY', align: 'right' },
+      ],
+      rows: buyListPositive.map((r) => ({
+        ...r,
+        totalOrdered: `${r.totalOrdered} ${r.unit}`,
+        currentStock: `${r.currentStock} ${r.unit}`,
+        orderQtyFmt: `${r.orderQty} ${r.unit}`,
+      })),
+    });
+  };
+
+  const handleShareWhatsApp = () => {
+    const text = encodeURIComponent(buyListWhatsAppText());
+    window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener');
+  };
+
+  const handleSaveBuyList = async () => {
+    if (buyListPositive.length === 0) {
+      toast.error('Nothing to save — set a quantity on at least one item');
+      return;
+    }
+    setSavingBuyList(true);
+    try {
+      await api.post('/suppliers/purchase-orders', {
+        supplierId: buyListSupplier || null,
+        notes: buyListNotes || undefined,
+        items: buyListPositive.map((r) => ({
+          productId: r.productId,
+          quantity: r.orderQty,
+          unitPrice: 0,
+        })),
+      });
+      toast.success(`Buy list saved as PO with ${buyListPositive.length} item(s)`);
+      setSaveBuyListOpen(false);
+      setBuyListSupplier('');
+      setBuyListNotes('');
+      setBuyQty({});
+      refetchCombined();
+    } catch (err) {
+      toast.error(err?.response?.data?.error || err?.response?.data?.message || 'Failed to save buy list');
+    } finally {
+      setSavingBuyList(false);
+    }
+  };
 
   const toggleItem = (id) => {
     setSelectedItems((prev) => {
@@ -256,23 +349,115 @@ function Purchasing() {
 
           {/* Tab 1: Combined Orders */}
           <TabsContent value="combined" className="mt-6 space-y-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <p className="text-brand-secondary text-sm">Aggregated product needs across all pending orders</p>
-              <Button onClick={openPODialog} disabled={selectedCount === 0}>
-                <FileText className="w-4 h-4 mr-2" /> Generate PO ({selectedCount})
-              </Button>
-            </div>
+            <Card className="border-brand-accent/30 bg-brand-accent/5">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex flex-col gap-3 mb-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <h3 className="text-brand-primary font-semibold">Buy List</h3>
+                    <p className="text-brand-secondary text-xs mt-0.5">
+                      Aggregated needs across open client orders. Override any quantity below — purchasing has full discretion.
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={handlePrintBuyList} disabled={buyListPositive.length === 0}>
+                      <Printer className="w-4 h-4 mr-1" /> Print
+                    </Button>
+                    <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={handleShareWhatsApp} disabled={buyListPositive.length === 0}>
+                      <MessageCircle className="w-4 h-4 mr-1" /> Share on WhatsApp
+                    </Button>
+                    <Button size="sm" className="w-full sm:w-auto" onClick={() => setSaveBuyListOpen(true)} disabled={buyListPositive.length === 0}>
+                      <FileText className="w-4 h-4 mr-1" /> Save as PO ({buyListPositive.length})
+                    </Button>
+                  </div>
+                </div>
 
-            <Card>
-              <CardContent className="p-6">
-                <DataTable
-                  columns={combinedColumns}
-                  data={combinedOrders}
-                  searchPlaceholder="Search products..."
-                  searchColumn="product"
-                />
+                <div className="rounded-lg border border-brand-border overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-brand-border bg-brand-base">
+                          <th className="h-10 px-4 text-left text-xs font-semibold uppercase tracking-wider text-brand-secondary">Product</th>
+                          <th className="h-10 px-4 text-right text-xs font-semibold uppercase tracking-wider text-brand-secondary">Ordered</th>
+                          <th className="h-10 px-4 text-right text-xs font-semibold uppercase tracking-wider text-brand-secondary">In Stock</th>
+                          <th className="h-10 px-4 text-right text-xs font-semibold uppercase tracking-wider text-brand-secondary">Shortfall</th>
+                          <th className="h-10 px-4 text-right text-xs font-semibold uppercase tracking-wider text-brand-accent">To Buy</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {buyListRows.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="h-24 text-center text-brand-muted text-sm">No open orders.</td>
+                          </tr>
+                        ) : buyListRows.map((r) => (
+                          <tr key={r.id} className="border-b border-brand-border last:border-0">
+                            <td className="px-4 py-2.5 text-sm text-brand-primary">{r.product}</td>
+                            <td className="px-4 py-2.5 text-sm text-right text-brand-secondary">{r.totalOrdered} {r.unit}</td>
+                            <td className="px-4 py-2.5 text-sm text-right text-brand-secondary">{r.currentStock} {r.unit}</td>
+                            <td className="px-4 py-2.5 text-sm text-right">
+                              {r.shortfall > 0
+                                ? <span className="text-brand-error font-medium">{r.shortfall} {r.unit}</span>
+                                : <span className="text-brand-success text-xs">Covered</span>}
+                            </td>
+                            <td className="px-4 py-2.5 text-right">
+                              <div className="inline-flex items-center gap-1.5">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.1"
+                                  value={buyQty[r.id] ?? (r.shortfall > 0 ? r.shortfall : '')}
+                                  placeholder="0"
+                                  onChange={(e) => setBuyQty((m) => ({ ...m, [r.id]: e.target.value }))}
+                                  className="w-20 h-8 text-sm text-right"
+                                />
+                                <span className="text-brand-muted text-xs">{r.unit}</span>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </CardContent>
             </Card>
+
+            {/* Save Buy List as PO Dialog */}
+            <Dialog open={saveBuyListOpen} onOpenChange={setSaveBuyListOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Save buy list as Purchase Order</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="text-sm text-brand-secondary">
+                    {buyListPositive.length} item(s) • Supplier and prices can be added later.
+                  </div>
+                  <div>
+                    <label className="block text-brand-secondary text-sm mb-1">Supplier (optional)</label>
+                    <Select value={buyListSupplier} onValueChange={setBuyListSupplier}>
+                      <SelectTrigger><SelectValue placeholder="Leave empty for unassigned" /></SelectTrigger>
+                      <SelectContent>
+                        {suppliersList.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-brand-secondary text-sm mb-1">Notes (optional)</label>
+                    <textarea
+                      rows={3}
+                      value={buyListNotes}
+                      onChange={(e) => setBuyListNotes(e.target.value)}
+                      placeholder="Any notes for receiving / accounting..."
+                      className="w-full bg-brand-elevated border border-brand-border rounded-lg p-3 text-brand-primary text-sm focus:outline-none focus:ring-1 focus:ring-brand-accent resize-none"
+                    />
+                  </div>
+                  <Button className="w-full" onClick={handleSaveBuyList} disabled={savingBuyList}>
+                    {savingBuyList ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : `Save PO with ${buyListPositive.length} item(s)`}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
 
             {/* Generated POs section */}
             {generatedPOs.length > 0 && (
