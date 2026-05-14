@@ -287,6 +287,75 @@ async function prepareOrder(req, res, next) {
   }
 }
 
+async function verifyOrderItemQc(req, res, next) {
+  try {
+    const { verified, notes } = req.body;
+    const item = await prisma.orderItem.update({
+      where: { id: req.params.itemId },
+      data: {
+        qcVerified: !!verified,
+        qcVerifiedAt: verified ? new Date() : null,
+        qcVerifiedById: verified ? req.user.id : null,
+        qcNotes: notes !== undefined ? (notes || null) : undefined,
+      },
+      include: {
+        product: { select: { id: true, name: true, unit: true } },
+        qcVerifier: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+    await prisma.activityLog.create({
+      data: {
+        userId: req.user.id,
+        action: verified ? 'QC_VERIFY_ITEM' : 'QC_UNVERIFY_ITEM',
+        entityType: 'OrderItem',
+        entityId: item.id,
+        metadata: { product: item.product?.name },
+      },
+    });
+    res.json(item);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function captureItemDelivery(req, res, next) {
+  try {
+    const { deliveredQuantity, refusedQuantity, refusalReason } = req.body;
+    const delivered = deliveredQuantity !== undefined ? Number(deliveredQuantity) : undefined;
+    const refused = refusedQuantity !== undefined ? Number(refusedQuantity) : undefined;
+    if (delivered !== undefined && (Number.isNaN(delivered) || delivered < 0)) {
+      return res.status(400).json({ error: 'deliveredQuantity must be a non-negative number' });
+    }
+    if (refused !== undefined && (Number.isNaN(refused) || refused < 0)) {
+      return res.status(400).json({ error: 'refusedQuantity must be a non-negative number' });
+    }
+    const item = await prisma.orderItem.update({
+      where: { id: req.params.itemId },
+      data: {
+        ...(delivered !== undefined && { deliveredQuantity: delivered }),
+        ...(refused !== undefined && { refusedQuantity: refused }),
+        ...(refusalReason !== undefined && { refusalReason: refusalReason || null }),
+        deliveredAt: new Date(),
+      },
+      include: {
+        product: { select: { id: true, name: true, unit: true } },
+      },
+    });
+    await prisma.activityLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'CAPTURE_ITEM_DELIVERY',
+        entityType: 'OrderItem',
+        entityId: item.id,
+        metadata: { delivered, refused, refusalReason: refusalReason || null },
+      },
+    });
+    res.json(item);
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function updateStatus(req, res, next) {
   try {
     const { status } = updateOrderStatusSchema.parse(req.body);
@@ -657,4 +726,6 @@ module.exports = {
   getReturnAmendments,
   createReturnAmendment,
   updateReturnAmendment,
+  verifyOrderItemQc,
+  captureItemDelivery,
 };

@@ -11,12 +11,14 @@ const {
   getDispatch,
   listDispatches,
   confirmDelivery,
+  getDispatchQcChecklist,
 } = require('../controllers/dispatchController');
 
 router.use(authenticate);
 router.use(requireRole('OPERATIONS_MANAGER', 'LOGISTICS_TEAM', 'DRIVER'));
 
 router.get('/', listDispatches);
+router.get('/:id/qc-checklist', getDispatchQcChecklist);
 router.get('/:id', getDispatch);
 router.post('/', createDispatch);
 router.post('/:id/assign-orders', assignOrders);

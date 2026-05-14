@@ -423,40 +423,169 @@ function QualityControl() {
 
           {/* Pre-Dispatch Checklist */}
           <TabsContent value="predispatch" className="mt-6 space-y-6">
-            <div className="max-w-sm">
-              <label className="block text-brand-secondary text-sm font-medium mb-2">Select Dispatch</label>
-              <Select defaultValue="D-392">
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="D-392">D-392 - Al Mandaloun (24 items)</SelectItem>
-                  <SelectItem value="D-393">D-393 - Le Petit Chef (18 items)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="text-brand-primary font-semibold mb-4">Items Checklist</h3>
-                <div className="space-y-2">
-                  {dispatchChecklist.map((item) => (
-                    <div key={item.id} className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${item.verified ? 'bg-brand-success/10 border-brand-success/30' : item.loaded !== item.ordered ? 'bg-brand-warning/10 border-brand-warning/30' : 'bg-brand-elevated border-brand-border hover:border-brand-accent/30'}`} onClick={() => toggleVerify(item.id)}>
-                      <div className="flex items-center gap-3">
-                        <div className={`w-5 h-5 rounded flex items-center justify-center border ${item.verified ? 'bg-brand-success border-brand-success' : 'border-brand-border'}`}>{item.verified && <PackageCheck className="w-3 h-3 text-white" />}</div>
-                        <span className="text-brand-primary text-sm">{item.product}</span>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm">
-                        <span className="text-brand-secondary">Ordered: {item.ordered}kg</span>
-                        <span className={item.loaded !== item.ordered ? 'text-brand-warning font-semibold' : 'text-brand-primary'}>Loaded: {item.loaded}kg</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <Button className="mt-6 w-full" disabled={!allVerified}><PackageCheck className="w-4 h-4 mr-2" /> Approve Dispatch</Button>
-              </CardContent>
-            </Card>
+            <PreDispatchQC />
           </TabsContent>
         </Tabs>
       </motion.div>
     </motion.div>
+  );
+}
+
+function PreDispatchQC() {
+  const { data: dispatchListData } = useFetch('/dispatches?status=PLANNING,LOADING');
+  const dispatches = (dispatchListData?.data || dispatchListData || []).filter((d) => ['PLANNING', 'LOADING'].includes(d.status));
+  const [selectedId, setSelectedId] = useState('');
+  const [checklist, setChecklist] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [verifyingItemId, setVerifyingItemId] = useState(null);
+  const [savingNotes, setSavingNotes] = useState(false);
+
+  const loadChecklist = async (id) => {
+    if (!id) { setChecklist(null); return; }
+    setLoading(true);
+    try {
+      const res = await api.get(`/dispatches/${id}/qc-checklist`);
+      setChecklist(res.data);
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Failed to load checklist');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => { loadChecklist(selectedId); }, [selectedId]);
+
+  const allOrderItems = (checklist?.items || []).flatMap((di) => (di.clientOrder?.items || []).map((it) => ({ ...it, _client: di.clientOrder?.client?.businessName || 'Client' })));
+  const verifiedCount = allOrderItems.filter((it) => it.qcVerified).length;
+  const totalItems = allOrderItems.length;
+  const allVerified = totalItems > 0 && verifiedCount === totalItems;
+
+  const toggleVerifyItem = async (item) => {
+    setVerifyingItemId(item.id);
+    try {
+      await api.patch(`/orders/items/${item.id}/qc`, { verified: !item.qcVerified });
+      await loadChecklist(selectedId);
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Failed to update');
+    } finally {
+      setVerifyingItemId(null);
+    }
+  };
+
+  const updateNotes = async (item, notes) => {
+    setSavingNotes(true);
+    try {
+      await api.patch(`/orders/items/${item.id}/qc`, { verified: item.qcVerified, notes });
+    } catch (err) {
+      toast.error('Failed to save notes');
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!checklist) return;
+    try {
+      await api.patch(`/dispatches/${checklist.id}/status`, { status: 'LOADING' });
+      toast.success('Dispatch marked as loaded — driver can start the trip');
+      loadChecklist(selectedId);
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Failed to update dispatch');
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex-1 max-w-md">
+          <label className="block text-brand-secondary text-sm font-medium mb-2">Select Dispatch</label>
+          <Select value={selectedId} onValueChange={setSelectedId}>
+            <SelectTrigger><SelectValue placeholder={dispatches.length ? 'Pick a dispatch to verify…' : 'No PLANNING / LOADING dispatches'} /></SelectTrigger>
+            <SelectContent>
+              {dispatches.map((d) => (
+                <SelectItem key={d.id} value={d.id}>
+                  D-{d.id.slice(0, 8)} · {d.truck?.plateNumber || 'No truck'} · {d._count?.items ?? d.items?.length ?? 0} order(s)
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {checklist && (
+          <div className="text-sm text-brand-secondary">
+            <span className="text-brand-primary font-semibold">{verifiedCount}</span> / {totalItems} items verified
+          </div>
+        )}
+      </div>
+
+      {loading && (
+        <div className="py-12 text-center text-brand-muted text-sm">Loading checklist…</div>
+      )}
+
+      {checklist && !loading && (
+        <Card>
+          <CardContent className="p-4 sm:p-6">
+            <div className="space-y-3">
+              {(checklist.items || []).map((di) => (
+                <div key={di.id} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <ClipboardCheck className="w-4 h-4 text-brand-accent" />
+                    <p className="text-brand-primary font-semibold text-sm">
+                      {di.clientOrder?.client?.businessName || 'Client'} · Order #{di.clientOrderId?.slice(0, 8)}
+                    </p>
+                  </div>
+                  <div className="space-y-1.5 pl-6">
+                    {(di.clientOrder?.items || []).map((it) => (
+                      <div
+                        key={it.id}
+                        className={`flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg border transition-all ${it.qcVerified ? 'bg-brand-success/10 border-brand-success/30' : 'bg-brand-elevated border-brand-border'}`}
+                      >
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <button
+                            type="button"
+                            onClick={() => toggleVerifyItem(it)}
+                            disabled={verifyingItemId === it.id}
+                            className={`w-6 h-6 shrink-0 rounded flex items-center justify-center border-2 ${it.qcVerified ? 'bg-brand-success border-brand-success text-white' : 'border-brand-border'}`}
+                          >
+                            {it.qcVerified && <PackageCheck className="w-4 h-4" />}
+                          </button>
+                          <div className="min-w-0">
+                            <p className="text-brand-primary text-sm truncate">{it.product?.name}</p>
+                            <p className="text-brand-muted text-xs">
+                              Ordered {it.quantity} · Prepared {it.fulfilledQuantity ?? '—'} {it.product?.unit || ''}
+                              {it.qcVerifier && it.qcVerified && (
+                                <span className="ml-2 text-brand-success">· verified by {it.qcVerifier.firstName} {it.qcVerifier.lastName}</span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        <Input
+                          placeholder="QC note (optional)"
+                          defaultValue={it.qcNotes || ''}
+                          onBlur={(e) => { if (e.target.value !== (it.qcNotes || '')) updateNotes(it, e.target.value); }}
+                          className="h-8 text-xs sm:w-56"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Button className="mt-6 w-full" disabled={!allVerified} onClick={handleApprove}>
+              <PackageCheck className="w-4 h-4 mr-2" />
+              {allVerified ? 'Approve & mark dispatch as loaded' : `${totalItems - verifiedCount} item(s) still need verification`}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {!checklist && !loading && !selectedId && (
+        <Card className="border-dashed">
+          <CardContent className="p-12 text-center text-brand-muted text-sm">
+            Pick a dispatch above to start verification.
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }
 

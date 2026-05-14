@@ -155,6 +155,7 @@ model User {
   returnAmendments   ReturnAmendment[]   @relation("ReturnRequestedBy")
   spotChecks         SpotCheck[]         @relation("SpotCheckedBy")
   activityLogs       ActivityLog[]       @relation("ActivityUser")
+  qcVerifications    OrderItem[]         @relation("QcVerifier")
 
   @@index([email])
   @@index([role])
@@ -331,23 +332,34 @@ model ClientOrder {
 }
 
 model OrderItem {
-  id                     String   @id @default(uuid())
+  id                     String    @id @default(uuid())
   clientOrderId          String
   productId              String
   qualityGradeId         String
   quantity               Float
   unitPrice              Float
-  fulfilledQuantity      Float    @default(0)
+  fulfilledQuantity      Float     @default(0)
   fulfilledFromInventory Float?
   fulfilledFromSupply    Float?
   freeQuantity           Float?
   sourceNote             String?
   specialInstructions    String?
-  createdAt              DateTime @default(now())
+  // QC pre-dispatch verification
+  qcVerified             Boolean   @default(false)
+  qcVerifiedAt           DateTime?
+  qcVerifiedById         String?
+  qcNotes                String?
+  // Driver per-item delivery outcome
+  deliveredQuantity      Float?
+  refusedQuantity        Float?
+  refusalReason          String?
+  deliveredAt            DateTime?
+  createdAt              DateTime  @default(now())
 
   clientOrder  ClientOrder  @relation(fields: [clientOrderId], references: [id], onDelete: Cascade)
   product      Product      @relation(fields: [productId], references: [id])
   qualityGrade QualityGrade @relation(fields: [qualityGradeId], references: [id])
+  qcVerifier   User?        @relation("QcVerifier", fields: [qcVerifiedById], references: [id])
 
   @@index([clientOrderId])
   @@index([productId])

@@ -32,6 +32,9 @@ function Deliveries() {
   const [submitting, setSubmitting] = useState(false);
   const [kmDialog, setKmDialog] = useState(null); // { deliveryId, action: 'start' | 'end' }
   const [kmValue, setKmValue] = useState('');
+  const [detailById, setDetailById] = useState({}); // dispatchId -> full dispatch
+  const [lineEdits, setLineEdits] = useState({}); // orderItemId -> { delivered, refused, reason }
+  const [savingLine, setSavingLine] = useState(null);
   const canvasRef = useRef(null);
 
   const { data: apiData, refetch } = useFetch('/dispatches?page=1&limit=20');
@@ -85,6 +88,61 @@ function Deliveries() {
       toast.error(err?.response?.data?.message || 'Failed to confirm delivery');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const loadDetail = async (id) => {
+    if (detailById[id]) return;
+    try {
+      const res = await api.get(`/dispatches/${id}`);
+      setDetailById((prev) => ({ ...prev, [id]: res.data }));
+      const edits = {};
+      for (const di of res.data.items || []) {
+        for (const oi of di.clientOrder?.items || []) {
+          edits[oi.id] = {
+            delivered: String(oi.deliveredQuantity ?? oi.fulfilledQuantity ?? oi.quantity ?? ''),
+            refused: String(oi.refusedQuantity ?? 0),
+            reason: oi.refusalReason || '',
+          };
+        }
+      }
+      setLineEdits((prev) => ({ ...prev, ...edits }));
+    } catch {
+      // silent
+    }
+  };
+
+  const updateLine = (itemId, patch) => {
+    setLineEdits((prev) => ({ ...prev, [itemId]: { ...(prev[itemId] || {}), ...patch } }));
+  };
+
+  const saveLine = async (orderItem, dispatchId) => {
+    const edit = lineEdits[orderItem.id] || {};
+    const delivered = Number(edit.delivered);
+    const refused = Number(edit.refused);
+    if (Number.isNaN(delivered) || delivered < 0 || Number.isNaN(refused) || refused < 0) {
+      toast.error('Quantities must be non-negative numbers');
+      return;
+    }
+    if (refused > 0 && !edit.reason?.trim()) {
+      toast.error('Reason is required when refusing items');
+      return;
+    }
+    setSavingLine(orderItem.id);
+    try {
+      await api.patch(`/orders/items/${orderItem.id}/delivery`, {
+        deliveredQuantity: delivered,
+        refusedQuantity: refused,
+        refusalReason: edit.reason?.trim() || null,
+      });
+      toast.success(`${orderItem.product?.name || 'Item'} updated`);
+      // Reload detail to reflect persisted values
+      const res = await api.get(`/dispatches/${dispatchId}`);
+      setDetailById((prev) => ({ ...prev, [dispatchId]: res.data }));
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Failed to save line');
+    } finally {
+      setSavingLine(null);
     }
   };
 
@@ -270,25 +328,89 @@ function Deliveries() {
 
                 {/* Expand/Collapse Items */}
                 <button
-                  onClick={() => setExpandedId(expandedId === delivery.id ? null : delivery.id)}
+                  onClick={() => {
+                    const next = expandedId === delivery.id ? null : delivery.id;
+                    setExpandedId(next);
+                    if (next) loadDetail(delivery.id);
+                  }}
                   className="ml-11 mt-2 text-brand-accent text-xs flex items-center gap-1 hover:text-brand-accent/80"
                 >
                   {expandedId === delivery.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                  {expandedId === delivery.id ? 'Hide items' : 'View items'}
+                  {expandedId === delivery.id ? 'Hide line items' : 'Record delivery per item'}
                 </button>
 
                 {expandedId === delivery.id && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
-                    className="ml-11 mt-2 space-y-1"
+                    className="ml-11 mt-2 space-y-3"
                   >
-                    {delivery.items.map((item, i) => (
-                      <div key={i} className="flex items-center justify-between p-2 bg-brand-elevated rounded text-xs">
-                        <span className="text-brand-primary">{item.product}</span>
-                        <span className="text-brand-secondary">{item.qty}</span>
-                      </div>
-                    ))}
+                    {!detailById[delivery.id] ? (
+                      <p className="text-brand-muted text-xs italic">Loading items…</p>
+                    ) : (
+                      (detailById[delivery.id].items || []).map((di) => (
+                        <div key={di.id} className="space-y-1.5">
+                          <p className="text-brand-secondary text-[11px] uppercase tracking-wider">
+                            {di.clientOrder?.client?.businessName || 'Client'}
+                          </p>
+                          {(di.clientOrder?.items || []).map((oi) => {
+                            const edit = lineEdits[oi.id] || {};
+                            const refused = Number(edit.refused || 0);
+                            return (
+                              <div key={oi.id} className="p-2 bg-brand-elevated rounded-lg border border-brand-border space-y-2">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-brand-primary text-sm font-medium truncate">{oi.product?.name}</p>
+                                  <span className="text-brand-muted text-[11px] shrink-0">
+                                    Loaded {oi.fulfilledQuantity ?? oi.quantity} {oi.product?.unit}
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <label className="block text-brand-muted text-[10px] uppercase tracking-wider mb-1">Delivered</label>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      step="0.1"
+                                      value={edit.delivered ?? ''}
+                                      onChange={(e) => updateLine(oi.id, { delivered: e.target.value })}
+                                      className="h-8 text-sm"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-brand-muted text-[10px] uppercase tracking-wider mb-1">Refused</label>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      step="0.1"
+                                      value={edit.refused ?? '0'}
+                                      onChange={(e) => updateLine(oi.id, { refused: e.target.value })}
+                                      className="h-8 text-sm"
+                                    />
+                                  </div>
+                                </div>
+                                {refused > 0 && (
+                                  <Input
+                                    placeholder="Reason for refusal (required)"
+                                    value={edit.reason ?? ''}
+                                    onChange={(e) => updateLine(oi.id, { reason: e.target.value })}
+                                    className="h-8 text-sm"
+                                  />
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="w-full h-7 text-xs"
+                                  onClick={() => saveLine(oi, delivery.id)}
+                                  disabled={savingLine === oi.id}
+                                >
+                                  {savingLine === oi.id ? 'Saving…' : 'Save this item'}
+                                </Button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))
+                    )}
                     {delivery.instructions && (
                       <div className="p-2 bg-brand-warning/10 rounded text-xs text-brand-warning border border-brand-warning/20 mt-2">
                         <FileText className="w-3 h-3 inline mr-1" />

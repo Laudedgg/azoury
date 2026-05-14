@@ -12,6 +12,8 @@ const {
   getReturnAmendments,
   createReturnAmendment,
   updateReturnAmendment,
+  verifyOrderItemQc,
+  captureItemDelivery,
 } = require('../controllers/orderController');
 
 router.use(authenticate);
@@ -26,5 +28,9 @@ router.post('/', createOrder);
 router.patch('/:id/status', updateStatus);
 router.patch('/:id/prepare', prepareOrder);
 router.patch('/:id/cancel', cancelOrder);
+
+// Per-order-item QC and delivery capture
+router.patch('/items/:itemId/qc', verifyOrderItemQc);
+router.patch('/items/:itemId/delivery', captureItemDelivery);
 
 module.exports = router;

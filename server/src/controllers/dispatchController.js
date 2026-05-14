@@ -3,6 +3,38 @@ const notificationService = require('../services/notificationService');
 
 const prisma = new PrismaClient();
 
+async function getDispatchQcChecklist(req, res, next) {
+  try {
+    const dispatch = await prisma.dispatch.findUnique({
+      where: { id: req.params.id },
+      include: {
+        driver: { select: { id: true, firstName: true, lastName: true } },
+        truck: { select: { id: true, plateNumber: true } },
+        items: {
+          include: {
+            clientOrder: {
+              include: {
+                client: { select: { id: true, businessName: true } },
+                items: {
+                  include: {
+                    product: { select: { id: true, name: true, unit: true } },
+                    qualityGrade: { select: { id: true, grade: true, clientFacingGrade: true } },
+                    qcVerifier: { select: { id: true, firstName: true, lastName: true } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!dispatch) return res.status(404).json({ error: 'Dispatch not found' });
+    res.json(dispatch);
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function createDispatch(req, res, next) {
   try {
     const { driverId, truckId, orderIds, routeOrder, freeBonusProduct } = req.body;
@@ -335,4 +367,5 @@ module.exports = {
   getDispatch,
   listDispatches,
   confirmDelivery,
+  getDispatchQcChecklist,
 };
