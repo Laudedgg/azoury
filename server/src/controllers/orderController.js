@@ -95,7 +95,10 @@ async function listOrders(req, res, next) {
       where.clientId = clientId;
     }
 
-    if (status) where.status = status;
+    if (status) {
+      const list = String(status).split(',').map((s) => s.trim()).filter(Boolean);
+      where.status = list.length > 1 ? { in: list } : list[0];
+    }
     if (startDate || endDate) {
       where.createdAt = {};
       if (startDate) where.createdAt.gte = new Date(startDate);
