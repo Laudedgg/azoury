@@ -8,7 +8,9 @@ async function listVehicles(req, res, next) {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const where = {};
-    if (status) where.status = status;
+    const { parseStatusFilter } = require('../utils/parseStatus');
+    const sf = parseStatusFilter(status);
+    if (sf !== undefined) where.status = sf;
 
     const [vehicles, total] = await Promise.all([
       prisma.fleetVehicle.findMany({

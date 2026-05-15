@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const notificationService = require('../services/notificationService');
+const { parseStatusFilter } = require('../utils/parseStatus');
 
 const prisma = new PrismaClient();
 
@@ -258,7 +259,8 @@ async function listDispatches(req, res, next) {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const where = {};
-    if (status) where.status = status;
+    const sf = parseStatusFilter(status);
+    if (sf !== undefined) where.status = sf;
     if (driverId) where.driverId = driverId;
 
     // Drivers can only see their own dispatches

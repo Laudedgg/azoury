@@ -318,7 +318,9 @@ async function listPurchaseOrders(req, res, next) {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const where = {};
-    if (status) where.status = status;
+    const { parseStatusFilter } = require('../utils/parseStatus');
+    const sf = parseStatusFilter(status);
+    if (sf !== undefined) where.status = sf;
     if (supplierId) where.supplierId = supplierId;
 
     const [orders, total] = await Promise.all([

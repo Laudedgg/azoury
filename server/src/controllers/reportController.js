@@ -342,7 +342,9 @@ async function getInvoices(req, res, next) {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const where = {};
-    if (status) where.status = status;
+    const { parseStatusFilter } = require('../utils/parseStatus');
+    const sf = parseStatusFilter(status);
+    if (sf !== undefined) where.status = sf;
     if (clientId) where.clientId = clientId;
     // Client users only ever see their own
     if (['CLIENT_ADMIN', 'CLIENT_STAFF', 'CLIENT_ORDERER', 'CLIENT_RECEIVER'].includes(req.user.role)) {
