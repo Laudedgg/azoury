@@ -28,7 +28,7 @@ function DriverLayout() {
             <div className="w-7 h-7 rounded-lg bg-brand-accent flex items-center justify-center">
               <span className="text-brand-base font-bold text-sm">A</span>
             </div>
-            <span className="font-semibold text-brand-primary">Driver</span>
+            <span className="font-semibold text-brand-primary">Afood Driver</span>
           </div>
           <div className="flex items-center gap-1">
             <button

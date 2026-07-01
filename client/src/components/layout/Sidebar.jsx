@@ -92,7 +92,7 @@ function Sidebar() {
                 transition={{ duration: 0.15 }}
                 className="text-lg font-bold text-brand-primary whitespace-nowrap overflow-hidden"
               >
-                Azoury
+                Afood Lebanon
               </motion.span>
             )}
           </AnimatePresence>

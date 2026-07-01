@@ -120,7 +120,7 @@ function Login() {
             </motion.div>
 
             <motion.h1 initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, delay: 0.4 }} className="text-4xl font-bold text-white tracking-tight mb-2">
-              Azoury
+              Afood Lebanon
             </motion.h1>
             <motion.p initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, delay: 0.5 }} className="text-brand-accent text-lg font-medium mb-12">
               End-to-End Supply Chain Intelligence
@@ -151,7 +151,7 @@ function Login() {
               <Logo size={80} className="mb-4" />
             </motion.div>
             <motion.h1 initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.4, delay: 0.2 }} className="text-2xl font-bold text-white tracking-tight">
-              Azoury
+              Afood Lebanon
             </motion.h1>
             <motion.p initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.4, delay: 0.3 }} className="text-brand-accent text-xs font-medium mt-1">
               End-to-End Supply Chain Intelligence

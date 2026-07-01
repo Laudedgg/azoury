@@ -116,7 +116,7 @@ function Purchasing() {
   const buyListWhatsAppText = () => {
     const today = new Date().toLocaleDateString();
     const lines = [
-      `*Azoury — Buy List*  (${today})`,
+      `*Afood Lebanon — Buy List*  (${today})`,
       '',
       ...buyListPositive.map((r) => `• ${r.product} — *${r.orderQty} ${r.unit}*`),
       '',

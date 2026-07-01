@@ -191,7 +191,7 @@ function Register() {
         >
           <div className="text-center max-w-md drop-shadow-[0_2px_12px_rgba(0,0,0,0.7)]">
             <Logo size={120} className="mx-auto mb-8" />
-            <h1 className="text-3xl font-bold text-white mb-2">Azoury</h1>
+            <h1 className="text-3xl font-bold text-white mb-2">Afood Lebanon</h1>
             <p className="text-brand-accent text-sm font-medium mb-16">End-to-End Supply Chain Intelligence</p>
             <StepIndicator currentStep={currentStep} />
           </div>
@@ -209,7 +209,7 @@ function Register() {
               <Logo size={56} className="mb-3" />
             </motion.div>
             <motion.h1 initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.4, delay: 0.2 }} className="text-xl font-bold text-white tracking-tight">
-              Azoury
+              Afood Lebanon
             </motion.h1>
             <motion.p initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.4, delay: 0.3 }} className="text-brand-accent text-xs font-medium mt-0.5 mb-5">
               Create your account

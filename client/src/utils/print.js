@@ -76,7 +76,7 @@ export function printInvoice(order) {
     <div class="header">
       <div class="row">
         <div>
-          <h1>Azoury</h1>
+          <h1>Afood Lebanon</h1>
           <div class="muted">End-to-End Supply Chain</div>
         </div>
         <div style="text-align:right">
@@ -127,7 +127,7 @@ export function printTable({ title, subtitle, columns, rows }) {
     <div class="header">
       <div class="row">
         <div>
-          <h1>Azoury</h1>
+          <h1>Afood Lebanon</h1>
           <div class="muted">${escapeHtml(subtitle || '')}</div>
         </div>
         <div style="text-align:right">

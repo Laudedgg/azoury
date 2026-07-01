@@ -99,7 +99,7 @@ function downloadTemplate() {
   ws['!cols'] = [{ wch: 22 }, { wch: 28 }, { wch: 22 }, { wch: 14 }, { wch: 8 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Products');
-  XLSX.writeFile(wb, 'azoury-products-template.xlsx');
+  XLSX.writeFile(wb, 'afood-lebanon-products-template.xlsx');
 }
 
 function Products() {

@@ -55,7 +55,7 @@ function ClientLayout() {
                     exit={{ opacity: 0, width: 0 }}
                     className="text-lg font-bold text-brand-primary whitespace-nowrap overflow-hidden"
                   >
-                    Azoury
+                    Afood Lebanon
                   </motion.span>
                 )}
               </AnimatePresence>

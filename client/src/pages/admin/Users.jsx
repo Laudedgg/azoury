@@ -621,7 +621,7 @@ function Users() {
             </div>
             <div>
               <label className="block text-brand-secondary text-sm mb-1">Email *</label>
-              <Input type="email" placeholder="email@azoury.com" value={staffForm.email} onChange={(e) => setStaffForm((f) => ({ ...f, email: e.target.value }))} />
+              <Input type="email" placeholder="email@company.com" value={staffForm.email} onChange={(e) => setStaffForm((f) => ({ ...f, email: e.target.value }))} />
             </div>
             <div>
               <label className="block text-brand-secondary text-sm mb-1">Role *</label>
