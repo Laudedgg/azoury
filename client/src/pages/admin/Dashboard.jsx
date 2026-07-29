@@ -10,10 +10,12 @@ import {
 import { KPICard } from '@/components/dashboard/KPICard';
 import { ChartCard } from '@/components/dashboard/ChartCard';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { CHART_COLORS } from '@/utils/constants';
 import { formatCurrency } from '@/utils/helpers';
 import { useFetch } from '@/hooks/useFetch';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { LayoutDashboard } from 'lucide-react';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 const stagger = { animate: { transition: { staggerChildren: 0.08 } } };
@@ -74,9 +76,12 @@ function Dashboard() {
 
   return (
     <motion.div initial="initial" animate="animate" variants={stagger} className="space-y-4 lg:space-y-6">
-      <motion.div variants={fadeInUp} className="hidden lg:block">
-        <h1 className="text-2xl font-bold text-brand-primary">Executive Dashboard</h1>
-        <p className="text-brand-secondary mt-1">Real-time overview of operations</p>
+      <motion.div variants={fadeInUp}>
+        <PageHeader
+          icon={LayoutDashboard}
+          title="Executive Dashboard"
+          subtitle="Real-time overview of operations"
+        />
       </motion.div>
 
       {/* Row 1: KPI Cards */}

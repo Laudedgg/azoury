@@ -10,11 +10,13 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Textarea } from '@/components/ui/Textarea';
+import { Field } from '@/components/ui/Field';
 import { useFetch } from '@/hooks/useFetch';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/services/api';
 import { toast } from 'sonner';
-import { getStatusColor } from '@/utils/helpers';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
@@ -233,29 +235,47 @@ function Deliveries() {
       className="space-y-4 max-w-lg mx-auto"
     >
       <motion.div variants={fadeInUp}>
-        <h1 className="text-xl font-bold text-brand-primary">My Deliveries</h1>
-        <p className="text-sm text-brand-secondary mt-0.5">Today&apos;s delivery schedule</p>
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-brand-accent/10 border border-brand-accent/20 flex items-center justify-center">
+            <Truck className="h-5 w-5 text-brand-accent" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-brand-primary tracking-tight">My Deliveries</h1>
+            <p className="text-xs text-brand-secondary">Today&apos;s delivery schedule</p>
+          </div>
+        </div>
       </motion.div>
 
       {/* Today's Route Summary */}
       <motion.div variants={fadeInUp}>
-        <Card className="bg-brand-accent/10 border-brand-accent/30">
+        <Card className="glow-ring bg-gradient-to-br from-brand-accent/[0.08] via-brand-surface to-brand-surface border-brand-accent/30">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-brand-accent/20 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-brand-accent/20 flex items-center justify-center">
                 <Truck className="w-5 h-5 text-brand-accent" />
               </div>
-              <div className="flex-1">
-                <p className="text-brand-primary font-semibold">Today&apos;s Route</p>
-                <p className="text-brand-secondary text-xs">
-                  {totalStops} deliveries - Est. {estimatedTime} - Truck B 234 567
+              <div className="flex-1 min-w-0">
+                <p className="text-brand-primary font-semibold text-sm">Today&apos;s Route</p>
+                <p className="text-brand-secondary text-xs mt-0.5">
+                  {totalStops} deliveries · Est. {estimatedTime}
                 </p>
               </div>
-              <Badge variant="accent">{completedDeliveries.length}/{totalStops}</Badge>
+              <div className="text-right">
+                <p className="text-brand-accent font-bold text-lg leading-none mono">{completedDeliveries.length}/{totalStops}</p>
+                <p className="text-[10px] text-brand-muted uppercase tracking-wider mt-0.5">Done</p>
+              </div>
             </div>
           </CardContent>
         </Card>
       </motion.div>
+
+      {activeDeliveries.length === 0 && completedDeliveries.length === 0 && (
+        <EmptyState
+          icon={Package}
+          title="No deliveries assigned"
+          description="You'll see your stops here as soon as operations creates a dispatch for you."
+        />
+      )}
 
       {/* Delivery Stops */}
       <div className="space-y-3">
@@ -278,7 +298,7 @@ function Deliveries() {
                       <p className="text-xs text-brand-muted">{delivery.orderRef}</p>
                     </div>
                   </div>
-                  <Badge variant={getStatusColor(delivery.status)}>{delivery.status}</Badge>
+                  <Badge variant={delivery.status === 'Delivered' ? 'success' : delivery.status === 'In Progress' ? 'default' : 'warning'}>{delivery.status}</Badge>
                 </div>
 
                 {/* Trip odometer controls */}
@@ -524,8 +544,8 @@ function Deliveries() {
               {/* Notes */}
               <div>
                 <label className="block text-brand-secondary text-sm mb-1">Notes</label>
-                <textarea
-                  className="w-full bg-brand-elevated border border-brand-border rounded-lg p-3 text-brand-primary text-sm focus:outline-none focus:ring-1 focus:ring-brand-accent resize-none"
+                <Textarea
+                  className="bg-brand-elevated"
                   rows={2}
                   placeholder="Optional delivery notes..."
                   value={notes}
@@ -565,8 +585,8 @@ function Deliveries() {
               </div>
               <div>
                 <label className="block text-brand-secondary text-sm mb-1">Notes</label>
-                <textarea
-                  className="w-full bg-brand-elevated border border-brand-border rounded-lg p-3 text-brand-primary text-sm focus:outline-none focus:ring-1 focus:ring-brand-accent resize-none"
+                <Textarea
+                  className="bg-brand-elevated"
                   rows={3}
                   placeholder="Describe the issue..."
                   value={issueNotes}

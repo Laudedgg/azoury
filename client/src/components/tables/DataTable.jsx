@@ -123,11 +123,11 @@ function DataTable({
           <table className="w-full">
             <thead>
               {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id} className="border-b border-brand-border bg-brand-base">
+                <tr key={headerGroup.id} className="border-b border-brand-border bg-brand-elevated/40">
                   {headerGroup.headers.map((header) => (
                     <th
                       key={header.id}
-                      className="h-10 px-4 text-left text-xs font-semibold uppercase tracking-wider text-brand-secondary"
+                      className="h-9 px-4 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-brand-muted"
                       style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}
                     >
                       {header.isPlaceholder ? null : (
@@ -163,8 +163,8 @@ function DataTable({
                   <tr
                     key={row.id}
                     className={cn(
-                      'border-b border-brand-border last:border-0 transition-colors',
-                      'hover:bg-brand-elevated/50',
+                      'border-b border-brand-border/60 last:border-0 transition-colors',
+                      'hover:bg-brand-elevated/40',
                       row.getIsSelected() && 'bg-brand-accent/5'
                     )}
                   >

@@ -3,12 +3,14 @@ import { motion } from 'framer-motion';
 import { DollarSign, FileText, Printer, Loader2, Receipt, CheckCircle, ShieldCheck, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { DataTable } from '@/components/tables/DataTable';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useFetch } from '@/hooks/useFetch';
 import api from '@/services/api';
-import { formatCurrency, formatDate, getStatusColor } from '@/utils/helpers';
+import { formatCurrency, formatDate } from '@/utils/helpers';
 import { printInvoice, printTable } from '@/utils/print';
 import { toast } from 'sonner';
 
@@ -139,7 +141,7 @@ function Billing() {
     {
       accessorKey: 'status',
       header: 'Status',
-      cell: ({ row }) => <Badge variant={row.original.status === 'PAID' ? 'success' : row.original.status === 'OVERDUE' ? 'error' : row.original.status === 'DRAFT' ? 'warning' : 'accent'}>{row.original.statusLabel}</Badge>,
+      cell: ({ row }) => <StatusBadge status={row.original.status} />,
     },
     { accessorKey: 'amount', header: 'Amount', cell: ({ row }) => <span className="font-semibold text-brand-primary">{formatCurrency(row.original.amount)}</span> },
     {
@@ -174,14 +176,17 @@ function Billing() {
       variants={{ animate: { transition: { staggerChildren: 0.08 } } }}
       className="space-y-4 lg:space-y-6"
     >
-      <motion.div variants={fadeInUp} className="flex flex-col-reverse gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="hidden lg:block">
-          <h1 className="text-2xl font-bold text-brand-primary">Billing</h1>
-          <p className="text-brand-secondary text-sm mt-1">Invoices based on real quantities prepared per client</p>
-        </div>
-        <Button variant="outline" className="w-full lg:w-auto no-print" onClick={handlePrintList}>
-          <Printer className="w-4 h-4 mr-2" /> Print list
-        </Button>
+      <motion.div variants={fadeInUp}>
+        <PageHeader
+          icon={Receipt}
+          title="Billing"
+          subtitle="Invoices based on real quantities prepared per client"
+          actions={(
+            <Button variant="outline" size="sm" className="no-print" onClick={handlePrintList}>
+              <Printer className="w-4 h-4" /> Print list
+            </Button>
+          )}
+        />
       </motion.div>
 
       <motion.div variants={fadeInUp} className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

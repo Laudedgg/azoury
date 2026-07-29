@@ -166,8 +166,12 @@ function Login() {
           transition={{ duration: 0.6, delay: 0.3 }}
           className="flex-1 flex items-start lg:items-center justify-center px-5 py-8 sm:px-8 lg:p-12"
         >
-          <div className="w-full max-w-md bg-brand-surface/85 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-6 sm:p-8">
-            <h2 className="text-xl sm:text-2xl font-bold text-brand-primary mb-1">Welcome back</h2>
+          <div className="w-full max-w-md bg-brand-surface/85 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_20px_60px_-20px_rgba(0,0,0,0.7),0_0_0_1px_rgba(78,236,211,0.06)] p-6 sm:p-8">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="h-1.5 w-1.5 rounded-full bg-brand-accent animate-pulse" />
+              <span className="text-brand-accent text-[11px] font-semibold uppercase tracking-wider">Secure Sign-In</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-brand-primary mb-1 tracking-tight">Welcome back</h2>
             <p className="text-brand-secondary text-sm mb-6 sm:mb-8">Sign in to your account to continue</p>
 
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">

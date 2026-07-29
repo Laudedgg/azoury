@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Truck, MapPin, DollarSign, RotateCcw, AlertTriangle, Package, Check, X,
-  ClipboardList, Loader2, ChevronDown, Plus,
+  ClipboardList, Loader2, ChevronDown, Plus, Settings2,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -12,6 +12,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { DataTable } from '@/components/tables/DataTable';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useFetch } from '@/hooks/useFetch';
 import api from '@/services/api';
 import { toast } from 'sonner';
@@ -309,9 +312,12 @@ function Operations() {
 
   return (
     <motion.div initial="initial" animate="animate" variants={{ animate: { transition: { staggerChildren: 0.08 } } }} className="space-y-4 lg:space-y-6">
-      <motion.div variants={fadeInUp} className="hidden lg:block">
-        <h1 className="text-2xl font-bold text-brand-primary">Operations Management</h1>
-        <p className="text-brand-secondary text-sm mt-1">Dispatch per client, routing, pricing, and returns</p>
+      <motion.div variants={fadeInUp}>
+        <PageHeader
+          icon={Settings2}
+          title="Operations Management"
+          subtitle="Dispatch per client, routing, pricing, and returns"
+        />
       </motion.div>
 
       <motion.div variants={fadeInUp}>
@@ -327,13 +333,11 @@ function Operations() {
           {/* Tab 1: Dispatch — grouped by client */}
           <TabsContent value="dispatch" className="mt-6 space-y-3">
             {ordersByClient.length === 0 ? (
-              <Card className="border-dashed">
-                <CardContent className="p-6 text-center">
-                  <Package className="w-10 h-10 mx-auto text-brand-muted mb-3" />
-                  <p className="text-brand-primary font-medium">No open orders</p>
-                  <p className="text-brand-muted text-sm mt-1">Orders placed by clients will appear here grouped per client.</p>
-                </CardContent>
-              </Card>
+              <EmptyState
+                icon={Package}
+                title="No open orders"
+                description="Orders placed by clients appear here grouped per client. As soon as a client submits an order, it'll show up in this view."
+              />
             ) : ordersByClient.map(({ clientName, orders }) => {
               const isExpanded = expandedClient === clientName;
               const totalItems = orders.reduce((s, o) => s + (o._count?.items || o.items?.length || 0), 0);
@@ -370,7 +374,7 @@ function Operations() {
                                 </p>
                               </div>
                               <div className="flex items-center gap-2 flex-wrap">
-                                <Badge variant={statusVariant(s)}>{s}</Badge>
+                                <StatusBadge status={o.status} />
                                 {o.status === 'PENDING' && (
                                   <Button size="sm" onClick={() => handleStatusUpdate(o.id, 'CONFIRMED')}>Confirm</Button>
                                 )}

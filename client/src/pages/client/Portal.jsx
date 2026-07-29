@@ -6,11 +6,13 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
 import { KPICard } from '@/components/dashboard/KPICard';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useAuth } from '@/context/AuthContext';
 import { useFetch } from '@/hooks/useFetch';
-import { formatCurrency, formatDate, getStatusColor } from '@/utils/helpers';
+import { formatCurrency, formatDate } from '@/utils/helpers';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 
@@ -59,16 +61,19 @@ function Portal() {
       variants={{ animate: { transition: { staggerChildren: 0.08 } } }}
       className="space-y-4 lg:space-y-6"
     >
-      <motion.div variants={fadeInUp} className="flex flex-col-reverse gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="hidden lg:block">
-          <h1 className="text-2xl font-bold text-brand-primary">Welcome, {businessName}</h1>
-          <p className="text-brand-secondary text-sm mt-1">Here is your order overview and upcoming deliveries</p>
-        </div>
-        <Button asChild className="w-full lg:w-auto">
-          <Link to="/portal/orders">
-            <Plus className="w-4 h-4 mr-2" /> Place Order
-          </Link>
-        </Button>
+      <motion.div variants={fadeInUp}>
+        <PageHeader
+          icon={ShoppingBag}
+          title={`Welcome, ${businessName}`}
+          subtitle="Here is your order overview and upcoming deliveries"
+          actions={(
+            <Button asChild size="sm">
+              <Link to="/portal/orders">
+                <Plus className="w-4 h-4" /> Place Order
+              </Link>
+            </Button>
+          )}
+        />
       </motion.div>
 
       {/* KPI Cards */}
@@ -90,6 +95,13 @@ function Portal() {
               </Link>
             </CardHeader>
             <CardContent>
+              {recentOrders.length === 0 ? (
+                <div className="text-center py-8">
+                  <ShoppingBag className="w-8 h-8 text-brand-muted mx-auto mb-2" />
+                  <p className="text-brand-primary text-sm font-medium">No orders yet</p>
+                  <p className="text-brand-muted text-xs mt-1">Place your first order to get started.</p>
+                </div>
+              ) : (
               <div className="space-y-3">
                 {recentOrders.map((order) => (
                   <div key={order.id} className="flex items-center justify-between p-3 rounded-lg border border-brand-border hover:bg-brand-elevated/50 transition-colors">
@@ -103,12 +115,13 @@ function Portal() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-semibold text-brand-primary">{formatCurrency(order.total)}</p>
-                      <Badge variant={getStatusColor(order.status)} className="mt-1">{order.status}</Badge>
+                      <p className="text-sm font-semibold text-brand-primary mono">{formatCurrency(order.total)}</p>
+                      <StatusBadge status={order.status} className="mt-1" />
                     </div>
                   </div>
                 ))}
               </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -146,7 +159,7 @@ function Portal() {
                       </p>
                       <div className="flex items-center justify-between mt-2">
                         <span className="text-brand-muted text-xs">Order {delivery.orderRef}</span>
-                        <Badge variant={getStatusColor(delivery.status)} className="text-xs">{delivery.status}</Badge>
+                        <StatusBadge status={delivery.status} />
                       </div>
                       {delivery.driver !== 'TBD' && (
                         <p className="text-brand-muted text-xs mt-1">Driver: {delivery.driver}</p>

@@ -3,9 +3,11 @@ import { motion } from 'framer-motion';
 import { FileText, DollarSign, AlertCircle, CheckCircle, Printer, Loader2, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { DataTable } from '@/components/tables/DataTable';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useAuth } from '@/context/AuthContext';
 import { useFetch } from '@/hooks/useFetch';
 import api from '@/services/api';
@@ -80,11 +82,7 @@ function Statement() {
     {
       accessorKey: 'status',
       header: 'Status',
-      cell: ({ row }) => (
-        <Badge variant={row.original.status === 'PAID' ? 'success' : row.original.status === 'OVERDUE' ? 'error' : 'accent'}>
-          {row.original.statusLabel}
-        </Badge>
-      ),
+      cell: ({ row }) => <StatusBadge status={row.original.status} />,
     },
     { accessorKey: 'amount', header: 'Amount', cell: ({ row }) => <span className="font-semibold text-brand-primary">{formatCurrency(row.original.amount)}</span> },
     {
@@ -112,14 +110,17 @@ function Statement() {
       variants={{ animate: { transition: { staggerChildren: 0.08 } } }}
       className="space-y-4 lg:space-y-6 max-w-5xl"
     >
-      <motion.div variants={fadeInUp} className="flex flex-col-reverse gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="hidden lg:block">
-          <h1 className="text-2xl font-bold text-brand-primary">Statement of Account</h1>
-          <p className="text-brand-secondary text-sm mt-1">All approved invoices, payment status, and recent activity</p>
-        </div>
-        <Button variant="outline" className="w-full lg:w-auto no-print" onClick={handlePrintStatement} disabled={invoices.length === 0}>
-          <Printer className="w-4 h-4 mr-2" /> Print statement
-        </Button>
+      <motion.div variants={fadeInUp}>
+        <PageHeader
+          icon={FileText}
+          title="Statement of Account"
+          subtitle="All approved invoices, payment status, and recent activity"
+          actions={(
+            <Button variant="outline" size="sm" className="no-print" onClick={handlePrintStatement} disabled={invoices.length === 0}>
+              <Printer className="w-4 h-4" /> Print statement
+            </Button>
+          )}
+        />
       </motion.div>
 
       <motion.div variants={fadeInUp} className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -131,38 +132,48 @@ function Statement() {
 
       <motion.div variants={fadeInUp} className="grid grid-cols-2 gap-3 sm:gap-4">
         <Card>
-          <CardContent className="p-4">
-            <p className="text-brand-muted text-xs uppercase tracking-wider mb-1">Collected last 7 days</p>
-            <p className="text-brand-primary font-semibold text-lg">{formatCurrency(summary.paidLast7)}</p>
-          </CardContent>
+          <div className="p-4 flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-brand-success/10 text-brand-success flex items-center justify-center">
+              <CheckCircle className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-brand-muted text-[10px] uppercase tracking-wider">Collected last 7 days</p>
+              <p className="text-brand-primary font-semibold text-base mono">{formatCurrency(summary.paidLast7)}</p>
+            </div>
+          </div>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <p className="text-brand-muted text-xs uppercase tracking-wider mb-1">Collected this month</p>
-            <p className="text-brand-primary font-semibold text-lg">{formatCurrency(summary.paidThisMonth)}</p>
-          </CardContent>
+          <div className="p-4 flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-brand-accent/10 text-brand-accent flex items-center justify-center">
+              <Calendar className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-brand-muted text-[10px] uppercase tracking-wider">Collected this month</p>
+              <p className="text-brand-primary font-semibold text-base mono">{formatCurrency(summary.paidThisMonth)}</p>
+            </div>
+          </div>
         </Card>
       </motion.div>
 
       <motion.div variants={fadeInUp}>
-        <Card>
-          <CardContent className="p-4 sm:p-6">
-            {invoices.length === 0 ? (
-              <div className="py-12 text-center">
-                <Calendar className="w-10 h-10 mx-auto text-brand-muted mb-3" />
-                <p className="text-brand-primary font-medium">No invoices yet</p>
-                <p className="text-brand-muted text-sm mt-1">Invoices appear here once orders are delivered and approved by operations.</p>
-              </div>
-            ) : (
+        {invoices.length === 0 ? (
+          <EmptyState
+            icon={FileText}
+            title="No invoices yet"
+            description="Invoices appear here once orders are delivered and approved by operations."
+          />
+        ) : (
+          <Card>
+            <CardContent className="p-4 sm:p-6">
               <DataTable
                 columns={columns}
                 data={invoices}
                 searchPlaceholder="Search by invoice or order..."
                 searchColumn="invoiceRef"
               />
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </motion.div>
     </motion.div>
   );
