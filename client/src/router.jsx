@@ -30,6 +30,9 @@ const PageLoader = () => (
   </div>
 );
 
+// Marketing / public
+const Landing = React.lazy(() => import('@/pages/Landing'));
+
 // Auth pages
 const Login = React.lazy(() => import('@/pages/auth/Login'));
 const Register = React.lazy(() => import('@/pages/auth/Register'));
@@ -71,7 +74,7 @@ const wrap = (Component) => (
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <Navigate to="/login" replace />,
+    element: wrap(Landing),
   },
   {
     path: '/login',
