@@ -17,7 +17,7 @@ const fadeUp = {
 
 // Produce imagery — Unsplash CDN, dark-friendly, high-res
 const HERO_IMG = 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=2200&q=80&auto=format&fit=crop';
-const B2C_IMG  = 'https://images.unsplash.com/photo-1608686207856-001b95cf60ca?w=2200&q=80&auto=format&fit=crop';
+const B2C_IMG  = 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=2200&q=80&auto=format&fit=crop';
 const CTA_IMG  = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=2200&q=80&auto=format&fit=crop';
 
 
