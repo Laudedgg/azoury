@@ -15,6 +15,19 @@ const fadeUp = {
   viewport: { once: true, margin: '-80px' },
 };
 
+// Produce imagery — Unsplash CDN, dark-friendly, high-res
+const HERO_IMG = 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=2200&q=80&auto=format&fit=crop';
+const B2C_IMG  = 'https://images.unsplash.com/photo-1608686207856-001b95cf60ca?w=2200&q=80&auto=format&fit=crop';
+const CTA_IMG  = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=2200&q=80&auto=format&fit=crop';
+
+// Small produce "accent" images used as decorative floating thumbnails
+const produceAccents = [
+  'https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=200&q=70&auto=format&fit=crop&crop=center', // tomatoes
+  'https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=200&q=70&auto=format&fit=crop&crop=center', // greens
+  'https://images.unsplash.com/photo-1567620832903-9fc6debc209f?w=200&q=70&auto=format&fit=crop&crop=center', // peppers
+  'https://images.unsplash.com/photo-1568702846914-96b305d2aaeb?w=200&q=70&auto=format&fit=crop&crop=center', // mixed veg
+];
+
 const Logo = ({ size = 40 }) => (
   <svg width={size} height={size} viewBox="0 0 200 200">
     <defs>
@@ -40,6 +53,48 @@ const departments = [
   { icon: Receipt,        name: 'Accounting',        blurb: 'Auto-invoice on delivery, statements, collection tracking' },
   { icon: BarChart3,      name: 'Executive View',    blurb: 'Real-time KPIs across every step of the chain' },
 ];
+
+// Decorative floating produce thumbnails — subtle motion, hidden on small screens
+function FloatingProduce() {
+  const items = [
+    { src: produceAccents[0], top: '18%',  left: '4%',   size: 70,  delay: 0,   dur: 6 },
+    { src: produceAccents[1], top: '10%',  right: '6%',  size: 90,  delay: 1.2, dur: 7 },
+    { src: produceAccents[2], bottom: '18%', left: '7%', size: 76,  delay: 0.6, dur: 6.5 },
+    { src: produceAccents[3], bottom: '12%', right: '4%', size: 84, delay: 1.8, dur: 7.5 },
+  ];
+  return (
+    <div className="hidden lg:block absolute inset-0 -z-10 pointer-events-none">
+      {items.map((it, i) => (
+        <motion.img
+          key={i}
+          src={it.src}
+          alt=""
+          aria-hidden
+          loading="lazy"
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{
+            opacity: 0.85,
+            scale: 1,
+            y: [0, -12, 0, 8, 0],
+          }}
+          transition={{
+            opacity: { duration: 1, delay: it.delay },
+            scale:   { duration: 1, delay: it.delay },
+            y:       { duration: it.dur, delay: it.delay, repeat: Infinity, ease: 'easeInOut' },
+          }}
+          style={{
+            position: 'absolute',
+            top: it.top, left: it.left, right: it.right, bottom: it.bottom,
+            width: it.size, height: it.size,
+            borderRadius: '9999px',
+            objectFit: 'cover',
+            boxShadow: '0 10px 30px -8px rgba(0,0,0,0.6), 0 0 0 1px rgba(78,236,211,0.15), 0 0 40px -8px rgba(78,236,211,0.25)',
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 function Nav() {
   const [scrolled, setScrolled] = useState(false);
@@ -82,17 +137,34 @@ function Nav() {
 function Hero() {
   return (
     <section className="relative pt-16 pb-24 sm:pt-24 sm:pb-32 overflow-hidden">
-      {/* Ambient gradient orbs */}
+      {/* Fresh produce hero image (dimmed, blurred at edges for text legibility) */}
+      <div className="absolute inset-0 -z-20 overflow-hidden pointer-events-none">
+        <img
+          src={HERO_IMG}
+          alt=""
+          aria-hidden
+          loading="eager"
+          className="w-full h-full object-cover object-center scale-110 opacity-40"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-base via-brand-base/85 to-brand-base/95" />
+        <div className="absolute inset-0 bg-gradient-to-t from-brand-base via-brand-base/40 to-transparent" />
+      </div>
+
+      {/* Ambient gradient orbs on top */}
       <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
         <div
-          className="absolute top-[-20%] left-[10%] w-[600px] h-[600px] rounded-full opacity-20"
+          className="absolute top-[-20%] left-[10%] w-[600px] h-[600px] rounded-full opacity-30"
           style={{ background: 'radial-gradient(circle, #4EECD3 0%, transparent 60%)' }}
         />
         <div
-          className="absolute bottom-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full opacity-15"
+          className="absolute bottom-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full opacity-20"
           style={{ background: 'radial-gradient(circle, #4EEC90 0%, transparent 60%)' }}
         />
       </div>
+
+      {/* Floating produce thumbnails — decorative */}
+      <FloatingProduce />
+
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <motion.div
@@ -214,7 +286,20 @@ function Platform() {
 
 function Departments() {
   return (
-    <section id="departments" className="py-20 sm:py-28 border-t border-brand-border/60">
+    <section id="departments" className="py-20 sm:py-28 border-t border-brand-border/60 relative overflow-hidden">
+      {/* Decorative produce accents floating around the grid — big, blurred, low opacity */}
+      <div className="hidden md:block absolute inset-0 -z-10 pointer-events-none">
+        <img
+          src={produceAccents[0]}
+          alt="" aria-hidden loading="lazy"
+          className="absolute top-16 -left-16 w-56 h-56 rounded-full object-cover opacity-15 blur-[2px]"
+        />
+        <img
+          src={produceAccents[2]}
+          alt="" aria-hidden loading="lazy"
+          className="absolute bottom-24 -right-16 w-64 h-64 rounded-full object-cover opacity-15 blur-[2px]"
+        />
+      </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div {...fadeUp} className="max-w-2xl mx-auto text-center">
           <p className="text-brand-accent text-xs font-semibold uppercase tracking-wider mb-3">Every role, its own space</p>
@@ -389,11 +474,23 @@ function ClientPortals() {
 
 function ConsumerSection() {
   return (
-    <section id="b2c" className="py-20 sm:py-28 border-t border-brand-border/60 relative overflow-hidden">
+    <section id="b2c" className="py-24 sm:py-32 border-t border-brand-border/60 relative overflow-hidden">
+      {/* Full-bleed produce backdrop with heavy dark overlay */}
+      <div className="absolute inset-0 -z-20 pointer-events-none">
+        <img
+          src={B2C_IMG}
+          alt=""
+          aria-hidden
+          loading="lazy"
+          className="w-full h-full object-cover object-center scale-105 opacity-45"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-base/90 via-brand-base/80 to-brand-base/95" />
+        <div className="absolute inset-0 bg-gradient-to-t from-brand-base to-transparent" />
+      </div>
       <div className="absolute inset-0 -z-10 pointer-events-none opacity-40">
         <div
           className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px]"
-          style={{ background: 'radial-gradient(ellipse, rgba(78,236,144,0.15) 0%, transparent 60%)' }}
+          style={{ background: 'radial-gradient(ellipse, rgba(78,236,144,0.20) 0%, transparent 60%)' }}
         />
       </div>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -425,8 +522,19 @@ function ConsumerSection() {
 
 function FinalCTA() {
   return (
-    <section className="py-20 sm:py-28 border-t border-brand-border/60">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+    <section className="py-24 sm:py-32 border-t border-brand-border/60 relative overflow-hidden">
+      {/* Subtle produce backdrop for warm close */}
+      <div className="absolute inset-0 -z-20 pointer-events-none">
+        <img
+          src={CTA_IMG}
+          alt=""
+          aria-hidden
+          loading="lazy"
+          className="w-full h-full object-cover object-center opacity-25"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-brand-base via-brand-base/80 to-brand-base" />
+      </div>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
         <motion.h2 {...fadeUp} className="text-3xl sm:text-4xl lg:text-5xl font-bold text-brand-primary tracking-tight">
           Ready to see the full chain?
         </motion.h2>
