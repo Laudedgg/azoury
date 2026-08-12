@@ -1,0 +1,884 @@
+[
+  {
+    "name": "خس عربي/ Romain Lettuce",
+    "description": "خس/LETTUCE",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "piece"
+  },
+  {
+    "name": "خس كايل/Kale",
+    "description": "خس/LETTUCE",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "piece"
+  },
+  {
+    "name": "خس لولو  أحمر / Lollo Rosso",
+    "description": "خس/LETTUCE",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "piece"
+  },
+  {
+    "name": "خس لولو  أخضر/ Lollo Verde",
+    "description": "خس/LETTUCE",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "piece"
+  },
+  {
+    "name": "خس فريزيه/ freeze lettuce",
+    "description": "خس/LETTUCE",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "box"
+  },
+  {
+    "name": "ايسبرغ/ICEBERG",
+    "description": "خس/LETTUCE",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "piece"
+  },
+  {
+    "name": "اونديف/ANDIVE",
+    "description": "خس/LETTUCE",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "piece"
+  },
+  {
+    "name": "سوكرين/Sucrine",
+    "description": "خس/LETTUCE",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "box"
+  },
+  {
+    "name": "بقدونس  / Parsley",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "bunch"
+  },
+  {
+    "name": "بقدونس  frisee / Parsley Curly",
+    "description": "بقدونس  / Parsley",
+    "subDescription": "IMPORTED/أجنبي",
+    "category": "VEGETABLES",
+    "unit": "bunch"
+  },
+  {
+    "name": "نعناع/Mint",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "bunch"
+  },
+  {
+    "name": "بقلة/ Purslane",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "bunch"
+  },
+  {
+    "name": "بيبي سبانخ/ Baby Spanish",
+    "description": null,
+    "subDescription": "IMPORTED/أجنبي/ LOCAL/بلدي",
+    "category": "VEGETABLES",
+    "unit": "box"
+  },
+  {
+    "name": "روكا/ Roka",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "bunch"
+  },
+  {
+    "name": "روكولا /Baby Roka /بيبي روكا",
+    "description": null,
+    "subDescription": "IMPORTED/أجنبي/ LOCAL/بلدي",
+    "category": "VEGETABLES",
+    "unit": "box"
+  },
+  {
+    "name": "سبانخ/Spanish",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "سلق/Seleek",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "سوكرين/Sucrine",
+    "description": null,
+    "subDescription": "IMPORTED/أجنبي",
+    "category": "VEGETABLES",
+    "unit": "box"
+  },
+  {
+    "name": "سيبوليت/ثوم معمرChives/Ciboulette",
+    "description": null,
+    "subDescription": "IMPORTED/أجنبي",
+    "category": "VEGETABLES",
+    "unit": "bag"
+  },
+  {
+    "name": "شومار /ديل Fennel/Dill",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "bag"
+  },
+  {
+    "name": "عشبة الحامض/ألليمون غراس/Cymbopogon Citratus",
+    "description": null,
+    "subDescription": "IMPORTED/أجنبي",
+    "category": "VEGETABLES",
+    "unit": "bag"
+  },
+  {
+    "name": "فجل/Radish",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "bunch"
+  },
+  {
+    "name": "قصعين/Sage",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "bunch"
+  },
+  {
+    "name": "كراث/Leeks",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "كرافس/Celery",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "كزبرة/ Coriander",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "bunch"
+  },
+  {
+    "name": "ورق شمندر/Beetroot leaves",
+    "description": null,
+    "subDescription": "IMPORTED/أجنبي",
+    "category": "VEGETABLES",
+    "unit": "piece"
+  },
+  {
+    "name": "هليون/Aspergillus",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "bunch"
+  },
+  {
+    "name": "زعتر/Thyme",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "bunch"
+  },
+  {
+    "name": "زعتر زوبع/",
+    "description": "زعتر/Thyme",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "bunch"
+  },
+  {
+    "name": "زعتر فرنسي/ French Thyme",
+    "description": "زعتر/Thyme",
+    "subDescription": "IMPORTED/أجنبي",
+    "category": "VEGETABLES",
+    "unit": "bag"
+  },
+  {
+    "name": "بامبو ليفز/ورق موز/BAMBOO LEAVES",
+    "description": null,
+    "subDescription": "IMPORTED/أجنبي",
+    "category": "VEGETABLES",
+    "unit": "bag"
+  },
+  {
+    "name": "حبق/ Basil",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "bag"
+  },
+  {
+    "name": "اكليل الجبل/ROSMARY/روزماري",
+    "description": null,
+    "subDescription": "IMPORTED/أجنبي/ LOCAL/بلدي",
+    "category": "VEGETABLES",
+    "unit": "bag"
+  },
+  {
+    "name": "حامض/ Lemon",
+    "description": null,
+    "subDescription": "IMPORTED/أجنبي/ LOCAL/بلدي",
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "لايم/Lime",
+    "description": "حامض/ Lemon",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "بندورة/Tomato",
+    "description": null,
+    "subDescription": "EXTR/A/COOKING",
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "بندورة شوي",
+    "description": "بندورة/Tomato",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "بندورة جبلية",
+    "description": "بندورة/Tomato",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "بندورة عمانية",
+    "description": "بندورة/Tomato",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "بندورة كرزية/Cherry Tomato",
+    "description": "بندورة/Tomato",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "box"
+  },
+  {
+    "name": "بندورة كرزية صفراء/Yellow  Cherry Tomato",
+    "description": "بندورة/Tomato",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "box"
+  },
+  {
+    "name": "بندورة كرزية سوداء/Black Cherry Tomato",
+    "description": "بندورة/Tomato",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "box"
+  },
+  {
+    "name": "بندورة كرزية خضراء/Green Cherry Tomato",
+    "description": "بندورة/Tomato",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "box"
+  },
+  {
+    "name": "بندورة معلقة/ Hanging Tomato",
+    "description": "بندورة/Tomato",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "بازيلا/PEAS",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "ارضي شوكة/ARTICHOKE",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "piece"
+  },
+  {
+    "name": "بادنجان طويل",
+    "description": "بادنجان /EGGPLANT/أسود",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "بادنجان مدعبل",
+    "description": "بادنجان /EGGPLANT/أسود",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "بصل ابيض / White Onion",
+    "description": "بصل /ONION",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "بصل اخضر/ Green Onion",
+    "description": "بصل /ONION",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "bunch"
+  },
+  {
+    "name": "بصل ايشالوت/ shallots",
+    "description": "بصل /ONION",
+    "subDescription": "IMPORTED/أجنبي",
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "بصل حر/صلموني",
+    "description": "بصل /ONION",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "بصل كبير/Big Onion/بصل يابس كبير",
+    "description": "بصل /ONION",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "بصل كويزات  /Baby Onion/ بصل للشوي/بصل صغير",
+    "description": "بصل /ONION",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "بصل هندي/ Indian Onion/بصل أحمر",
+    "description": "بصل /ONION",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "بلدي",
+    "description": "بطاطا/ Potato",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "بطاطا اغريا/ Aggria Potato",
+    "description": "بطاطا/ Potato",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "بطاطا مصرية/ Egyptian  Potato",
+    "description": "بطاطا/ Potato",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "RED/حمراء/WIHTE/بيضاء",
+    "description": "بطاطا حلوة / Sweet Potato",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "بطاطا يان/ Baby Potato",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "بروكولي/ Broccoli",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "بيبي جزر/ Baby Carrots",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "box"
+  },
+  {
+    "name": "ثوم / Garlic",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "جزر/ Carrots",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "خيار/ Cucumber",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "زنجبيل/ Ginger",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "ذرة/Corn",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "piece"
+  },
+  {
+    "name": "شمندر/Beetroot",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "فطر ابيض/ White Mushroom",
+    "description": "فطر/Mushroom",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "فطر /Baby/شيماجي",
+    "description": "فطر/Mushroom",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "فطر بلوروت/ blorotte",
+    "description": "فطر/Mushroom",
+    "subDescription": "صغير/ وسط/ كبير",
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "فطر بورتو بلو/ كرميني /فطر بني  Portobello",
+    "description": "فطر/Mushroom",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "فليفلة حمراء/Red Peper/حلوة",
+    "description": "فليفلة /حلوة/ peper",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "فليفلة خضراء/ حلوة /Green Peper",
+    "description": "فليفلة /حلوة/ peper",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "فليفلة صفراء/Yellow Peper/حلوة",
+    "description": "فليفلة /حلوة/ peper",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "قرنبيط/Cauliflower/زهرة",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "كوسى/Zucchini",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "لقطين/ Pumpkins",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "لوبية خضراء/Flageolet Bean",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "ليمون أبوصرة/Orange",
+    "description": "ليمون/Orange",
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "ليمون بلانصيا/Orange",
+    "description": "ليمون/Orange",
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "ليمون أبوصفير/Orange",
+    "description": "ليمون/Orange",
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "ليمون حلو/Orange SWEET",
+    "description": "ليمون/Orange",
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "ليمون بوملي/Orange POMELO",
+    "description": "ليمون/Orange",
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "ليمون كليمنتين/Orange CLEMANTINE",
+    "description": "ليمون/Orange",
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "ليمون أفندي/Orange",
+    "description": "ليمون/Orange",
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "ليمون غريفون أحمر/GRAPEFRUIT PINK",
+    "description": "ليمون/Orange",
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "ليمون غريفون أبيض/GRAPEFRUIT WHITE",
+    "description": "ليمون/Orange",
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "كعب شومار/Fennel Heel",
+    "description": null,
+    "subDescription": "IMPORTED/أجنبي",
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "مسكلان /Misclane",
+    "description": null,
+    "subDescription": "IMPORTED/أجنبي",
+    "category": "VEGETABLES",
+    "unit": "box"
+  },
+  {
+    "name": "ميكرو  /",
+    "description": null,
+    "subDescription": "IMPORTED/أجنبي",
+    "category": "VEGETABLES",
+    "unit": "box"
+  },
+  {
+    "name": "ملوخية/Egyptian spanish /Jute mallow",
+    "description": null,
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "ملفوف ابيض/White Cabagge",
+    "description": "ملفوف/Cabagge",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "ملفوف احمر/ Red Cabbage",
+    "description": "ملفوف/Cabagge",
+    "subDescription": null,
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "ملفوف صيني/ Chinese Cabbage",
+    "description": "ملفوف/Cabagge",
+    "subDescription": "IMPORTED/أجنبي/ LOCAL/بلدي",
+    "category": "VEGETABLES",
+    "unit": "kg"
+  },
+  {
+    "name": "كرز/ Cherry",
+    "description": null,
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "ليشي/Leeche",
+    "description": null,
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "مانغا/Mango",
+    "description": null,
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "مشمش/Apricots",
+    "description": null,
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "كيوي/Kiwi",
+    "description": null,
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "piece"
+  },
+  {
+    "name": "دراغون / Dragon Fruit",
+    "description": null,
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "piece"
+  },
+  {
+    "name": "دراق/ Peach",
+    "description": null,
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "نكترين/nactarine",
+    "description": null,
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "رازبري/Raspberry",
+    "description": null,
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "box"
+  },
+  {
+    "name": "رمان/ Pomegranate",
+    "description": null,
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "شمام/Melon /بطيخ أصفر",
+    "description": null,
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "فريز/Strawberry",
+    "description": null,
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "box"
+  },
+  {
+    "name": "جوز الهند/ Coconut",
+    "description": null,
+    "subDescription": "IMPORTED/أجنبي",
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "خرما/Persimmon",
+    "description": null,
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "خوخ/Plum",
+    "description": null,
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "تفاح احمر/Red Apples",
+    "description": "تفاح/ Apples",
+    "subDescription": "IMPORTED/أجنبي/ LOCAL/بلدي",
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "تفاح اخضر/Green Apples",
+    "description": "تفاح/ Apples",
+    "subDescription": "IMPORTED/أجنبي/ LOCAL/بلدي",
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "تفاح اصفر/yellow  Apples",
+    "description": "تفاح/ Apples",
+    "subDescription": "IMPORTED/أجنبي/ LOCAL/بلدي",
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "بلاكبري/Blackberry",
+    "description": null,
+    "subDescription": "IMPORTED/أجنبي",
+    "category": "FRUITS",
+    "unit": "box"
+  },
+  {
+    "name": "بلو بري/Blueberry",
+    "description": null,
+    "subDescription": "IMPORTED/أجنبي",
+    "category": "FRUITS",
+    "unit": "jar"
+  },
+  {
+    "name": "عدلوني",
+    "description": "بطيخ/ Water melon",
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "بلدي",
+    "description": "بطيخ/ Water melon",
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "اردني",
+    "description": "بطيخ/ Water melon",
+    "subDescription": "IMPORTED/أجنبي",
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "افوكا /AVOGADO",
+    "description": null,
+    "subDescription": "IMPORTED/أجنبي/ LOCAL/بلدي",
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "اكيدنيا/ASKADNIA",
+    "description": null,
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "اناناس/PINAPPLE",
+    "description": null,
+    "subDescription": "IMPORTED/أجنبي",
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "ايجاص/PEAR",
+    "description": null,
+    "subDescription": "IMPORTED/أجنبي/ LOCAL/بلدي",
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "موز/Banana",
+    "description": null,
+    "subDescription": "IMPORTED/أجنبي/ LOCAL/بلدي",
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "عنب احمر/Red Grapes",
+    "description": "عنب/Grapes",
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  },
+  {
+    "name": "عنب ابيض /White Grapes",
+    "description": "عنب/Grapes",
+    "subDescription": null,
+    "category": "FRUITS",
+    "unit": "kg"
+  }
+]

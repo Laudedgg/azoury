@@ -68,14 +68,26 @@ async function main() {
   });
   console.log('[SeedBoot]  ensured testclient@afoodlebanon.com + Afood Test Kitchen');
 
+  // Product catalog seed (from products-data.json). Idempotent.
+  try {
+    const seedProducts = require('./seed-products');
+    await seedProducts.main();
+  } catch (e) {
+    console.error('[SeedBoot] Product seed failed (continuing):', e.message);
+  }
+
   console.log('[SeedBoot] Done.');
 }
 
-main()
-  .catch((e) => {
-    console.error('[SeedBoot] Failed:', e);
-    // Don't fail the server startup because of seed errors — log and continue.
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+module.exports = { main };
+
+// Also runnable directly: `node prisma/seed-boot.js`
+if (require.main === module) {
+  main()
+    .catch((e) => {
+      console.error('[SeedBoot] Failed:', e);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
