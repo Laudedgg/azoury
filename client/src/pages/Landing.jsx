@@ -134,7 +134,7 @@ function Hero() {
           transition={{ duration: 0.5, delay: 0.05 }}
           className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-brand-primary tracking-tight leading-[1.05] max-w-4xl mx-auto"
         >
-          The command center for{' '}
+          Your command center for{' '}
           <span className="bg-gradient-to-r from-brand-accent to-brand-success bg-clip-text text-transparent">
             fresh produce
           </span>
