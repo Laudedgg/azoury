@@ -20,13 +20,6 @@ const HERO_IMG = 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w
 const B2C_IMG  = 'https://images.unsplash.com/photo-1608686207856-001b95cf60ca?w=2200&q=80&auto=format&fit=crop';
 const CTA_IMG  = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=2200&q=80&auto=format&fit=crop';
 
-// Small produce "accent" images used as decorative floating thumbnails
-const produceAccents = [
-  'https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=200&q=70&auto=format&fit=crop&crop=center', // tomatoes
-  'https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=200&q=70&auto=format&fit=crop&crop=center', // greens
-  'https://images.unsplash.com/photo-1567620832903-9fc6debc209f?w=200&q=70&auto=format&fit=crop&crop=center', // peppers
-  'https://images.unsplash.com/photo-1568702846914-96b305d2aaeb?w=200&q=70&auto=format&fit=crop&crop=center', // mixed veg
-];
 
 const Logo = ({ size = 40 }) => (
   <svg width={size} height={size} viewBox="0 0 200 200">
@@ -242,21 +235,8 @@ function Platform() {
 
 function Departments() {
   return (
-    <section id="departments" className="py-20 sm:py-28 border-t border-brand-border/60 relative overflow-hidden isolate">
-      {/* Decorative produce accents floating around the grid — big, blurred, low opacity */}
-      <div className="hidden md:block absolute inset-0 z-0 pointer-events-none">
-        <img
-          src={produceAccents[0]}
-          alt="" aria-hidden loading="lazy"
-          className="absolute top-16 -left-16 w-56 h-56 rounded-full object-cover opacity-15 blur-[2px]"
-        />
-        <img
-          src={produceAccents[2]}
-          alt="" aria-hidden loading="lazy"
-          className="absolute bottom-24 -right-16 w-64 h-64 rounded-full object-cover opacity-15 blur-[2px]"
-        />
-      </div>
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="departments" className="py-20 sm:py-28 border-t border-brand-border/60 relative overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div {...fadeUp} className="max-w-2xl mx-auto text-center">
           <p className="text-brand-accent text-xs font-semibold uppercase tracking-wider mb-3">Every role, its own space</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-brand-primary tracking-tight leading-tight">
