@@ -63,7 +63,7 @@ function FloatingProduce() {
     { src: produceAccents[3], bottom: '12%', right: '4%', size: 84, delay: 1.8, dur: 7.5 },
   ];
   return (
-    <div className="hidden lg:block absolute inset-0 -z-10 pointer-events-none">
+    <div className="hidden lg:block absolute inset-0 z-[2] pointer-events-none">
       {items.map((it, i) => (
         <motion.img
           key={i}
@@ -136,22 +136,22 @@ function Nav() {
 
 function Hero() {
   return (
-    <section className="relative pt-16 pb-24 sm:pt-24 sm:pb-32 overflow-hidden">
-      {/* Fresh produce hero image (dimmed, blurred at edges for text legibility) */}
-      <div className="absolute inset-0 -z-20 overflow-hidden pointer-events-none">
+    <section className="relative pt-16 pb-24 sm:pt-24 sm:pb-32 overflow-hidden isolate">
+      {/* Fresh produce hero image (dimmed, gradient overlay for text legibility) */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <img
           src={HERO_IMG}
           alt=""
           aria-hidden
           loading="eager"
-          className="w-full h-full object-cover object-center scale-110 opacity-40"
+          className="w-full h-full object-cover object-center scale-110 opacity-45"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-base via-brand-base/85 to-brand-base/95" />
-        <div className="absolute inset-0 bg-gradient-to-t from-brand-base via-brand-base/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-base/95 via-brand-base/80 to-brand-base/95" />
+        <div className="absolute inset-0 bg-gradient-to-t from-brand-base via-brand-base/30 to-transparent" />
       </div>
 
-      {/* Ambient gradient orbs on top */}
-      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+      {/* Ambient gradient orbs */}
+      <div className="absolute inset-0 z-[1] overflow-hidden pointer-events-none">
         <div
           className="absolute top-[-20%] left-[10%] w-[600px] h-[600px] rounded-full opacity-30"
           style={{ background: 'radial-gradient(circle, #4EECD3 0%, transparent 60%)' }}
@@ -162,11 +162,11 @@ function Hero() {
         />
       </div>
 
-      {/* Floating produce thumbnails — decorative */}
+      {/* Floating produce thumbnails */}
       <FloatingProduce />
 
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -286,9 +286,9 @@ function Platform() {
 
 function Departments() {
   return (
-    <section id="departments" className="py-20 sm:py-28 border-t border-brand-border/60 relative overflow-hidden">
+    <section id="departments" className="py-20 sm:py-28 border-t border-brand-border/60 relative overflow-hidden isolate">
       {/* Decorative produce accents floating around the grid — big, blurred, low opacity */}
-      <div className="hidden md:block absolute inset-0 -z-10 pointer-events-none">
+      <div className="hidden md:block absolute inset-0 z-0 pointer-events-none">
         <img
           src={produceAccents[0]}
           alt="" aria-hidden loading="lazy"
@@ -300,7 +300,7 @@ function Departments() {
           className="absolute bottom-24 -right-16 w-64 h-64 rounded-full object-cover opacity-15 blur-[2px]"
         />
       </div>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div {...fadeUp} className="max-w-2xl mx-auto text-center">
           <p className="text-brand-accent text-xs font-semibold uppercase tracking-wider mb-3">Every role, its own space</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-brand-primary tracking-tight leading-tight">
@@ -474,26 +474,26 @@ function ClientPortals() {
 
 function ConsumerSection() {
   return (
-    <section id="b2c" className="py-24 sm:py-32 border-t border-brand-border/60 relative overflow-hidden">
+    <section id="b2c" className="py-24 sm:py-32 border-t border-brand-border/60 relative overflow-hidden isolate">
       {/* Full-bleed produce backdrop with heavy dark overlay */}
-      <div className="absolute inset-0 -z-20 pointer-events-none">
+      <div className="absolute inset-0 z-0 pointer-events-none">
         <img
           src={B2C_IMG}
           alt=""
           aria-hidden
           loading="lazy"
-          className="w-full h-full object-cover object-center scale-105 opacity-45"
+          className="w-full h-full object-cover object-center scale-105 opacity-50"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-base/90 via-brand-base/80 to-brand-base/95" />
-        <div className="absolute inset-0 bg-gradient-to-t from-brand-base to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-base/85 via-brand-base/70 to-brand-base/90" />
+        <div className="absolute inset-0 bg-gradient-to-t from-brand-base via-brand-base/20 to-transparent" />
       </div>
-      <div className="absolute inset-0 -z-10 pointer-events-none opacity-40">
+      <div className="absolute inset-0 z-[1] pointer-events-none opacity-40">
         <div
           className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px]"
           style={{ background: 'radial-gradient(ellipse, rgba(78,236,144,0.20) 0%, transparent 60%)' }}
         />
       </div>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <motion.div {...fadeUp} className="inline-flex items-center gap-2 rounded-full bg-brand-success/10 border border-brand-success/25 px-3 py-1 mb-5">
           <Store className="h-3 w-3 text-brand-success" />
           <span className="text-brand-success text-[11px] font-semibold uppercase tracking-wider">Coming soon</span>
@@ -522,19 +522,19 @@ function ConsumerSection() {
 
 function FinalCTA() {
   return (
-    <section className="py-24 sm:py-32 border-t border-brand-border/60 relative overflow-hidden">
+    <section className="py-24 sm:py-32 border-t border-brand-border/60 relative overflow-hidden isolate">
       {/* Subtle produce backdrop for warm close */}
-      <div className="absolute inset-0 -z-20 pointer-events-none">
+      <div className="absolute inset-0 z-0 pointer-events-none">
         <img
           src={CTA_IMG}
           alt=""
           aria-hidden
           loading="lazy"
-          className="w-full h-full object-cover object-center opacity-25"
+          className="w-full h-full object-cover object-center opacity-30"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-brand-base via-brand-base/80 to-brand-base" />
+        <div className="absolute inset-0 bg-gradient-to-b from-brand-base via-brand-base/70 to-brand-base" />
       </div>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
+      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <motion.h2 {...fadeUp} className="text-3xl sm:text-4xl lg:text-5xl font-bold text-brand-primary tracking-tight">
           Ready to see the full chain?
         </motion.h2>
