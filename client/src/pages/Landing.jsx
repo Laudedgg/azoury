@@ -54,48 +54,6 @@ const departments = [
   { icon: BarChart3,      name: 'Executive View',    blurb: 'Real-time KPIs across every step of the chain' },
 ];
 
-// Decorative floating produce thumbnails — subtle motion, hidden on small screens
-function FloatingProduce() {
-  const items = [
-    { src: produceAccents[0], top: '18%',  left: '4%',   size: 70,  delay: 0,   dur: 6 },
-    { src: produceAccents[1], top: '10%',  right: '6%',  size: 90,  delay: 1.2, dur: 7 },
-    { src: produceAccents[2], bottom: '18%', left: '7%', size: 76,  delay: 0.6, dur: 6.5 },
-    { src: produceAccents[3], bottom: '12%', right: '4%', size: 84, delay: 1.8, dur: 7.5 },
-  ];
-  return (
-    <div className="hidden lg:block absolute inset-0 z-[2] pointer-events-none">
-      {items.map((it, i) => (
-        <motion.img
-          key={i}
-          src={it.src}
-          alt=""
-          aria-hidden
-          loading="lazy"
-          initial={{ opacity: 0, scale: 0.85 }}
-          animate={{
-            opacity: 0.85,
-            scale: 1,
-            y: [0, -12, 0, 8, 0],
-          }}
-          transition={{
-            opacity: { duration: 1, delay: it.delay },
-            scale:   { duration: 1, delay: it.delay },
-            y:       { duration: it.dur, delay: it.delay, repeat: Infinity, ease: 'easeInOut' },
-          }}
-          style={{
-            position: 'absolute',
-            top: it.top, left: it.left, right: it.right, bottom: it.bottom,
-            width: it.size, height: it.size,
-            borderRadius: '9999px',
-            objectFit: 'cover',
-            boxShadow: '0 10px 30px -8px rgba(0,0,0,0.6), 0 0 0 1px rgba(78,236,211,0.15), 0 0 40px -8px rgba(78,236,211,0.25)',
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
 function Nav() {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
@@ -162,8 +120,6 @@ function Hero() {
         />
       </div>
 
-      {/* Floating produce thumbnails */}
-      <FloatingProduce />
 
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
