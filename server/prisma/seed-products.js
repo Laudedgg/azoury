@@ -9,6 +9,28 @@ const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
+async function ensureDefaultGrade(productId) {
+  // Every product needs at least one QualityGrade so clients can add it to
+  // their cart. If ANY grade already exists (whether operator-added or a
+  // previously-seeded default), leave it alone.
+  const existing = await prisma.qualityGrade.findFirst({
+    where: { productId },
+    select: { id: true },
+  });
+  if (existing) return { added: false };
+
+  await prisma.qualityGrade.create({
+    data: {
+      productId,
+      grade: 'A',
+      clientFacingGrade: 'QUALITY_A',
+      currentStock: 0,
+      price: 0,
+    },
+  });
+  return { added: true };
+}
+
 async function main() {
   const dataPath = path.join(__dirname, 'products-data.json');
   if (!fs.existsSync(dataPath)) {
@@ -20,11 +42,12 @@ async function main() {
 
   let created = 0;
   let updated = 0;
+  let gradesAdded = 0;
 
   for (const p of products) {
-    // Look up first — Prisma's Product model doesn't have a compound unique
-    // key on (name, category), so we do a manual findFirst + upsert-by-id.
-    const existing = await prisma.product.findFirst({
+    // Prisma's Product model has no compound unique on (name, category), so
+    // we do findFirst + upsert-by-id manually.
+    let existing = await prisma.product.findFirst({
       where: { name: p.name, category: p.category },
       select: { id: true },
     });
@@ -41,7 +64,7 @@ async function main() {
       });
       updated++;
     } else {
-      await prisma.product.create({
+      const fresh = await prisma.product.create({
         data: {
           name: p.name,
           description: p.description ?? null,
@@ -50,12 +73,18 @@ async function main() {
           unit: p.unit,
           isActive: true,
         },
+        select: { id: true },
       });
+      existing = fresh;
       created++;
     }
+
+    // Ensure at least one quality grade exists so clients can order it.
+    const g = await ensureDefaultGrade(existing.id);
+    if (g.added) gradesAdded++;
   }
 
-  console.log(`[SeedProducts] Done. Created ${created}, updated ${updated}.`);
+  console.log(`[SeedProducts] Done. Created ${created}, updated ${updated}, default grades added ${gradesAdded}.`);
 }
 
 module.exports = { main };
