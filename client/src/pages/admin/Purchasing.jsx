@@ -63,18 +63,20 @@ function Purchasing() {
   const surveyItems = surveysData?.data || surveysData || [];
 
   // Map combined orders API response to expected shape
+  // All numeric fields default to 0 (never null/undefined) so the UI stays clean.
   const combinedOrders = useMemo(() => {
     return (combinedData || []).map((item, idx) => ({
       id: item.productId || idx + 1,
       product: item.productName,
-      totalOrdered: item.totalQuantityNeeded,
-      currentStock: item.currentStock,
-      netToPurchase: item.shortfall,
+      totalOrdered: item.totalQuantityNeeded ?? 0,
+      currentStock: item.currentStock ?? 0,
+      netToPurchase: item.shortfall ?? 0,
       supplier: '',
-      lastPrice: 0,
+      lastPrice: item.lastPrice ?? 0,
       unit: item.unit || 'kg',
       productId: item.productId,
       isCovered: item.isCovered,
+      category: item.category || '',
     }));
   }, [combinedData]);
 
@@ -113,15 +115,36 @@ function Purchasing() {
   }));
   const buyListPositive = buyListRows.filter((r) => r.orderQty > 0);
 
+  // Build a WhatsApp-friendly buy list, grouped by product category so a
+  // supplier can quickly scan what's fruit vs veg vs herbs.
   const buyListWhatsAppText = () => {
-    const today = new Date().toLocaleDateString();
+    const today = new Date().toLocaleDateString('en-GB');
+    const groups = new Map(); // category -> rows
+    buyListPositive.forEach((r) => {
+      const cat = (r.category || 'OTHER').replace(/_/g, ' ');
+      if (!groups.has(cat)) groups.set(cat, []);
+      groups.get(cat).push(r);
+    });
+    const catOrder = ['FRUITS', 'VEGETABLES', 'OTHER'];
+    const sortedCats = [...groups.keys()].sort(
+      (a, b) => (catOrder.indexOf(a) === -1 ? 99 : catOrder.indexOf(a))
+             - (catOrder.indexOf(b) === -1 ? 99 : catOrder.indexOf(b))
+    );
+
     const lines = [
-      `*Afood Lebanon — Buy List*  (${today})`,
+      `🌿 *Afood Lebanon — Buy List*`,
+      `📅 ${today}`,
       '',
-      ...buyListPositive.map((r) => `• ${r.product} — *${r.orderQty} ${r.unit}*`),
-      '',
-      `_${buyListPositive.length} item${buyListPositive.length === 1 ? '' : 's'}_`,
     ];
+    for (const cat of sortedCats) {
+      lines.push(`*${cat}*`);
+      groups.get(cat).forEach((r) => {
+        lines.push(`  • ${r.product} — *${r.orderQty} ${r.unit}*`);
+      });
+      lines.push('');
+    }
+    lines.push(`_${buyListPositive.length} item${buyListPositive.length === 1 ? '' : 's'} total_`);
+    lines.push('_Please confirm availability and price._');
     return lines.join('\n');
   };
 
@@ -150,29 +173,46 @@ function Purchasing() {
   };
 
   const handleSaveBuyList = async () => {
-    if (buyListPositive.length === 0) {
-      toast.error('Nothing to save — set a quantity on at least one item');
+    // Only include rows with a real UUID productId — anything else would 400
+    // in the backend validator and swallow the whole save.
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const validItems = buyListPositive
+      .filter((r) => typeof r.productId === 'string' && uuidRe.test(r.productId))
+      .map((r) => ({
+        productId: r.productId,
+        quantity: Number(r.orderQty),
+        unitPrice: 0,
+      }));
+
+    if (validItems.length === 0) {
+      toast.error('Nothing to save — set a quantity on at least one item with a valid product.');
       return;
     }
     setSavingBuyList(true);
     try {
-      await api.post('/suppliers/purchase-orders', {
+      const res = await api.post('/suppliers/purchase-orders', {
         supplierId: buyListSupplier || null,
         notes: buyListNotes || undefined,
-        items: buyListPositive.map((r) => ({
-          productId: r.productId,
-          quantity: r.orderQty,
-          unitPrice: 0,
-        })),
+        items: validItems,
       });
-      toast.success(`Buy list saved as PO with ${buyListPositive.length} item(s)`);
+      const poId = res?.data?.id?.slice(0, 8) || '';
+      toast.success(`PO saved (${validItems.length} item${validItems.length === 1 ? '' : 's'})${poId ? ' · #' + poId : ''}`);
       setSaveBuyListOpen(false);
       setBuyListSupplier('');
       setBuyListNotes('');
       setBuyQty({});
       refetchCombined();
     } catch (err) {
-      toast.error(err?.response?.data?.error || err?.response?.data?.message || 'Failed to save buy list');
+      const resp = err?.response?.data;
+      const zodIssue = resp?.details?.[0];
+      const message =
+        zodIssue?.message ||
+        resp?.error ||
+        resp?.message ||
+        err?.message ||
+        'Failed to save buy list';
+      toast.error(message);
+      console.warn('[SaveBuyList] error payload:', resp);
     } finally {
       setSavingBuyList(false);
     }

@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Truck, MapPin, DollarSign, RotateCcw, AlertTriangle, Package, Check, X,
-  ClipboardList, Loader2, ChevronDown, Plus, Settings2,
+  ClipboardList, Loader2, ChevronDown, Plus, Settings2, Eye, Undo2,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -78,6 +78,8 @@ function Operations() {
   const [prepareItems, setPrepareItems] = useState([]);
   const [loadingPrepare, setLoadingPrepare] = useState(false);
   const [savingPrepare, setSavingPrepare] = useState(false);
+  const [previewOrder, setPreviewOrder] = useState(null); // full order for read-only view
+  const [loadingPreview, setLoadingPreview] = useState(false);
   const [dispatchDialog, setDispatchDialog] = useState(false);
   const [dispatchForm, setDispatchForm] = useState({ driverId: '', truckId: '', orderIds: [] });
   const [creatingDispatch, setCreatingDispatch] = useState(false);
@@ -218,6 +220,20 @@ function Operations() {
   const closePrepareDialog = () => {
     setPrepareOrder(null);
     setPrepareItems([]);
+  };
+
+  const openPreviewDialog = async (orderId) => {
+    setLoadingPreview(true);
+    setPreviewOrder({ id: orderId, _loading: true });
+    try {
+      const res = await api.get(`/orders/${orderId}`);
+      setPreviewOrder(res.data);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to load order');
+      setPreviewOrder(null);
+    } finally {
+      setLoadingPreview(false);
+    }
   };
 
   const openDispatchDialog = () => {
@@ -375,6 +391,9 @@ function Operations() {
                               </div>
                               <div className="flex items-center gap-2 flex-wrap">
                                 <StatusBadge status={o.status} />
+                                <Button size="sm" variant="ghost" onClick={() => openPreviewDialog(o.id)} title="View order">
+                                  <Eye className="w-3.5 h-3.5" />
+                                </Button>
                                 {o.status === 'PENDING' && (
                                   <Button size="sm" onClick={() => handleStatusUpdate(o.id, 'CONFIRMED')}>Confirm</Button>
                                 )}
@@ -386,6 +405,11 @@ function Operations() {
                                 )}
                                 {['CONFIRMED', 'PREPARING'].includes(o.status) && (
                                   <Button size="sm" onClick={() => handleStatusUpdate(o.id, 'READY')}>Mark Ready</Button>
+                                )}
+                                {o.status === 'READY' && (
+                                  <Button size="sm" variant="outline" className="text-brand-warning" onClick={() => handleStatusUpdate(o.id, 'PREPARING')} title="Revert to Preparing">
+                                    <Undo2 className="w-3 h-3 mr-1" /> Revert
+                                  </Button>
                                 )}
                               </div>
                             </div>
@@ -578,9 +602,98 @@ function Operations() {
         </DialogContent>
       </Dialog>
 
+      {/* Order Preview Dialog (read-only, for reviewing before confirm) */}
+      <Dialog open={!!previewOrder} onOpenChange={(o) => { if (!o) setPreviewOrder(null); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Order Preview
+              {previewOrder && !previewOrder._loading && ` · ${previewOrder.client?.businessName || ''}`}
+            </DialogTitle>
+          </DialogHeader>
+          {loadingPreview || previewOrder?._loading ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
+            </div>
+          ) : previewOrder ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                <div>
+                  <p className="text-brand-muted text-[10px] uppercase tracking-wider">Order</p>
+                  <p className="text-brand-primary font-medium mono">#{previewOrder.id?.slice(0, 8)}</p>
+                </div>
+                <div>
+                  <p className="text-brand-muted text-[10px] uppercase tracking-wider">Status</p>
+                  <StatusBadge status={previewOrder.status} />
+                </div>
+                <div>
+                  <p className="text-brand-muted text-[10px] uppercase tracking-wider">Placed</p>
+                  <p className="text-brand-primary">{previewOrder.createdAt ? new Date(previewOrder.createdAt).toLocaleDateString() : '—'}</p>
+                </div>
+                <div>
+                  <p className="text-brand-muted text-[10px] uppercase tracking-wider">Delivery</p>
+                  <p className="text-brand-primary">{previewOrder.deliveryDate ? new Date(previewOrder.deliveryDate).toLocaleDateString() : '—'}</p>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-brand-border overflow-hidden">
+                <div className="bg-brand-elevated px-3 py-2 grid grid-cols-12 gap-2 text-[10px] uppercase tracking-wider text-brand-muted font-semibold">
+                  <span className="col-span-6">Product</span>
+                  <span className="col-span-2 text-right">Qty</span>
+                  <span className="col-span-2 text-right">Unit</span>
+                  <span className="col-span-2 text-right">Grade</span>
+                </div>
+                <div className="divide-y divide-brand-border">
+                  {(previewOrder.items || []).map((it) => (
+                    <div key={it.id} className="px-3 py-2.5 grid grid-cols-12 gap-2 text-sm">
+                      <div className="col-span-6">
+                        <p className="text-brand-primary font-medium">{it.product?.name}</p>
+                        {it.specialInstructions && (
+                          <p className="text-brand-muted text-xs mt-0.5 italic">"{it.specialInstructions}"</p>
+                        )}
+                      </div>
+                      <span className="col-span-2 text-right text-brand-primary mono">{it.quantity}</span>
+                      <span className="col-span-2 text-right text-brand-secondary">{it.product?.unit || ''}</span>
+                      <span className="col-span-2 text-right text-brand-secondary text-xs">
+                        {it.qualityGrade?.clientFacingGrade || it.qualityGrade?.grade || '—'}
+                      </span>
+                    </div>
+                  ))}
+                  {(!previewOrder.items || previewOrder.items.length === 0) && (
+                    <div className="px-3 py-6 text-center text-brand-muted text-sm">No items</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-brand-border">
+                {previewOrder.status === 'PENDING' && (
+                  <Button size="sm" className="flex-1" onClick={() => {
+                    handleStatusUpdate(previewOrder.id, 'CONFIRMED');
+                    setPreviewOrder(null);
+                  }}>
+                    <Check className="w-3.5 h-3.5 mr-1" /> Confirm Order
+                  </Button>
+                )}
+                {['CONFIRMED', 'PREPARING', 'READY'].includes(previewOrder.status) && (
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => {
+                    const oid = previewOrder.id;
+                    setPreviewOrder(null);
+                    openPrepareDialog(oid);
+                  }}>
+                    <ClipboardList className="w-3.5 h-3.5 mr-1" />
+                    {previewOrder.status === 'READY' ? 'Adjust Prepare' : 'Prepare'}
+                  </Button>
+                )}
+                <Button size="sm" variant="ghost" onClick={() => setPreviewOrder(null)}>Close</Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
       {/* Prepare Order Dialog */}
       <Dialog open={!!prepareOrder} onOpenChange={(o) => { if (!o) closePrepareDialog(); }}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               Prepare Order {prepareOrder && !prepareOrder._loading && `· ${prepareOrder.client?.businessName || ''}`}

@@ -327,7 +327,11 @@ function Orders() {
                           </div>
                           <div className="flex items-start justify-between gap-2 mb-1">
                             <p className="text-brand-primary font-semibold text-sm">{product.name}</p>
-                            {product.unit && <Badge variant="outline" className="text-[10px] shrink-0">{product.unit}</Badge>}
+                            {product.unit && (
+                              <Badge variant="default" className="text-xs font-bold shrink-0 uppercase">
+                                {product.unit}
+                              </Badge>
+                            )}
                           </div>
                           {product.description && (
                             <p className="text-brand-secondary text-xs mb-0.5">{product.description}</p>
@@ -407,7 +411,11 @@ function Orders() {
                               <div className="flex items-center justify-between gap-2">
                                 <div className="flex-1 min-w-0">
                                   <p className="text-brand-primary text-sm font-medium truncate">{item.name}</p>
-                                  {item.unit && <p className="text-brand-muted text-xs">{item.unit}</p>}
+                                  {item.unit && (
+                                    <p className="text-brand-accent text-sm font-semibold uppercase tracking-wide">
+                                      {item.qty} × {item.unit}
+                                    </p>
+                                  )}
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                   <button onClick={() => updateQty(item.key, -1)} className="w-6 h-6 rounded bg-brand-base flex items-center justify-center text-brand-secondary hover:text-brand-primary">
