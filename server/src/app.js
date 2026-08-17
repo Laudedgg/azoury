@@ -20,6 +20,7 @@ const dispatchRoutes = require('./routes/dispatchRoutes');
 const fleetRoutes = require('./routes/fleetRoutes');
 const wasteRoutes = require('./routes/wasteRoutes');
 const reportRoutes = require('./routes/reportRoutes');
+const pricingRoutes = require('./routes/pricingRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -67,6 +68,7 @@ app.use('/api/dispatches', dispatchRoutes);
 app.use('/api/fleet', fleetRoutes);
 app.use('/api/waste', wasteRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/pricing', pricingRoutes);
 
 // 404 handler
 app.use((req, res) => {

@@ -83,6 +83,11 @@ enum InventoryMovementType {
   RETURN
 }
 
+enum InventoryCountStatus {
+  DRAFT
+  SUBMITTED
+}
+
 enum DispatchStatus {
   PLANNING
   LOADING
@@ -157,6 +162,8 @@ model User {
   activityLogs       ActivityLog[]       @relation("ActivityUser")
   qcVerifications    OrderItem[]         @relation("QcVerifier")
   approvedInvoices   Invoice[]           @relation("ApprovedInvoices")
+  clientPricesSet    ClientPrice[]       @relation("ClientPriceCreator")
+  inventoryCounts    InventoryCount[]    @relation("InventoryCountCreator")
 
   @@index([email])
   @@index([role])
@@ -180,6 +187,7 @@ model Client {
   users    User[]
   orders   ClientOrder[]
   invoices Invoice[]
+  prices   ClientPrice[]
 
   @@index([businessName])
   @@index([isApproved])
@@ -204,6 +212,7 @@ model Product {
   wasteEntries       WasteEntry[]
   priceSurveys       PriceSurvey[]
   spotChecks         SpotCheck[]
+  countItems         InventoryCountItem[]
 
   @@index([category])
   @@index([name])
@@ -216,7 +225,8 @@ model QualityGrade {
   grade            InternalGrade
   clientFacingGrade ClientFacingGrade
   currentStock     Float            @default(0)
-  price            Float
+  price            Float            // Default sell price
+  costPrice        Float?           // Purchase / buy price (nullable = not yet set)
   createdAt        DateTime         @default(now())
 
   product            Product             @relation(fields: [productId], references: [id])
@@ -224,10 +234,72 @@ model QualityGrade {
   inventoryMovements InventoryMovement[]
   wasteEntries       WasteEntry[]
   spotChecks         SpotCheck[]
+  clientPrices       ClientPrice[]
+  countItems         InventoryCountItem[]
 
   @@index([productId])
   @@index([grade])
   @@map("quality_grades")
+}
+
+// Per-client sell price override for a specific product grade.
+// Latest row with an active effective window wins. If none, fall back to
+// QualityGrade.price (the default sell price).
+model ClientPrice {
+  id             String   @id @default(uuid())
+  clientId       String
+  qualityGradeId String
+  sellPrice      Float
+  effectiveFrom  DateTime @default(now())
+  effectiveTo    DateTime?
+  notes          String?
+  createdById    String
+  createdAt      DateTime @default(now())
+
+  client       Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  qualityGrade QualityGrade @relation(fields: [qualityGradeId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation("ClientPriceCreator", fields: [createdById], references: [id])
+
+  @@index([clientId, qualityGradeId])
+  @@index([effectiveFrom])
+  @@map("client_prices")
+}
+
+// Cycle-count workflow: pick items, enter physical counts, submit to
+// reconcile system stock. Submit generates ADJUSTMENT InventoryMovements.
+model InventoryCount {
+  id           String               @id @default(uuid())
+  createdById  String
+  status       InventoryCountStatus @default(DRAFT)
+  startedAt    DateTime             @default(now())
+  submittedAt  DateTime?
+  notes        String?
+
+  createdBy User                 @relation("InventoryCountCreator", fields: [createdById], references: [id])
+  items     InventoryCountItem[]
+
+  @@index([status])
+  @@index([startedAt])
+  @@map("inventory_counts")
+}
+
+model InventoryCountItem {
+  id             String   @id @default(uuid())
+  countId        String
+  productId      String
+  qualityGradeId String
+  systemCount    Float
+  physicalCount  Float?
+  adjustment     Float?   // Filled at submit: physicalCount - systemCount
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  count        InventoryCount @relation(fields: [countId], references: [id], onDelete: Cascade)
+  product      Product        @relation(fields: [productId], references: [id])
+  qualityGrade QualityGrade   @relation(fields: [qualityGradeId], references: [id])
+
+  @@index([countId])
+  @@map("inventory_count_items")
 }
 
 model Supplier {

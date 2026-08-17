@@ -10,6 +10,15 @@ const {
   listSpotChecks,
   getLowStockAlerts,
 } = require('../controllers/inventoryController');
+const {
+  listCounts,
+  createCount,
+  getCount,
+  addCountItems,
+  updateCountItem,
+  removeCountItem,
+  submitCount,
+} = require('../controllers/inventoryCountController');
 
 router.use(authenticate);
 router.use(
@@ -31,5 +40,14 @@ router.get('/low-stock', getLowStockAlerts);
 router.get('/spot-checks', listSpotChecks);
 router.post('/movements', recordMovement);
 router.post('/spot-checks', createSpotCheck);
+
+// Cycle counts
+router.get('/counts', listCounts);
+router.post('/counts', createCount);
+router.get('/counts/:id', getCount);
+router.post('/counts/:id/items', addCountItems);
+router.patch('/counts/:id/items/:itemId', updateCountItem);
+router.delete('/counts/:id/items/:itemId', removeCountItem);
+router.post('/counts/:id/submit', submitCount);
 
 module.exports = router;

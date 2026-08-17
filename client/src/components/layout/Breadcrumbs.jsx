@@ -19,6 +19,8 @@ const labelMap = {
   orders: 'Orders',
   account: 'Account',
   deliveries: 'Deliveries',
+  pricing: 'Pricing',
+  'inventory-counts': 'Stock Counts',
 };
 
 function Breadcrumbs() {

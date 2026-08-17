@@ -52,6 +52,8 @@ const Users = React.lazy(() => import('@/pages/admin/Users'));
 const Reports = React.lazy(() => import('@/pages/admin/Reports'));
 const Billing = React.lazy(() => import('@/pages/admin/Billing'));
 const Waste = React.lazy(() => import('@/pages/admin/Waste'));
+const Pricing = React.lazy(() => import('@/pages/admin/Pricing'));
+const InventoryCounts = React.lazy(() => import('@/pages/admin/InventoryCounts'));
 
 // Client pages
 const Portal = React.lazy(() => import('@/pages/client/Portal'));
@@ -105,6 +107,8 @@ const router = createBrowserRouter([
       { path: 'reports', element: wrap(Reports) },
       { path: 'billing', element: wrap(Billing) },
       { path: 'waste', element: wrap(Waste) },
+      { path: 'pricing', element: wrap(Pricing) },
+      { path: 'inventory-counts', element: wrap(InventoryCounts) },
     ],
   },
   {

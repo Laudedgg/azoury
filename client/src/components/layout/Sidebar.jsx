@@ -5,6 +5,7 @@ import {
   LayoutDashboard, ShoppingCart, Settings2, ShieldCheck, PackageCheck,
   Truck, Bus, Warehouse, Users, BarChart3, Trash2, Package, Receipt,
   ChevronLeft, ChevronRight, LogOut, Sun, Moon, MoreVertical,
+  DollarSign, ClipboardList,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -40,6 +41,8 @@ export const navSections = [
     items: [
       { label: 'Products', icon: Package, path: '/admin/products', permission: 'products' },
       { label: 'Inventory', icon: Warehouse, path: '/admin/inventory', permission: 'inventory' },
+      { label: 'Stock Counts', icon: ClipboardList, path: '/admin/inventory-counts', permission: 'inventory' },
+      { label: 'Pricing', icon: DollarSign, path: '/admin/pricing', permission: 'pricing' },
       { label: 'Fleet', icon: Bus, path: '/admin/fleet', permission: 'fleet' },
       { label: 'Waste', icon: Trash2, path: '/admin/waste', permission: 'waste' },
     ],
