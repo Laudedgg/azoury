@@ -81,8 +81,21 @@ async function createSupplier(req, res, next) {
   try {
     const { name, contactPerson, email, phone, address } = req.body;
 
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Supplier name is required.' });
+    }
+
     const supplier = await prisma.supplier.create({
-      data: { name, contactPerson, email, phone, address },
+      // The columns are non-nullable in the schema, but for a quick "add on
+      // the fly" from receiving we accept blanks and store empty strings.
+      // Purchasing can enrich the record later on the supplier detail page.
+      data: {
+        name: name.trim(),
+        contactPerson: (contactPerson || '').trim(),
+        email: (email || '').trim(),
+        phone: (phone || '').trim(),
+        address: (address || '').trim(),
+      },
     });
 
     await prisma.activityLog.create({
@@ -91,7 +104,7 @@ async function createSupplier(req, res, next) {
         action: 'CREATE_SUPPLIER',
         entityType: 'Supplier',
         entityId: supplier.id,
-        metadata: { name },
+        metadata: { name: supplier.name },
       },
     });
 

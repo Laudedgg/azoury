@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Package, ClipboardList, Plus, Check, Clock, AlertCircle, Printer, FileText, Loader2, ChevronDown } from 'lucide-react';
+import { Package, ClipboardList, Plus, Check, Clock, AlertCircle, Printer, FileText, Loader2, ChevronDown, Truck } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
+import { useAuth } from '@/context/AuthContext';
 import { printTable } from '@/utils/print';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -40,12 +41,21 @@ const weighInColumns = [
 ];
 
 function Receiving() {
+  const { user } = useAuth();
+  const canAddSupplier = ['SUPER_ADMIN', 'PURCHASE_MANAGER', 'OPERATIONS_MANAGER'].includes(user?.role);
+
   const [selectedProduct, setSelectedProduct] = useState('');
   const [selectedGradeId, setSelectedGradeId] = useState('');
   const [selectedUnit, setSelectedUnit] = useState('kg');
+  const [selectedSupplier, setSelectedSupplier] = useState('');
   const [quantity, setQuantity] = useState('');
   const [reference, setReference] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Add supplier dialog
+  const [addSupplierOpen, setAddSupplierOpen] = useState(false);
+  const [supplierForm, setSupplierForm] = useState({ name: '', contactPerson: '', email: '', phone: '', address: '' });
+  const [savingSupplier, setSavingSupplier] = useState(false);
 
   // PO receiving state
   const [poDialog, setPoDialog] = useState(null); // full PO object
@@ -59,6 +69,8 @@ function Receiving() {
   const { data: spotChecksData, refetch: refetchSpotChecks } = useFetch('/inventory/spot-checks');
   const { data: poData, refetch: refetchPOs } = useFetch('/suppliers/purchase-orders?status=DRAFT');
   const { data: poSentData, refetch: refetchPOsSent } = useFetch('/suppliers/purchase-orders?status=SENT');
+  const { data: suppliersData, refetch: refetchSuppliers } = useFetch('/suppliers');
+  const suppliers = suppliersData?.data || suppliersData || [];
   const pendingPOs = [
     ...((poData?.data || []).map((p) => ({ ...p, _statusLabel: 'Draft' }))),
     ...((poSentData?.data || []).map((p) => ({ ...p, _statusLabel: 'Sent' }))),
@@ -171,6 +183,15 @@ function Receiving() {
       toast.error(`Please select a product, grade, and enter ${isWeight(selectedUnit) ? 'weight' : 'count'}`);
       return;
     }
+    // Embed supplier name into the reference so it shows up in movement history.
+    // (InventoryMovement doesn't have a supplierId column — reference is the
+    // audit trail today.)
+    const supplierName = suppliers.find((s) => s.id === selectedSupplier)?.name;
+    const refParts = [];
+    if (supplierName) refParts.push(`Supplier: ${supplierName}`);
+    if (reference?.trim()) refParts.push(reference.trim());
+    const combinedRef = refParts.join(' · ');
+
     setSubmitting(true);
     try {
       await api.post('/inventory/movements', {
@@ -178,16 +199,40 @@ function Receiving() {
         qualityGradeId: selectedGradeId,
         type: 'PURCHASE_IN',
         quantity: Number(quantity),
-        reference: reference,
+        reference: combinedRef || undefined,
+        notes: supplierName ? `From supplier: ${supplierName}` : undefined,
       });
-      toast.success('Receiving recorded');
+      toast.success(supplierName ? `Recorded from ${supplierName}` : 'Receiving recorded');
       setQuantity('');
       setReference('');
+      // Keep supplier selected — chef often logs multiple items from same supplier
       refetchMovements();
     } catch (err) {
       toast.error(err.response?.data?.error || err.response?.data?.message || 'Failed to record receiving');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleAddSupplier = async () => {
+    if (!supplierForm.name?.trim()) {
+      toast.error('Supplier name is required');
+      return;
+    }
+    setSavingSupplier(true);
+    try {
+      const res = await api.post('/suppliers', supplierForm);
+      toast.success(`Added supplier: ${res.data.name}`);
+      setAddSupplierOpen(false);
+      setSupplierForm({ name: '', contactPerson: '', email: '', phone: '', address: '' });
+      await refetchSuppliers();
+      // Auto-select the newly-created supplier
+      setSelectedSupplier(res.data.id);
+    } catch (err) {
+      const resp = err?.response?.data;
+      toast.error(resp?.error || resp?.message || 'Failed to add supplier');
+    } finally {
+      setSavingSupplier(false);
     }
   };
 
@@ -416,7 +461,32 @@ function Receiving() {
               <h2 className="text-lg font-semibold text-brand-primary">Incoming Products</h2>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 mb-6">
+              <div className="col-span-2 sm:col-span-3 lg:col-span-2">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-brand-secondary text-sm">Supplier</label>
+                  {canAddSupplier && (
+                    <button
+                      type="button"
+                      onClick={() => setAddSupplierOpen(true)}
+                      className="text-[11px] text-brand-accent hover:text-brand-accent-hover inline-flex items-center gap-0.5"
+                    >
+                      <Plus className="w-3 h-3" /> Add new
+                    </button>
+                  )}
+                </div>
+                <Select value={selectedSupplier} onValueChange={(v) => setSelectedSupplier(v === '__none__' ? '' : v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={suppliers.length === 0 ? 'No suppliers yet' : 'Pick a supplier…'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— No supplier —</SelectItem>
+                    {suppliers.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
                 <label className="block text-brand-secondary text-sm mb-1">Product</label>
                 <Select value={selectedProduct} onValueChange={onPickProduct}>
@@ -468,16 +538,56 @@ function Receiving() {
                   onChange={(e) => setQuantity(e.target.value)}
                 />
               </div>
-              <div>
-                <label className="block text-brand-secondary text-sm mb-1">Reference (PO#)</label>
-                <Input placeholder="Optional" value={reference} onChange={(e) => setReference(e.target.value)} />
-              </div>
               <div className="flex items-end col-span-2 sm:col-span-3 lg:col-span-1">
                 <Button className="w-full" onClick={handleRecordWeight} disabled={submitting}>
                   <Plus className="w-4 h-4 mr-1" /> {submitting ? 'Recording...' : (isWeight(selectedUnit) ? 'Record Weight' : 'Record Count')}
                 </Button>
               </div>
+              <div className="col-span-2 sm:col-span-3 lg:col-span-7">
+                <label className="block text-brand-secondary text-sm mb-1">Reference (PO# or note)</label>
+                <Input placeholder="Optional — e.g. Truck ABC-123, invoice #4421" value={reference} onChange={(e) => setReference(e.target.value)} />
+              </div>
             </div>
+
+            {/* Add Supplier Dialog */}
+            <Dialog open={addSupplierOpen} onOpenChange={setAddSupplierOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2"><Truck className="w-4 h-4 text-brand-accent" /> Add supplier</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-brand-secondary text-xs mb-1">Name <span className="text-brand-accent">*</span></label>
+                    <Input value={supplierForm.name} onChange={(e) => setSupplierForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Al-Arz Fresh Produce" autoFocus />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-brand-secondary text-xs mb-1">Contact person</label>
+                      <Input value={supplierForm.contactPerson} onChange={(e) => setSupplierForm((f) => ({ ...f, contactPerson: e.target.value }))} placeholder="Full name" />
+                    </div>
+                    <div>
+                      <label className="block text-brand-secondary text-xs mb-1">Phone</label>
+                      <Input value={supplierForm.phone} onChange={(e) => setSupplierForm((f) => ({ ...f, phone: e.target.value }))} placeholder="+961 …" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-brand-secondary text-xs mb-1">Email</label>
+                    <Input type="email" value={supplierForm.email} onChange={(e) => setSupplierForm((f) => ({ ...f, email: e.target.value }))} placeholder="orders@supplier.lb" />
+                  </div>
+                  <div>
+                    <label className="block text-brand-secondary text-xs mb-1">Address</label>
+                    <Input value={supplierForm.address} onChange={(e) => setSupplierForm((f) => ({ ...f, address: e.target.value }))} placeholder="Bekaa, Beirut, …" />
+                  </div>
+                  <p className="text-[11px] text-brand-muted">Only name is required — fill the rest later from the supplier detail page.</p>
+                  <div className="flex gap-2 pt-1">
+                    <Button variant="outline" className="flex-1" onClick={() => setAddSupplierOpen(false)} disabled={savingSupplier}>Cancel</Button>
+                    <Button className="flex-1" onClick={handleAddSupplier} disabled={savingSupplier || !supplierForm.name?.trim()}>
+                      {savingSupplier ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Adding…</> : 'Add supplier'}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
 
             <DataTable
               columns={weighInColumns}
