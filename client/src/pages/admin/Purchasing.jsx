@@ -42,8 +42,8 @@ function Purchasing() {
 
   // Buy list editable quantities (overrides netToPurchase per product)
   const [buyQty, setBuyQty] = useState({}); // productId -> string
+  const [buyLineSupplier, setBuyLineSupplier] = useState({}); // productId -> supplierId ('' = unassigned)
   const [saveBuyListOpen, setSaveBuyListOpen] = useState(false);
-  const [buyListSupplier, setBuyListSupplier] = useState('');
   const [buyListNotes, setBuyListNotes] = useState('');
   const [savingBuyList, setSavingBuyList] = useState(false);
 
@@ -108,42 +108,61 @@ function Purchasing() {
     productId: item.productId,
     product: item.product,
     unit: item.unit,
+    category: item.category,
     totalOrdered: item.totalOrdered,
     currentStock: item.currentStock,
     shortfall: item.netToPurchase,
     orderQty: effectiveBuyQty(item),
+    supplierId: buyLineSupplier[item.id] || '',
   }));
   const buyListPositive = buyListRows.filter((r) => r.orderQty > 0);
 
-  // Build a WhatsApp-friendly buy list, grouped by product category so a
-  // supplier can quickly scan what's fruit vs veg vs herbs.
-  const buyListWhatsAppText = () => {
+  // Group buy list by supplier (unassigned rows live under empty-string key)
+  const groupBuyListBySupplier = () => {
+    const groups = new Map();
+    for (const r of buyListPositive) {
+      const key = r.supplierId || '__unassigned__';
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(r);
+    }
+    return groups;
+  };
+  const supplierName = (id) => {
+    if (!id || id === '__unassigned__') return 'Unassigned';
+    return suppliersList.find((s) => s.id === id)?.name || 'Unknown';
+  };
+  const buyListGroups = groupBuyListBySupplier();
+
+  // Build a WhatsApp-friendly buy list. If `rows` is provided, only that
+  // subset is included (used for per-supplier sends). Otherwise the full list.
+  const buyListWhatsAppText = (rows = null, headline = null) => {
+    const source = rows || buyListPositive;
     const today = new Date().toLocaleDateString('en-GB');
-    const groups = new Map(); // category -> rows
-    buyListPositive.forEach((r) => {
+    const cats = new Map(); // category -> rows
+    source.forEach((r) => {
       const cat = (r.category || 'OTHER').replace(/_/g, ' ');
-      if (!groups.has(cat)) groups.set(cat, []);
-      groups.get(cat).push(r);
+      if (!cats.has(cat)) cats.set(cat, []);
+      cats.get(cat).push(r);
     });
     const catOrder = ['FRUITS', 'VEGETABLES', 'OTHER'];
-    const sortedCats = [...groups.keys()].sort(
+    const sortedCats = [...cats.keys()].sort(
       (a, b) => (catOrder.indexOf(a) === -1 ? 99 : catOrder.indexOf(a))
              - (catOrder.indexOf(b) === -1 ? 99 : catOrder.indexOf(b))
     );
 
     const lines = [
-      `🌿 *Afood Lebanon — Buy List*`,
+      headline ? `🌿 *Afood Lebanon — ${headline}*` : `🌿 *Afood Lebanon — Buy List*`,
       `📅 ${today}`,
       '',
     ];
     for (const cat of sortedCats) {
       lines.push(`*${cat}*`);
-      groups.get(cat).forEach((r) => {
+      cats.get(cat).forEach((r) => {
         lines.push(`  • ${r.product} — *${r.orderQty} ${r.unit}*`);
       });
       lines.push('');
     }
-    lines.push(`_${buyListPositive.length} item${buyListPositive.length === 1 ? '' : 's'} total_`);
+    lines.push(`_${source.length} item${source.length === 1 ? '' : 's'} total_`);
     lines.push('_Please confirm availability and price._');
     return lines.join('\n');
   };
@@ -172,47 +191,71 @@ function Purchasing() {
     window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener');
   };
 
-  const handleSaveBuyList = async () => {
-    // Only include rows with a real UUID productId — anything else would 400
-    // in the backend validator and swallow the whole save.
-    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const validItems = buyListPositive
-      .filter((r) => typeof r.productId === 'string' && uuidRe.test(r.productId))
-      .map((r) => ({
-        productId: r.productId,
-        quantity: Number(r.orderQty),
-        unitPrice: 0,
-      }));
+  const handleShareGroup = (rows, supplier) => {
+    const headline = supplier === 'Unassigned' ? 'Buy List' : `Buy List — for ${supplier}`;
+    const text = encodeURIComponent(buyListWhatsAppText(rows, headline));
+    window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener');
+  };
 
-    if (validItems.length === 0) {
+  const handleSaveBuyList = async () => {
+    // Only include rows with a real UUID productId — the backend validator
+    // would 400 on anything else and swallow the whole save.
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const valid = buyListPositive.filter(
+      (r) => typeof r.productId === 'string' && uuidRe.test(r.productId)
+    );
+    if (valid.length === 0) {
       toast.error('Nothing to save — set a quantity on at least one item with a valid product.');
       return;
     }
+
+    // Group by assigned supplier. Rows without an assigned supplier land in
+    // one "unassigned" PO (which is fine — purchasing can attach later).
+    const groups = new Map();
+    for (const r of valid) {
+      const key = r.supplierId || '__unassigned__';
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(r);
+    }
+
     setSavingBuyList(true);
     try {
-      const res = await api.post('/suppliers/purchase-orders', {
-        supplierId: buyListSupplier || null,
-        notes: buyListNotes || undefined,
-        items: validItems,
-      });
-      const poId = res?.data?.id?.slice(0, 8) || '';
-      toast.success(`PO saved (${validItems.length} item${validItems.length === 1 ? '' : 's'})${poId ? ' · #' + poId : ''}`);
+      const results = await Promise.allSettled(
+        [...groups.entries()].map(([supplierKey, rows]) => {
+          const supplierId = supplierKey === '__unassigned__' ? null : supplierKey;
+          return api.post('/suppliers/purchase-orders', {
+            supplierId,
+            notes: buyListNotes || undefined,
+            items: rows.map((r) => ({
+              productId: r.productId,
+              quantity: Number(r.orderQty),
+              unitPrice: 0,
+            })),
+          });
+        })
+      );
+      const okCount = results.filter((r) => r.status === 'fulfilled').length;
+      const failed = results.filter((r) => r.status === 'rejected');
+      if (failed.length === 0) {
+        toast.success(
+          okCount > 1
+            ? `${okCount} POs saved (one per supplier)`
+            : `PO saved (${valid.length} item${valid.length === 1 ? '' : 's'})`
+        );
+      } else {
+        const first = failed[0].reason?.response?.data;
+        toast.error(
+          `${okCount}/${results.length} POs saved — ${first?.error || first?.message || 'some failed'}`
+        );
+      }
       setSaveBuyListOpen(false);
-      setBuyListSupplier('');
       setBuyListNotes('');
       setBuyQty({});
+      setBuyLineSupplier({});
       refetchCombined();
     } catch (err) {
       const resp = err?.response?.data;
-      const zodIssue = resp?.details?.[0];
-      const message =
-        zodIssue?.message ||
-        resp?.error ||
-        resp?.message ||
-        err?.message ||
-        'Failed to save buy list';
-      toast.error(message);
-      console.warn('[SaveBuyList] error payload:', resp);
+      toast.error(resp?.error || resp?.message || err?.message || 'Failed to save buy list');
     } finally {
       setSavingBuyList(false);
     }
@@ -415,30 +458,31 @@ function Purchasing() {
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
-                        <tr className="border-b border-brand-border bg-brand-base">
-                          <th className="h-10 px-4 text-left text-xs font-semibold uppercase tracking-wider text-brand-secondary">Product</th>
-                          <th className="h-10 px-4 text-right text-xs font-semibold uppercase tracking-wider text-brand-secondary">Ordered</th>
-                          <th className="h-10 px-4 text-right text-xs font-semibold uppercase tracking-wider text-brand-secondary">In Stock</th>
-                          <th className="h-10 px-4 text-right text-xs font-semibold uppercase tracking-wider text-brand-secondary">Shortfall</th>
-                          <th className="h-10 px-4 text-right text-xs font-semibold uppercase tracking-wider text-brand-accent">To Buy</th>
+                        <tr className="border-b border-brand-border bg-brand-elevated/40">
+                          <th className="h-9 px-3 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-brand-muted">Product</th>
+                          <th className="h-9 px-3 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-brand-muted">Ordered</th>
+                          <th className="h-9 px-3 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-brand-muted">In Stock</th>
+                          <th className="h-9 px-3 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-brand-muted">Shortfall</th>
+                          <th className="h-9 px-3 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-brand-accent">To Buy</th>
+                          <th className="h-9 px-3 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-brand-muted">Supplier</th>
                         </tr>
                       </thead>
                       <tbody>
                         {buyListRows.length === 0 ? (
                           <tr>
-                            <td colSpan={5} className="h-24 text-center text-brand-muted text-sm">No open orders.</td>
+                            <td colSpan={6} className="h-24 text-center text-brand-muted text-sm">No open orders.</td>
                           </tr>
                         ) : buyListRows.map((r) => (
-                          <tr key={r.id} className="border-b border-brand-border last:border-0">
-                            <td className="px-4 py-2.5 text-sm text-brand-primary">{r.product}</td>
-                            <td className="px-4 py-2.5 text-sm text-right text-brand-secondary">{r.totalOrdered} {r.unit}</td>
-                            <td className="px-4 py-2.5 text-sm text-right text-brand-secondary">{r.currentStock} {r.unit}</td>
-                            <td className="px-4 py-2.5 text-sm text-right">
+                          <tr key={r.id} className="border-b border-brand-border/60 last:border-0 hover:bg-brand-elevated/40">
+                            <td className="px-3 py-2 text-sm text-brand-primary">{r.product}</td>
+                            <td className="px-3 py-2 text-sm text-right text-brand-secondary mono">{(r.totalOrdered ?? 0)} {r.unit}</td>
+                            <td className="px-3 py-2 text-sm text-right text-brand-secondary mono">{(r.currentStock ?? 0)} {r.unit}</td>
+                            <td className="px-3 py-2 text-sm text-right">
                               {r.shortfall > 0
-                                ? <span className="text-brand-error font-medium">{r.shortfall} {r.unit}</span>
+                                ? <span className="text-brand-error font-medium mono">{r.shortfall} {r.unit}</span>
                                 : <span className="text-brand-success text-xs">Covered</span>}
                             </td>
-                            <td className="px-4 py-2.5 text-right">
+                            <td className="px-3 py-2 text-right">
                               <div className="inline-flex items-center gap-1.5">
                                 <Input
                                   type="number"
@@ -452,36 +496,79 @@ function Purchasing() {
                                 <span className="text-brand-muted text-xs">{r.unit}</span>
                               </div>
                             </td>
+                            <td className="px-3 py-2">
+                              <Select
+                                value={buyLineSupplier[r.id] || ''}
+                                onValueChange={(v) => setBuyLineSupplier((m) => ({ ...m, [r.id]: v === '__none__' ? '' : v }))}
+                              >
+                                <SelectTrigger className="h-8 w-40 text-xs">
+                                  <SelectValue placeholder="Unassigned" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="__none__">— Unassigned —</SelectItem>
+                                  {suppliersList.map((s) => (
+                                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                 </div>
+
+                {/* Per-supplier grouped share strip — only shows when at least one row has a To Buy > 0 */}
+                {buyListPositive.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-brand-muted text-[10px] uppercase tracking-wider">Share per supplier</p>
+                    <div className="flex flex-wrap gap-2">
+                      {[...buyListGroups.entries()].map(([key, rows]) => (
+                        <Button
+                          key={key}
+                          variant="outline"
+                          size="xs"
+                          onClick={() => handleShareGroup(rows, supplierName(key))}
+                        >
+                          <MessageCircle className="w-3 h-3" />
+                          {supplierName(key)}
+                          <span className="text-brand-muted">· {rows.length}</span>
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* Save Buy List as PO Dialog */}
+            {/* Save Buy List as PO Dialog — splits into one PO per assigned supplier */}
             <Dialog open={saveBuyListOpen} onOpenChange={setSaveBuyListOpen}>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Save buy list as Purchase Order</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <div className="text-sm text-brand-secondary">
-                    {buyListPositive.length} item(s) • Supplier and prices can be added later.
+                  <p className="text-sm text-brand-secondary">
+                    {buyListPositive.length} item{buyListPositive.length === 1 ? '' : 's'} across{' '}
+                    <b className="text-brand-primary">{buyListGroups.size}</b> supplier group{buyListGroups.size === 1 ? '' : 's'}.
+                    {buyListGroups.size > 1 && ' One PO will be created per assigned supplier.'}
+                  </p>
+
+                  <div className="rounded-lg border border-brand-border divide-y divide-brand-border">
+                    {[...buyListGroups.entries()].map(([key, rows]) => (
+                      <div key={key} className="p-3 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-brand-primary text-sm font-medium truncate">{supplierName(key)}</p>
+                          <p className="text-brand-muted text-xs">{rows.length} item{rows.length === 1 ? '' : 's'}</p>
+                        </div>
+                        <Badge variant={key === '__unassigned__' ? 'warning' : 'default'}>
+                          {key === '__unassigned__' ? 'No supplier' : 'PO'}
+                        </Badge>
+                      </div>
+                    ))}
                   </div>
-                  <div>
-                    <label className="block text-brand-secondary text-sm mb-1">Supplier (optional)</label>
-                    <Select value={buyListSupplier} onValueChange={setBuyListSupplier}>
-                      <SelectTrigger><SelectValue placeholder="Leave empty for unassigned" /></SelectTrigger>
-                      <SelectContent>
-                        {suppliersList.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+
                   <div>
                     <label className="block text-brand-secondary text-sm mb-1">Notes (optional)</label>
                     <textarea
@@ -493,7 +580,9 @@ function Purchasing() {
                     />
                   </div>
                   <Button className="w-full" onClick={handleSaveBuyList} disabled={savingBuyList}>
-                    {savingBuyList ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : `Save PO with ${buyListPositive.length} item(s)`}
+                    {savingBuyList
+                      ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
+                      : `Save ${buyListGroups.size} PO${buyListGroups.size === 1 ? '' : 's'} (${buyListPositive.length} item${buyListPositive.length === 1 ? '' : 's'})`}
                   </Button>
                 </div>
               </DialogContent>

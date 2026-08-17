@@ -25,14 +25,45 @@ async function getStockLevels(req, res, next) {
       grades = grades.filter((g) => g.currentStock < LOW_STOCK_THRESHOLD);
     }
 
+    // Compute TODAY's aggregate movements per grade so the frontend can show
+    // a live "opening → +receipts −sales −waste = current" picture.
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const movesToday = await prisma.inventoryMovement.groupBy({
+      by: ['qualityGradeId', 'type'],
+      where: { createdAt: { gte: todayStart } },
+      _sum: { quantity: true },
+    });
+
+    const perGradeToday = {}; // qualityGradeId -> { received, sold, wasted, returned, adjusted }
+    for (const row of movesToday) {
+      const bucket = (perGradeToday[row.qualityGradeId] ||= {
+        received: 0, sold: 0, wasted: 0, returned: 0, adjusted: 0,
+      });
+      const q = row._sum.quantity || 0;
+      if (row.type === 'PURCHASE_IN') bucket.received += q;
+      else if (row.type === 'SALE_OUT') bucket.sold += q;
+      else if (row.type === 'WASTE')   bucket.wasted += q;
+      else if (row.type === 'RETURN')  bucket.returned += q;
+      else if (row.type === 'ADJUSTMENT') bucket.adjusted += q;
+    }
+
     // Group by product
     const byProduct = {};
     for (const grade of grades) {
+      const today = perGradeToday[grade.id] || { received: 0, sold: 0, wasted: 0, returned: 0, adjusted: 0 };
+      const netToday = today.received + today.returned - today.sold - today.wasted;
+      const openingStock = Math.max(0, grade.currentStock - netToday);
+
       if (!byProduct[grade.productId]) {
         byProduct[grade.productId] = {
           product: grade.product,
           grades: [],
           totalStock: 0,
+          openingStock: 0,
+          receivedToday: 0,
+          soldToday: 0,
+          wastedToday: 0,
         };
       }
       byProduct[grade.productId].grades.push({
@@ -42,8 +73,15 @@ async function getStockLevels(req, res, next) {
         currentStock: grade.currentStock,
         price: grade.price,
         isLow: grade.currentStock < LOW_STOCK_THRESHOLD,
+        openingStock,
+        today,
+        netToday,
       });
       byProduct[grade.productId].totalStock += grade.currentStock;
+      byProduct[grade.productId].openingStock += openingStock;
+      byProduct[grade.productId].receivedToday += today.received;
+      byProduct[grade.productId].soldToday += today.sold;
+      byProduct[grade.productId].wastedToday += today.wasted;
     }
 
     res.json(Object.values(byProduct));

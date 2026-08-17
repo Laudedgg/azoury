@@ -23,10 +23,36 @@ const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }
 const inventoryColumns = [
   { accessorKey: 'product', header: 'Product' },
   { accessorKey: 'grade', header: 'Grade', cell: ({ row }) => <Badge variant="outline">{row.original.grade}</Badge> },
-  { accessorKey: 'currentStock', header: 'Current (kg)' },
-  { accessorKey: 'reserved', header: 'Reserved (kg)' },
-  { accessorKey: 'available', header: 'Available (kg)', cell: ({ row }) => <span className="font-semibold text-brand-primary">{row.original.available}</span> },
-  { accessorKey: 'minThreshold', header: 'Min Threshold' },
+  { accessorKey: 'openingStock', header: 'Opening', cell: ({ row }) => <span className="mono text-brand-secondary">{(row.original.openingStock ?? 0).toFixed(1)}</span> },
+  {
+    accessorKey: 'receivedToday',
+    header: 'Received',
+    cell: ({ row }) => {
+      const v = row.original.receivedToday || 0;
+      return <span className={`mono ${v > 0 ? 'text-brand-success font-semibold' : 'text-brand-muted'}`}>{v > 0 ? '+' : ''}{v.toFixed(1)}</span>;
+    },
+  },
+  {
+    accessorKey: 'soldToday',
+    header: 'Sold',
+    cell: ({ row }) => {
+      const v = row.original.soldToday || 0;
+      return <span className={`mono ${v > 0 ? 'text-brand-accent font-semibold' : 'text-brand-muted'}`}>{v > 0 ? '−' : ''}{v.toFixed(1)}</span>;
+    },
+  },
+  {
+    accessorKey: 'wastedToday',
+    header: 'Wasted',
+    cell: ({ row }) => {
+      const v = row.original.wastedToday || 0;
+      return <span className={`mono ${v > 0 ? 'text-brand-error font-semibold' : 'text-brand-muted'}`}>{v > 0 ? '−' : ''}{v.toFixed(1)}</span>;
+    },
+  },
+  {
+    accessorKey: 'currentStock',
+    header: 'Current',
+    cell: ({ row }) => <span className="mono font-bold text-brand-primary">{(row.original.currentStock ?? 0).toFixed(1)}</span>,
+  },
   {
     accessorKey: 'status',
     header: 'Status',
@@ -36,7 +62,6 @@ const inventoryColumns = [
       return <Badge variant={variant}>{s}</Badge>;
     },
   },
-  { accessorKey: 'lastMovement', header: 'Last Movement' },
 ];
 
 const movementColumns = [
@@ -83,6 +108,12 @@ function Inventory() {
       product: item.product.name,
       grade: g.clientFacingGrade || g.grade,
       currentStock: g.currentStock ?? 0,
+      openingStock: g.openingStock ?? 0,
+      receivedToday: g.today?.received ?? 0,
+      soldToday: g.today?.sold ?? 0,
+      wastedToday: g.today?.wasted ?? 0,
+      returnedToday: g.today?.returned ?? 0,
+      netToday: g.netToday ?? 0,
       reserved: 0,
       available: g.currentStock ?? 0,
       minThreshold: g.minThreshold ?? 0,
@@ -90,6 +121,17 @@ function Inventory() {
       status: g.isLow ? 'Low' : 'OK',
       lastMovement: '',
     }))
+  );
+
+  // Daily totals across all products (for the summary strip)
+  const totals = stockItems.reduce(
+    (acc, s) => ({
+      opening: acc.opening + (s.openingStock ?? 0),
+      received: acc.received + (s.receivedToday ?? 0),
+      sold: acc.sold + (s.soldToday ?? 0),
+      wasted: acc.wasted + (s.wastedToday ?? 0),
+    }),
+    { opening: 0, received: 0, sold: 0, wasted: 0 }
   );
 
   const movements = (movementsData?.data || []).map((m) => ({
@@ -172,30 +214,46 @@ function Inventory() {
       </motion.div>
 
       {/* KPI Cards */}
-      <motion.div variants={fadeInUp} className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <KPICard title="Total Items" value={totalItems} icon={Package} />
-        <KPICard title="Total Value" value={formatCurrency(totalValue)} icon={DollarSign} trend="up" trendValue={1.8} />
-        <KPICard title="Low Stock Items" value={lowStockItems} icon={AlertTriangle} trend="up" trendValue={2} />
+      <motion.div variants={fadeInUp} className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <KPICard title="Total Items on Hand" value={totalItems.toFixed(1)} icon={Package} />
+        <KPICard title="Total Value" value={formatCurrency(totalValue)} icon={DollarSign} />
+        <KPICard title="Low Stock Items" value={lowStockItems} icon={AlertTriangle} accent="warning" />
+      </motion.div>
+
+      {/* Today's flow — opening + receipts − sales − waste = current */}
+      <motion.div variants={fadeInUp}>
         <Card>
-          <CardContent className="p-4">
-            <p className="text-brand-secondary text-xs font-medium mb-2">Quality Distribution</p>
-            <ResponsiveContainer width="100%" height={80}>
-              <PieChart>
-                <Pie data={qualityDist} cx="50%" cy="50%" innerRadius={20} outerRadius={35} dataKey="value" paddingAngle={3}>
-                  {qualityDist.map((entry, i) => (
-                    <Cell key={entry.name} fill={CHART_COLORS[i]} />
-                  ))}
-                </Pie>
-                <RechartsTooltip contentStyle={{ backgroundColor: '#143535', border: '1px solid #1A3F3F', borderRadius: '8px', color: '#E8F5F3', fontSize: 12 }} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="flex justify-center gap-3 mt-1">
-              {qualityDist.map((d, i) => (
-                <div key={d.name} className="flex items-center gap-1 text-xs text-brand-secondary">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS[i] }} />
-                  {d.name}
-                </div>
-              ))}
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-brand-primary font-semibold text-sm">Today's flow</p>
+                <p className="text-brand-muted text-xs">Live: opening + receipts − sales − waste = current</p>
+              </div>
+              <span className="text-[10px] text-brand-muted uppercase tracking-wider">Since 00:00</span>
+            </div>
+            <div className="grid grid-cols-5 gap-2 text-center">
+              <div className="p-2 rounded-lg bg-brand-elevated">
+                <p className="text-[10px] text-brand-muted uppercase tracking-wider">Opening</p>
+                <p className="mono text-brand-secondary font-semibold text-lg mt-1">{totals.opening.toFixed(1)}</p>
+              </div>
+              <div className="p-2 rounded-lg bg-brand-success/10 border border-brand-success/25">
+                <p className="text-[10px] text-brand-success uppercase tracking-wider">Received</p>
+                <p className="mono text-brand-success font-semibold text-lg mt-1">+{totals.received.toFixed(1)}</p>
+              </div>
+              <div className="p-2 rounded-lg bg-brand-accent/10 border border-brand-accent/25">
+                <p className="text-[10px] text-brand-accent uppercase tracking-wider">Sold</p>
+                <p className="mono text-brand-accent font-semibold text-lg mt-1">−{totals.sold.toFixed(1)}</p>
+              </div>
+              <div className="p-2 rounded-lg bg-brand-error/10 border border-brand-error/25">
+                <p className="text-[10px] text-brand-error uppercase tracking-wider">Wasted</p>
+                <p className="mono text-brand-error font-semibold text-lg mt-1">−{totals.wasted.toFixed(1)}</p>
+              </div>
+              <div className="p-2 rounded-lg bg-brand-accent/15 border border-brand-accent/40">
+                <p className="text-[10px] text-brand-accent uppercase tracking-wider">Current</p>
+                <p className="mono text-brand-primary font-bold text-lg mt-1">
+                  {(totals.opening + totals.received - totals.sold - totals.wasted).toFixed(1)}
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
