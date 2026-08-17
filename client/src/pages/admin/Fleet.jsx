@@ -48,7 +48,7 @@ function Fleet() {
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [addVehicleDialog, setAddVehicleDialog] = useState(false);
   const [maintenanceDialog, setMaintenanceDialog] = useState(false);
-  const [vehicleForm, setVehicleForm] = useState({ plateNumber: '', model: '', mileage: '' });
+  const [vehicleForm, setVehicleForm] = useState({ plateNumber: '', model: '', type: 'Refrigerated Truck', mileage: '' });
   const [maintenanceForm, setMaintenanceForm] = useState({ vehicleId: '', type: '', cost: '', description: '' });
   const [submitting, setSubmitting] = useState(false);
 
@@ -73,23 +73,25 @@ function Fleet() {
   const maintenanceCount = stats.byStatus?.MAINTENANCE ?? vehicles.filter((v) => v.status === 'Maintenance').length;
 
   const handleAddVehicle = async () => {
-    if (!vehicleForm.plateNumber || !vehicleForm.model) {
+    if (!vehicleForm.plateNumber?.trim() || !vehicleForm.model?.trim()) {
       toast.error('Please fill in plate number and model');
       return;
     }
     setSubmitting(true);
     try {
       await api.post('/fleet', {
-        plateNumber: vehicleForm.plateNumber,
-        model: vehicleForm.model,
+        plateNumber: vehicleForm.plateNumber.trim(),
+        model: vehicleForm.model.trim(),
+        type: vehicleForm.type?.trim() || 'Refrigerated Truck',
         mileage: Number(vehicleForm.mileage) || 0,
       });
       toast.success('Vehicle added successfully');
       setAddVehicleDialog(false);
-      setVehicleForm({ plateNumber: '', model: '', mileage: '' });
+      setVehicleForm({ plateNumber: '', model: '', type: 'Refrigerated Truck', mileage: '' });
       refetchFleet();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to add vehicle');
+      const resp = err?.response?.data;
+      toast.error(resp?.error || resp?.message || err?.message || 'Failed to add vehicle');
     } finally {
       setSubmitting(false);
     }
@@ -271,6 +273,20 @@ function Fleet() {
             <div>
               <label className="block text-brand-secondary text-sm mb-1">Model</label>
               <Input placeholder="e.g. Isuzu NPR" value={vehicleForm.model} onChange={(e) => setVehicleForm((f) => ({ ...f, model: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block text-brand-secondary text-sm mb-1">Type <span className="text-brand-accent">*</span></label>
+              <Select value={vehicleForm.type} onValueChange={(v) => setVehicleForm((f) => ({ ...f, type: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Refrigerated Truck">Refrigerated Truck</SelectItem>
+                  <SelectItem value="Truck">Truck</SelectItem>
+                  <SelectItem value="Van">Van</SelectItem>
+                  <SelectItem value="Pickup">Pickup</SelectItem>
+                  <SelectItem value="Motorcycle">Motorcycle</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <label className="block text-brand-secondary text-sm mb-1">Current Mileage</label>

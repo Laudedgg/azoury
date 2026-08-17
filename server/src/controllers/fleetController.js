@@ -76,13 +76,28 @@ async function createVehicle(req, res, next) {
   try {
     const { plateNumber, model, type, mileage, fuelConsumption } = req.body;
 
+    if (!plateNumber || !plateNumber.trim()) {
+      return res.status(400).json({ error: 'Plate number is required.' });
+    }
+    if (!model || !model.trim()) {
+      return res.status(400).json({ error: 'Model is required.' });
+    }
+
+    // Check for duplicate plate up front so the client gets a friendly error
+    const existing = await prisma.fleetVehicle.findUnique({
+      where: { plateNumber: plateNumber.trim() },
+    });
+    if (existing) {
+      return res.status(409).json({ error: `A vehicle with plate ${plateNumber} already exists.` });
+    }
+
     const vehicle = await prisma.fleetVehicle.create({
       data: {
-        plateNumber,
-        model,
-        type,
-        mileage: mileage || 0,
-        fuelConsumption: fuelConsumption || 0,
+        plateNumber: plateNumber.trim(),
+        model: model.trim(),
+        type: (type && type.trim()) || 'Refrigerated Truck',
+        mileage: Number(mileage) || 0,
+        fuelConsumption: Number(fuelConsumption) || 0,
       },
     });
 
