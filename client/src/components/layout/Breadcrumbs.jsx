@@ -21,6 +21,7 @@ const labelMap = {
   deliveries: 'Deliveries',
   pricing: 'Pricing',
   'inventory-counts': 'Stock Counts',
+  suppliers: 'Supply Chain',
 };
 
 function Breadcrumbs() {

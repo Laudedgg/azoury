@@ -445,6 +445,7 @@ model InventoryMovement {
   qualityGradeId String
   type           InventoryMovementType
   quantity       Float
+  imageUrl       String?
   reference      String?
   notes          String?
   createdById    String

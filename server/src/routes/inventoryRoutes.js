@@ -19,6 +19,7 @@ const {
   removeCountItem,
   submitCount,
 } = require('../controllers/inventoryCountController');
+const { upload } = require('../middleware/upload');
 
 router.use(authenticate);
 router.use(
@@ -38,7 +39,8 @@ router.get('/stock', getStockLevels);
 router.get('/movements', getMovementHistory);
 router.get('/low-stock', getLowStockAlerts);
 router.get('/spot-checks', listSpotChecks);
-router.post('/movements', recordMovement);
+// Accept an optional photo upload as multipart form-data on 'photo' field.
+router.post('/movements', upload.single('photo'), recordMovement);
 router.post('/spot-checks', createSpotCheck);
 
 // Cycle counts

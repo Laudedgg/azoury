@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Package, ClipboardList, Plus, Check, Clock, AlertCircle, Printer, FileText, Loader2, ChevronDown, Truck } from 'lucide-react';
+import { Package, ClipboardList, Plus, Printer, FileText, Loader2, Truck } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { useAuth } from '@/context/AuthContext';
 import { printTable } from '@/utils/print';
@@ -30,14 +30,22 @@ const quantityLabel = (u) => (isWeight(u) ? `Weight (${prettyUnit(u)})` : `Count
 
 const weighInColumns = [
   { accessorKey: 'product', header: 'Product' },
-  { accessorKey: 'po', header: 'PO #' },
   {
     accessorKey: 'quantity',
     header: 'Received',
     cell: ({ row }) => `${row.original.quantity} ${prettyUnit(row.original.unit)}`,
   },
+  { accessorKey: 'supplier', header: 'Supplier', cell: ({ row }) => row.original.supplier || '—' },
+  { accessorKey: 'po', header: 'PO / Ref' },
   { accessorKey: 'time', header: 'Time' },
-  { accessorKey: 'recordedBy', header: 'Recorded By' },
+  { accessorKey: 'recordedBy', header: 'By' },
+  {
+    accessorKey: 'photo',
+    header: '📷',
+    cell: ({ row }) => row.original.photo
+      ? <a href={row.original.photo} target="_blank" rel="noopener noreferrer" className="text-brand-accent hover:underline text-xs">View</a>
+      : <span className="text-brand-muted text-xs">—</span>,
+  },
 ];
 
 function Receiving() {
@@ -50,7 +58,9 @@ function Receiving() {
   const [selectedSupplier, setSelectedSupplier] = useState('');
   const [quantity, setQuantity] = useState('');
   const [reference, setReference] = useState('');
+  const [photoFile, setPhotoFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showArchive, setShowArchive] = useState(false);
 
   // Add supplier dialog
   const [addSupplierOpen, setAddSupplierOpen] = useState(false);
@@ -64,9 +74,7 @@ function Receiving() {
   const [loadingPo, setLoadingPo] = useState(false);
 
   const { data: productsData } = useFetch('/products');
-  const { data: stockData } = useFetch('/inventory/stock');
-  const { data: movementsData, refetch: refetchMovements } = useFetch('/inventory/movements?page=1&limit=50');
-  const { data: spotChecksData, refetch: refetchSpotChecks } = useFetch('/inventory/spot-checks');
+  const { data: movementsData, refetch: refetchMovements } = useFetch('/inventory/movements?page=1&limit=200');
   const { data: poData, refetch: refetchPOs } = useFetch('/suppliers/purchase-orders?status=DRAFT');
   const { data: poSentData, refetch: refetchPOsSent } = useFetch('/suppliers/purchase-orders?status=SENT');
   const { data: suppliersData, refetch: refetchSuppliers } = useFetch('/suppliers');
@@ -136,56 +144,50 @@ function Receiving() {
     if (prod?.unit && UNIT_LABELS[prod.unit]) setSelectedUnit(prod.unit);
   };
 
-  // Build receivings from recent PURCHASE_IN movements
-  const weighIns = (movementsData?.data || [])
-    .filter((m) => m.type === 'PURCHASE_IN')
-    .map((m) => ({
-      id: m.id,
-      product: m.product?.name || '',
-      unit: m.product?.unit || 'kg',
-      po: m.reference || '',
-      quantity: m.quantity,
-      time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '',
-      recordedBy: m.createdBy?.name || '',
-    }));
-
-  // Build inventory count from stock data
-  const stockItems = stockData || [];
-  const initialInventoryCount = stockItems.flatMap((item) =>
-    (item.grades || []).map((g) => ({
-      id: `${item.product.id}-${g.id}`,
-      productId: item.product.id,
-      qualityGradeId: g.id,
-      product: item.product.name,
-      unit: item.product.unit || 'kg',
-      grade: g.clientFacingGrade || g.grade,
-      systemCount: g.currentStock,
-      physicalCount: '',
-      discrepancy: null,
-    }))
-  );
-
-  const [inventoryData, setInventoryData] = useState([]);
-
-  // Sync inventory data when stock loads
-  React.useEffect(() => {
-    if (stockItems.length > 0) {
-      setInventoryData(initialInventoryCount);
+  // Build receivings from PURCHASE_IN movements. The reference string may
+  // contain "Supplier: X · PO#1234" — split it into columns for display.
+  const parseSupplierFromRef = (ref) => {
+    if (!ref) return { supplier: '', po: '' };
+    const parts = ref.split('·').map((p) => p.trim());
+    let supplier = '';
+    let poParts = [];
+    for (const p of parts) {
+      if (p.toLowerCase().startsWith('supplier:')) {
+        supplier = p.slice(9).trim();
+      } else {
+        poParts.push(p);
+      }
     }
-  }, [stockData]);
+    return { supplier, po: poParts.join(' · ') };
+  };
 
-  const completedCount = inventoryData.filter((i) => i.physicalCount !== '').length;
-  const totalCount = inventoryData.length;
-  const countStatus = completedCount === totalCount ? 'Completed' : completedCount > 0 ? 'In Progress' : 'Not Started';
+  const allWeighIns = (movementsData?.data || [])
+    .filter((m) => m.type === 'PURCHASE_IN')
+    .map((m) => {
+      const { supplier, po } = parseSupplierFromRef(m.reference);
+      return {
+        id: m.id,
+        product: m.product?.name || '',
+        unit: m.product?.unit || 'kg',
+        po,
+        supplier,
+        quantity: m.quantity,
+        createdAt: m.createdAt,
+        time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '',
+        recordedBy: m.createdBy ? `${m.createdBy.firstName || ''} ${m.createdBy.lastName || ''}`.trim() : '',
+        photo: m.imageUrl ? (m.imageUrl.startsWith('http') ? m.imageUrl : m.imageUrl) : null,
+      };
+    });
+
+  const startOfToday = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); })();
+  const todayWeighIns = allWeighIns.filter((w) => w.createdAt && new Date(w.createdAt).getTime() >= startOfToday);
+  const archiveWeighIns = allWeighIns.filter((w) => w.createdAt && new Date(w.createdAt).getTime() < startOfToday);
 
   const handleRecordWeight = async () => {
     if (!selectedProduct || !selectedGradeId || !quantity) {
       toast.error(`Please select a product, grade, and enter ${isWeight(selectedUnit) ? 'weight' : 'count'}`);
       return;
     }
-    // Embed supplier name into the reference so it shows up in movement history.
-    // (InventoryMovement doesn't have a supplierId column — reference is the
-    // audit trail today.)
     const supplierName = suppliers.find((s) => s.id === selectedSupplier)?.name;
     const refParts = [];
     if (supplierName) refParts.push(`Supplier: ${supplierName}`);
@@ -194,17 +196,33 @@ function Receiving() {
 
     setSubmitting(true);
     try {
-      await api.post('/inventory/movements', {
-        productId: selectedProduct,
-        qualityGradeId: selectedGradeId,
-        type: 'PURCHASE_IN',
-        quantity: Number(quantity),
-        reference: combinedRef || undefined,
-        notes: supplierName ? `From supplier: ${supplierName}` : undefined,
-      });
+      // Multipart when a photo is attached; JSON otherwise.
+      if (photoFile) {
+        const fd = new FormData();
+        fd.append('productId', selectedProduct);
+        fd.append('qualityGradeId', selectedGradeId);
+        fd.append('type', 'PURCHASE_IN');
+        fd.append('quantity', String(Number(quantity)));
+        if (combinedRef) fd.append('reference', combinedRef);
+        if (supplierName) fd.append('notes', `From supplier: ${supplierName}`);
+        fd.append('photo', photoFile);
+        await api.post('/inventory/movements', fd, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      } else {
+        await api.post('/inventory/movements', {
+          productId: selectedProduct,
+          qualityGradeId: selectedGradeId,
+          type: 'PURCHASE_IN',
+          quantity: Number(quantity),
+          reference: combinedRef || undefined,
+          notes: supplierName ? `From supplier: ${supplierName}` : undefined,
+        });
+      }
       toast.success(supplierName ? `Recorded from ${supplierName}` : 'Receiving recorded');
       setQuantity('');
       setReference('');
+      setPhotoFile(null);
       // Keep supplier selected — chef often logs multiple items from same supplier
       refetchMovements();
     } catch (err) {
@@ -236,81 +254,6 @@ function Receiving() {
     }
   };
 
-  const handleSubmitSpotChecks = async () => {
-    const completed = inventoryData.filter((i) => i.physicalCount !== '' && i.productId && i.qualityGradeId);
-    if (completed.length === 0) {
-      toast.error('No counts to submit');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      for (const item of completed) {
-        await api.post('/inventory/spot-checks', {
-          productId: item.productId,
-          qualityGradeId: item.qualityGradeId,
-          systemCount: item.systemCount,
-          physicalCount: Number(item.physicalCount),
-        });
-      }
-      toast.success('Inventory counts submitted');
-      refetchSpotChecks();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to submit counts');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const inventoryColumns = [
-    { accessorKey: 'product', header: 'Product' },
-    { accessorKey: 'grade', header: 'Grade' },
-    {
-      accessorKey: 'unit',
-      header: 'Unit',
-      cell: ({ row }) => <Badge variant="outline" className="text-[10px]">{prettyUnit(row.original.unit)}</Badge>,
-    },
-    {
-      accessorKey: 'systemCount',
-      header: 'System',
-      cell: ({ row }) => `${row.original.systemCount} ${prettyUnit(row.original.unit)}`,
-    },
-    {
-      accessorKey: 'physicalCount',
-      header: 'Physical',
-      cell: ({ row }) => (
-        <Input
-          type="number"
-          className="w-24 h-8 text-sm"
-          placeholder="--"
-          value={row.original.physicalCount}
-          onChange={(e) => {
-            const newVal = e.target.value;
-            setInventoryData((prev) =>
-              prev.map((item) =>
-                item.id === row.original.id
-                  ? { ...item, physicalCount: newVal, discrepancy: newVal ? Number(newVal) - item.systemCount : null }
-                  : item
-              )
-            );
-          }}
-        />
-      ),
-    },
-    {
-      accessorKey: 'discrepancy',
-      header: 'Discrepancy',
-      cell: ({ row }) => {
-        const v = row.original.discrepancy;
-        return v === null ? (
-          <span className="text-brand-muted">--</span>
-        ) : (
-          <span className={v !== 0 ? 'text-brand-error font-semibold' : 'text-brand-success font-semibold'}>
-            {v > 0 ? '+' : ''}{v}
-          </span>
-        );
-      },
-    },
-  ];
 
   return (
     <motion.div
@@ -337,7 +280,7 @@ function Receiving() {
               { key: 'time', label: 'Time' },
               { key: 'recordedBy', label: 'Recorded By' },
             ],
-            rows: weighIns.map((w) => ({ ...w, qtyFmt: `${w.quantity} ${prettyUnit(w.unit)}` })),
+            rows: todayWeighIns.map((w) => ({ ...w, qtyFmt: `${w.quantity} ${prettyUnit(w.unit)}` })),
           })}
         >
           <Printer className="w-4 h-4 mr-2" /> Print log
@@ -461,32 +404,7 @@ function Receiving() {
               <h2 className="text-lg font-semibold text-brand-primary">Incoming Products</h2>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 mb-6">
-              <div className="col-span-2 sm:col-span-3 lg:col-span-2">
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-brand-secondary text-sm">Supplier</label>
-                  {canAddSupplier && (
-                    <button
-                      type="button"
-                      onClick={() => setAddSupplierOpen(true)}
-                      className="text-[11px] text-brand-accent hover:text-brand-accent-hover inline-flex items-center gap-0.5"
-                    >
-                      <Plus className="w-3 h-3" /> Add new
-                    </button>
-                  )}
-                </div>
-                <Select value={selectedSupplier} onValueChange={(v) => setSelectedSupplier(v === '__none__' ? '' : v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={suppliers.length === 0 ? 'No suppliers yet' : 'Pick a supplier…'} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">— No supplier —</SelectItem>
-                    {suppliers.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
               <div>
                 <label className="block text-brand-secondary text-sm mb-1">Product</label>
                 <Select value={selectedProduct} onValueChange={onPickProduct}>
@@ -538,15 +456,70 @@ function Receiving() {
                   onChange={(e) => setQuantity(e.target.value)}
                 />
               </div>
-              <div className="flex items-end col-span-2 sm:col-span-3 lg:col-span-1">
-                <Button className="w-full" onClick={handleRecordWeight} disabled={submitting}>
-                  <Plus className="w-4 h-4 mr-1" /> {submitting ? 'Recording...' : (isWeight(selectedUnit) ? 'Record Weight' : 'Record Count')}
-                </Button>
+              <div className="col-span-2 sm:col-span-3 lg:col-span-2">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-brand-secondary text-sm">Supplier</label>
+                  {canAddSupplier && (
+                    <button
+                      type="button"
+                      onClick={() => setAddSupplierOpen(true)}
+                      className="text-[11px] text-brand-accent hover:text-brand-accent-hover inline-flex items-center gap-0.5"
+                    >
+                      <Plus className="w-3 h-3" /> Add new
+                    </button>
+                  )}
+                </div>
+                <Select value={selectedSupplier} onValueChange={(v) => setSelectedSupplier(v === '__none__' ? '' : v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={suppliers.length === 0 ? 'No suppliers yet' : 'Pick a supplier…'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— No supplier —</SelectItem>
+                    {suppliers.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="col-span-2 sm:col-span-3 lg:col-span-7">
+            </div>
+
+            {/* Reference + Photo row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+              <div className="sm:col-span-2">
                 <label className="block text-brand-secondary text-sm mb-1">Reference (PO# or note)</label>
                 <Input placeholder="Optional — e.g. Truck ABC-123, invoice #4421" value={reference} onChange={(e) => setReference(e.target.value)} />
               </div>
+              <div>
+                <label className="block text-brand-secondary text-sm mb-1">Photo (optional)</label>
+                <div className="flex items-stretch gap-2">
+                  <label className="flex-1 h-10 flex items-center justify-center gap-2 rounded-lg border border-dashed border-brand-border bg-brand-surface hover:border-brand-accent/50 cursor-pointer transition-colors text-sm text-brand-secondary">
+                    {photoFile ? (
+                      <span className="truncate max-w-[160px]">{photoFile.name}</span>
+                    ) : (
+                      <><Plus className="w-4 h-4" /> Attach photo</>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+                    />
+                  </label>
+                  {photoFile && (
+                    <Button type="button" variant="ghost" size="icon-sm" onClick={() => setPhotoFile(null)} title="Remove photo">
+                      ×
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Action row */}
+            <div className="flex justify-end mb-6">
+              <Button className="w-full sm:w-auto" onClick={handleRecordWeight} disabled={submitting}>
+                <Plus className="w-4 h-4 mr-1" /> {submitting ? 'Recording...' : (isWeight(selectedUnit) ? 'Record Weight' : 'Record Count')}
+              </Button>
             </div>
 
             {/* Add Supplier Dialog */}
@@ -589,49 +562,54 @@ function Receiving() {
               </DialogContent>
             </Dialog>
 
+            {/* Today's receipts */}
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-brand-primary font-semibold text-sm">
+                Today's receipts
+                <span className="text-brand-muted text-xs font-normal ml-2">
+                  ({todayWeighIns.length})
+                </span>
+              </p>
+              {archiveWeighIns.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowArchive((s) => !s)}
+                  className="text-xs text-brand-accent hover:text-brand-accent-hover"
+                >
+                  {showArchive ? 'Hide archive' : `View archive (${archiveWeighIns.length})`}
+                </button>
+              )}
+            </div>
             <DataTable
               columns={weighInColumns}
-              data={weighIns}
-              searchPlaceholder="Search weigh-ins..."
+              data={todayWeighIns}
+              searchPlaceholder="Search today's receipts..."
               searchColumn="product"
             />
           </CardContent>
         </Card>
       </motion.div>
 
-      {/* Section 2: Daily Inventory Count */}
-      <motion.div variants={fadeInUp}>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <ClipboardList className="w-5 h-5 text-brand-accent" />
-                <h2 className="text-lg font-semibold text-brand-primary">Daily Inventory Count</h2>
+      {/* Archive — collapsible, shows older receipts */}
+      {showArchive && archiveWeighIns.length > 0 && (
+        <motion.div variants={fadeInUp}>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 mb-3">
+                <ClipboardList className="w-4 h-4 text-brand-muted" />
+                <p className="text-brand-primary font-semibold text-sm">Archive — older receipts</p>
+                <Badge variant="muted" className="text-[10px] ml-1">{archiveWeighIns.length}</Badge>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  {countStatus === 'Completed' && <Check className="w-4 h-4 text-brand-success" />}
-                  {countStatus === 'In Progress' && <Clock className="w-4 h-4 text-brand-warning" />}
-                  {countStatus === 'Not Started' && <AlertCircle className="w-4 h-4 text-brand-muted" />}
-                  <Badge variant={countStatus === 'Completed' ? 'success' : countStatus === 'In Progress' ? 'warning' : 'default'}>
-                    {countStatus} ({completedCount}/{totalCount})
-                  </Badge>
-                </div>
-                <Button disabled={completedCount < totalCount || submitting} onClick={handleSubmitSpotChecks}>
-                  {submitting ? 'Submitting...' : 'Submit Inventory Count'}
-                </Button>
-              </div>
-            </div>
-
-            <DataTable
-              columns={inventoryColumns}
-              data={inventoryData}
-              searchPlaceholder="Search products..."
-              searchColumn="product"
-            />
-          </CardContent>
-        </Card>
-      </motion.div>
+              <DataTable
+                columns={weighInColumns}
+                data={archiveWeighIns}
+                searchPlaceholder="Search archive..."
+                searchColumn="product"
+              />
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
     </motion.div>
   );
 }

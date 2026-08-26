@@ -98,15 +98,19 @@ async function recordMovement(req, res, next) {
       return res.status(400).json({ error: 'productId, qualityGradeId, type, and quantity are required' });
     }
 
+    // Optional photo from multipart form-data upload
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : (req.body.imageUrl || null);
+
     const movement = await prisma.$transaction(async (tx) => {
       const mov = await tx.inventoryMovement.create({
         data: {
           productId,
           qualityGradeId,
           type,
-          quantity,
+          quantity: Number(quantity),
           reference,
           notes,
+          imageUrl,
           createdById: req.user.id,
         },
       });

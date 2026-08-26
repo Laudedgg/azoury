@@ -425,8 +425,6 @@ function Purchasing() {
         <Tabs defaultValue="combined">
           <TabsList>
             <TabsTrigger value="combined"><ShoppingBag className="w-4 h-4 mr-2" /> Combined Orders</TabsTrigger>
-            <TabsTrigger value="comparison"><TrendingUp className="w-4 h-4 mr-2" /> Supplier Comparison</TabsTrigger>
-            <TabsTrigger value="surveys"><ClipboardList className="w-4 h-4 mr-2" /> Price Surveys</TabsTrigger>
             <TabsTrigger value="receipts"><Receipt className="w-4 h-4 mr-2" /> Receipt Archive</TabsTrigger>
           </TabsList>
 
@@ -618,106 +616,7 @@ function Purchasing() {
             )}
           </TabsContent>
 
-          {/* Tab 2: Supplier Comparison */}
-          <TabsContent value="comparison" className="mt-6 space-y-6">
-            <div className="max-w-xs">
-              <label className="block text-brand-secondary text-sm font-medium mb-2">Select Product</label>
-              <Select value={selectedProduct || ''} onValueChange={setSelectedProduct}>
-                <SelectTrigger><SelectValue placeholder="Select a product..." /></SelectTrigger>
-                <SelectContent>
-                  {productsList.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Card>
-              <CardContent className="p-6">
-                <DataTable columns={comparisonColumns} data={comparisonTableData} />
-              </CardContent>
-            </Card>
-
-            <ChartCard title="Price History - Top 3 Suppliers" subtitle="Last 30 days">
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={[]}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1A3F3F" />
-                  <XAxis dataKey="date" tick={{ fill: '#5A7A75', fontSize: 11 }} tickLine={false} axisLine={false} interval={4} />
-                  <YAxis tick={{ fill: '#5A7A75', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
-                  <RechartsTooltip contentStyle={{ backgroundColor: '#143535', border: '1px solid #1A3F3F', borderRadius: '8px', color: '#E8F5F3' }} />
-                  <Legend wrapperStyle={{ color: '#8AABA6', fontSize: 12 }} />
-                  <Line type="monotone" dataKey="Farm Fresh Co." stroke={CHART_COLORS[0]} strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="Bekaa Farms" stroke={CHART_COLORS[1]} strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="Green Valley" stroke={CHART_COLORS[2]} strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartCard>
-          </TabsContent>
-
-          {/* Tab 3: Price Surveys */}
-          <TabsContent value="surveys" className="mt-6 space-y-6">
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="text-brand-primary font-semibold mb-4">Add Price Survey</h3>
-                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                  <div>
-                    <label className="block text-brand-secondary text-xs mb-1">Supplier</label>
-                    <Select value={surveySupplier} onValueChange={setSurveySupplier}>
-                      <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                      <SelectContent>
-                        {suppliersList.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="block text-brand-secondary text-xs mb-1">Product</label>
-                    <Select value={surveyProduct} onValueChange={setSurveyProduct}>
-                      <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                      <SelectContent>
-                        {productsList.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="block text-brand-secondary text-xs mb-1">Price per kg</label>
-                    <Input type="number" step="0.01" placeholder="0.00" value={surveyPrice} onChange={(e) => setSurveyPrice(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="block text-brand-secondary text-xs mb-1">Date</label>
-                    <Input type="date" value={surveyDate} onChange={(e) => setSurveyDate(e.target.value)} />
-                  </div>
-                  <div className="flex items-end col-span-2 lg:col-span-1">
-                    <Button className="w-full" onClick={async () => {
-                      if (!surveySupplier || !surveyProduct || !surveyPrice) {
-                        toast.error('Please fill in all fields');
-                        return;
-                      }
-                      try {
-                        await api.post('/suppliers/price-surveys', {
-                          supplierId: Number(surveySupplier),
-                          productId: Number(surveyProduct),
-                          price: Number(surveyPrice),
-                          surveyDate: surveyDate,
-                        });
-                        toast.success('Price survey added successfully');
-                        setSurveySupplier('');
-                        setSurveyProduct('');
-                        setSurveyPrice('');
-                        refetchSurveys();
-                      } catch (err) {
-                        toast.error(err.response?.data?.message || 'Failed to add survey');
-                      }
-                    }}><Plus className="w-4 h-4 mr-1" /> Add Survey</Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <DataTable columns={surveyColumns} data={surveyItems} searchPlaceholder="Search surveys..." searchColumn="supplier" />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Tab 4: Receipt Archive */}
+          {/* Tab: Receipt Archive */}
           <TabsContent value="receipts" className="mt-6 space-y-6">
             <Card className="border-2 border-dashed border-brand-border hover:border-brand-accent/50 transition-colors cursor-pointer">
               <CardContent className="p-12 text-center">

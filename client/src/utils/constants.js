@@ -1,9 +1,9 @@
 export const ROLES = {
   SUPER_ADMIN: { value: 'SUPER_ADMIN', label: 'Super Admin', permissions: ['*'] },
-  PURCHASE_MANAGER: { value: 'PURCHASE_MANAGER', label: 'Purchase Manager', permissions: ['dashboard', 'purchasing', 'inventory', 'products', 'pricing'] },
-  OPERATIONS_MANAGER: { value: 'OPERATIONS_MANAGER', label: 'Operations Manager', permissions: ['dashboard', 'operations', 'receiving', 'logistics', 'inventory', 'waste', 'products', 'pricing'] },
+  PURCHASE_MANAGER: { value: 'PURCHASE_MANAGER', label: 'Purchase Manager', permissions: ['dashboard', 'purchasing', 'inventory', 'products', 'pricing', 'suppliers'] },
+  OPERATIONS_MANAGER: { value: 'OPERATIONS_MANAGER', label: 'Operations Manager', permissions: ['dashboard', 'operations', 'receiving', 'logistics', 'inventory', 'waste', 'products', 'pricing', 'suppliers'] },
   QUALITY_COST_CONTROL: { value: 'QUALITY_COST_CONTROL', label: 'Quality & Cost Control', permissions: ['dashboard', 'quality', 'fleet', 'waste', 'inventory'] },
-  RECEIVING: { value: 'RECEIVING', label: 'Receiving Team', permissions: ['dashboard', 'receiving', 'inventory'] },
+  RECEIVING: { value: 'RECEIVING', label: 'Receiving Team', permissions: ['dashboard', 'receiving', 'inventory', 'suppliers'] },
   LOGISTICS_TEAM: { value: 'LOGISTICS_TEAM', label: 'Logistics Team', permissions: ['dashboard', 'logistics'] },
   DRIVER: { value: 'DRIVER', label: 'Driver', permissions: ['deliveries'] },
   ACCOUNTANT: { value: 'ACCOUNTANT', label: 'Accountant', permissions: ['dashboard', 'reports', 'billing', 'pricing'] },

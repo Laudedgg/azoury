@@ -4,11 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, ShoppingCart, Settings2, ShieldCheck, PackageCheck,
   Truck, Bus, Warehouse, Users, BarChart3, Trash2, Package, Receipt,
-  ChevronLeft, ChevronRight, LogOut, Sun, Moon, MoreVertical,
+  ChevronLeft, ChevronRight, LogOut, MoreVertical,
   DollarSign, ClipboardList,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/Avatar';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -30,6 +29,7 @@ export const navSections = [
     title: 'Operations',
     items: [
       { label: 'Purchasing', icon: ShoppingCart, path: '/admin/purchasing', permission: 'purchasing' },
+      { label: 'Supply Chain', icon: Truck, path: '/admin/suppliers', permission: 'suppliers' },
       { label: 'Operations', icon: Settings2, path: '/admin/operations', permission: 'operations' },
       { label: 'Quality Control', icon: ShieldCheck, path: '/admin/quality', permission: 'quality' },
       { label: 'Receiving', icon: PackageCheck, path: '/admin/receiving', permission: 'receiving' },
@@ -60,7 +60,6 @@ export const navSections = [
 function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const { user, logout } = useAuth();
-  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const userRole = user?.role || 'ADMIN';
@@ -172,33 +171,6 @@ function Sidebar() {
           })}
         </nav>
       </ScrollArea>
-
-      <Separator />
-
-      {/* Theme Toggle */}
-      <div className="px-3 py-3">
-        <button
-          onClick={toggleTheme}
-          className={cn(
-            'flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm text-brand-secondary hover:text-brand-accent hover:bg-brand-accent/5 transition-colors',
-            collapsed && 'justify-center'
-          )}
-        >
-          {isDark ? <Sun className="h-5 w-5 shrink-0" /> : <Moon className="h-5 w-5 shrink-0" />}
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="whitespace-nowrap"
-              >
-                {isDark ? 'Light Mode' : 'Dark Mode'}
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </button>
-      </div>
 
       <Separator />
 
