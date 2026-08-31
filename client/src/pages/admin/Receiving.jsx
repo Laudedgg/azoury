@@ -197,6 +197,10 @@ function Receiving() {
     setSubmitting(true);
     try {
       // Multipart when a photo is attached; JSON otherwise.
+      // NOTE: intentionally NOT setting Content-Type — axios auto-sets it
+      // to `multipart/form-data; boundary=...` when it sees a FormData.
+      // Setting it manually strips the boundary and the server can't parse
+      // the body.
       if (photoFile) {
         const fd = new FormData();
         fd.append('productId', selectedProduct);
@@ -206,9 +210,7 @@ function Receiving() {
         if (combinedRef) fd.append('reference', combinedRef);
         if (supplierName) fd.append('notes', `From supplier: ${supplierName}`);
         fd.append('photo', photoFile);
-        await api.post('/inventory/movements', fd, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        await api.post('/inventory/movements', fd);
       } else {
         await api.post('/inventory/movements', {
           productId: selectedProduct,

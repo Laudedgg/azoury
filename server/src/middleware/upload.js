@@ -33,7 +33,8 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
+    // Match the nginx client_max_body_size so both agree on the ceiling.
+    fileSize: 20 * 1024 * 1024, // 20MB
   },
 });
 
