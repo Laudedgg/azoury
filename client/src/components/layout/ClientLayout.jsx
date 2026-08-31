@@ -1,31 +1,59 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, ShoppingBag, UserCircle, LogOut, ChevronLeft, ChevronRight, Sun, Moon, Receipt } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, UserCircle, LogOut, Receipt } from 'lucide-react';
 import { ProtectedRoute } from './ProtectedRoute';
 import { Header } from './Header';
 import { MobileNav } from './MobileNav';
-import { ScrollArea } from '@/components/ui/ScrollArea';
-import { Separator } from '@/components/ui/Separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/Avatar';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext';
 import { CLIENT_ROLES } from '@/utils/constants';
 import { cn, getInitials } from '@/utils/helpers';
 
 const clientNav = [
-  { label: 'Portal', icon: LayoutDashboard, path: '/portal', end: true },
-  { label: 'Orders', icon: ShoppingBag, path: '/portal/orders' },
-  { label: 'Statement', icon: Receipt, path: '/portal/statement' },
-  { label: 'Account', icon: UserCircle, path: '/portal/account' },
+  { label: 'Portal',    icon: LayoutDashboard, path: '/portal',            end: true },
+  { label: 'Orders',    icon: ShoppingBag,     path: '/portal/orders' },
+  { label: 'Statement', icon: Receipt,         path: '/portal/statement' },
+  { label: 'Account',   icon: UserCircle,      path: '/portal/account' },
 ];
 
 const clientNavSections = [{ title: 'Menu', items: clientNav }];
 
+// A compact icon rail that matches the reference dashboard's aesthetic:
+// fixed narrow width, icon-only, active state = filled accent square,
+// avatar + logout pinned to the bottom.
+function IconRailItem({ item, isActive }) {
+  return (
+    <NavLink
+      to={item.path}
+      end={item.end}
+      title={item.label}
+      className={({ isActive: active }) =>
+        cn(
+          'group relative flex items-center justify-center h-11 w-11 rounded-xl transition-all',
+          active
+            ? 'bg-brand-accent/12 text-brand-accent shadow-[inset_0_0_0_1px_rgba(78,236,211,0.25)]'
+            : 'text-brand-muted hover:text-brand-primary hover:bg-brand-elevated'
+        )
+      }
+    >
+      {({ isActive: active }) => (
+        <>
+          {active && (
+            <span className="absolute -left-3 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-brand-accent" />
+          )}
+          <item.icon className="h-5 w-5" />
+          {/* Hover label */}
+          <span className="pointer-events-none absolute left-full ml-3 px-2 py-1 rounded-md bg-brand-elevated border border-brand-border text-xs text-brand-primary whitespace-nowrap opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all z-50 shadow-lg">
+            {item.label}
+          </span>
+        </>
+      )}
+    </NavLink>
+  );
+}
+
 function ClientLayout() {
-  const [collapsed, setCollapsed] = useState(false);
   const { user, logout } = useAuth();
-  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -33,125 +61,50 @@ function ClientLayout() {
     navigate('/login');
   };
 
+  const businessInitial = (user?.client?.businessName || user?.firstName || 'A')[0].toUpperCase();
+
   return (
     <ProtectedRoute allowedRoles={CLIENT_ROLES}>
       <div className="flex h-screen overflow-hidden bg-brand-base">
-        <motion.aside
-          initial={false}
-          animate={{ width: collapsed ? 72 : 260 }}
-          transition={{ duration: 0.2, ease: 'easeInOut' }}
-          className="hidden lg:flex relative flex-col h-screen bg-brand-surface border-r border-brand-border z-30 shrink-0"
-        >
-          <div className="flex items-center h-16 px-4 border-b border-brand-border">
-            <NavLink to="/portal" className="flex items-center gap-3 overflow-hidden">
-              <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-brand-accent flex items-center justify-center">
-                <span className="text-brand-base font-bold text-lg">A</span>
-              </div>
-              <AnimatePresence>
-                {!collapsed && (
-                  <motion.span
-                    initial={{ opacity: 0, width: 0 }}
-                    animate={{ opacity: 1, width: 'auto' }}
-                    exit={{ opacity: 0, width: 0 }}
-                    className="text-lg font-bold text-brand-primary whitespace-nowrap overflow-hidden"
-                  >
-                    Afood Lebanon
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </NavLink>
-          </div>
-
-          <ScrollArea className="flex-1 py-4">
-            <nav className="space-y-1 px-3">
-              {clientNav.map((item) => (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  end={item.end}
-                  className={({ isActive }) =>
-                    cn(
-                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all relative',
-                      isActive
-                        ? 'bg-brand-accent/10 text-brand-accent'
-                        : 'text-brand-secondary hover:text-brand-accent hover:bg-brand-accent/5'
-                    )
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      {isActive && (
-                        <motion.div
-                          layoutId="client-sidebar-active"
-                          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-brand-accent rounded-r-full"
-                        />
-                      )}
-                      <item.icon className="h-5 w-5 shrink-0" />
-                      <AnimatePresence>
-                        {!collapsed && (
-                          <motion.span
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="whitespace-nowrap"
-                          >
-                            {item.label}
-                          </motion.span>
-                        )}
-                      </AnimatePresence>
-                    </>
-                  )}
-                </NavLink>
-              ))}
-            </nav>
-          </ScrollArea>
-
-          <Separator />
-          <div className="px-3 py-3">
-            <button
-              onClick={toggleTheme}
-              className={cn(
-                'flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm text-brand-secondary hover:text-brand-accent hover:bg-brand-accent/5 transition-colors',
-                collapsed && 'justify-center'
-              )}
+        {/* Icon rail — fixed narrow, matches the reference mockup */}
+        <aside className="hidden lg:flex relative flex-col items-center justify-between w-[68px] py-4 h-screen bg-brand-surface/60 border-r border-brand-border/60 z-30 shrink-0">
+          {/* Logo */}
+          <div className="flex flex-col items-center gap-3">
+            <NavLink
+              to="/portal"
+              className="h-10 w-10 rounded-xl bg-brand-accent/15 border border-brand-accent/30 flex items-center justify-center hover:bg-brand-accent/25 transition-colors"
+              title="Afood Lebanon"
             >
-              {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-              {!collapsed && <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>}
-            </button>
+              <span className="text-brand-accent font-bold text-lg">{businessInitial}</span>
+            </NavLink>
+            <div className="w-8 h-px bg-brand-border/60" />
           </div>
-          <Separator />
 
-          <div className="p-3">
-            <div className={cn('flex items-center gap-3 px-2 py-2', collapsed && 'justify-center')}>
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={user?.avatar} />
-                <AvatarFallback>{getInitials(user?.name || 'C')}</AvatarFallback>
-              </Avatar>
-              {!collapsed && (
-                <div className="flex-1 overflow-hidden">
-                  <p className="text-sm font-medium text-brand-primary truncate">{user?.name}</p>
-                </div>
-              )}
-            </div>
+          {/* Nav icons */}
+          <nav className="flex-1 flex flex-col items-center gap-1 mt-6">
+            {clientNav.map((item) => (
+              <IconRailItem key={item.path} item={item} />
+            ))}
+          </nav>
+
+          {/* Bottom: avatar + logout */}
+          <div className="flex flex-col items-center gap-2">
             <button
               onClick={handleLogout}
-              className={cn(
-                'flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm text-brand-error hover:bg-brand-error/5 transition-colors mt-1',
-                collapsed && 'justify-center'
-              )}
+              title="Log out"
+              className="h-9 w-9 rounded-lg text-brand-muted hover:text-brand-error hover:bg-brand-error/10 flex items-center justify-center transition-colors"
             >
               <LogOut className="h-4 w-4" />
-              {!collapsed && <span>Log out</span>}
             </button>
+            <div className="relative">
+              <Avatar className="h-9 w-9 border border-brand-border">
+                <AvatarImage src={user?.avatar} />
+                <AvatarFallback className="text-xs">{getInitials(user?.firstName ? `${user.firstName} ${user.lastName || ''}` : 'C')}</AvatarFallback>
+              </Avatar>
+              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-brand-success ring-2 ring-brand-surface" title="Online" />
+            </div>
           </div>
-
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="absolute -right-3 top-20 h-6 w-6 rounded-full border border-brand-border bg-brand-surface flex items-center justify-center text-brand-muted hover:text-brand-accent transition-colors shadow-sm"
-          >
-            {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
-          </button>
-        </motion.aside>
+        </aside>
 
         <div className="flex flex-col flex-1 overflow-hidden">
           <Header />
