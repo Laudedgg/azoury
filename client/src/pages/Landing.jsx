@@ -103,7 +103,9 @@ function Nav() {
 function Hero() {
   return (
     <section className="relative pt-16 pb-24 sm:pt-24 sm:pb-32 overflow-hidden isolate">
-      {/* Brand hero image — warehouse scene, gently dimmed for text legibility */}
+      {/* Brand hero image — warehouse scene at full strength; text legibility
+          comes from a focused vignette + a soft dark band behind the copy,
+          not a blanket dimmer over the whole photo. */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <img
           src={HERO_IMG}
@@ -111,10 +113,18 @@ function Hero() {
           aria-hidden
           loading="eager"
           onError={brandOnError(HERO_FALLBACK)}
-          className="w-full h-full object-cover object-center scale-110 opacity-60"
+          className="w-full h-full object-cover object-center scale-110"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-base/85 via-brand-base/60 to-brand-base/85" />
-        <div className="absolute inset-0 bg-gradient-to-t from-brand-base via-brand-base/20 to-transparent" />
+        {/* Edge vignette (dark at edges, image stays bright in the middle) */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(ellipse at center, transparent 30%, rgba(11,30,30,0.65) 100%)',
+          }}
+        />
+        {/* Horizontal band behind the copy (top→transparent→dark bottom hem) */}
+        <div className="absolute inset-0 bg-gradient-to-b from-brand-base/70 via-brand-base/15 to-brand-base/80" />
       </div>
 
       {/* Ambient gradient orbs */}
@@ -196,21 +206,30 @@ function Hero() {
 }
 
 function Platform() {
+  // Each pillar attaches to a stage on the supply-chain image. The %
+  // coordinates were tuned to sit above the farm / QC / truck illustrations
+  // in supply-chain-map-visual.png.
   const pillars = [
     {
       icon: Eye,
       title: 'Full-chain visibility',
-      body: 'From your supplier\'s farmgate to the last delivery signature — every quantity, price, and quality grade tracked in one place.',
+      body: 'From the farmgate to the last delivery signature — every quantity, price, and quality grade tracked in one place.',
+      pos: { top: '8%', left: '2%' },        // above the farm
+      align: 'left',
     },
     {
       icon: Cpu,
       title: 'Department-first design',
-      body: 'Purchasing, receiving, ops, QC, logistics, drivers, and accounting each get a workspace built for their exact job — not a generic ERP.',
+      body: 'Purchasing, receiving, ops, QC, logistics, drivers, accounting — each team lands in a workspace built for their exact job.',
+      pos: { top: '8%', left: '50%', transform: 'translateX(-50%)' }, // above the QC step
+      align: 'center',
     },
     {
       icon: Sparkles,
-      title: 'AI agent on every layer',
+      title: 'AI agent, on every layer',
       body: 'A copilot that watches inventory, flags mismatches, drafts buy lists, and turns delivery photos into structured records.',
+      pos: { top: '8%', right: '2%' },       // above the truck / destination
+      align: 'right',
     },
   ];
 
@@ -228,26 +247,15 @@ function Platform() {
           </p>
         </motion.div>
 
-        <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-5">
-          {pillars.map((p, i) => (
-            <motion.div
-              key={p.title}
-              {...fadeUp}
-              transition={{ ...fadeUp.transition, delay: i * 0.08 }}
-              className="group relative rounded-2xl border border-brand-border bg-brand-surface p-6 hover:border-brand-accent/40 transition-colors"
-            >
-              <div className="h-11 w-11 rounded-xl bg-brand-accent/10 border border-brand-accent/20 flex items-center justify-center mb-4">
-                <p.icon className="h-5 w-5 text-brand-accent" />
-              </div>
-              <h3 className="text-brand-primary font-semibold text-lg mb-2">{p.title}</h3>
-              <p className="text-brand-secondary text-sm leading-relaxed">{p.body}</p>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Supply chain map visual — the actual chain, at a glance */}
-        <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.25 }} className="mt-16">
-          <div className="rounded-2xl border border-brand-border bg-brand-surface/40 overflow-hidden">
+        {/* Supply chain map visual with pillar callouts overlaid — desktop.
+            Mobile falls back to a clean stacked list of pillars beneath the
+            image so the callouts stay readable. */}
+        <motion.div
+          {...fadeUp}
+          transition={{ ...fadeUp.transition, delay: 0.15 }}
+          className="mt-14 relative rounded-2xl border border-brand-border bg-brand-surface/40 overflow-hidden"
+        >
+          <div className="relative">
             <img
               src={SUPPLY_CHAIN_IMG}
               alt="Afood Lebanon supply chain: from farm to receiving to QC to delivery"
@@ -255,15 +263,57 @@ function Platform() {
               onError={brandOnError(SUPPLY_FALLBACK)}
               className="w-full h-auto block"
             />
-            <div className="px-5 sm:px-8 py-4 flex flex-wrap items-center justify-between gap-3 border-t border-brand-border/60">
-              <p className="text-brand-secondary text-xs sm:text-sm">
-                <b className="text-brand-primary">Farm → Receiving → QC → Cold-chain → Kitchen door.</b>
-                {' '}Every crate audited, every hand-off logged.
-              </p>
-              <a href="#departments" className="text-brand-accent text-xs font-semibold uppercase tracking-wider hover:text-brand-accent-hover">
-                See every step →
-              </a>
-            </div>
+            {/* Soft dim so callout cards read cleanly over the illustration */}
+            <div className="hidden lg:block absolute inset-0 bg-gradient-to-b from-brand-base/60 via-brand-base/10 to-transparent pointer-events-none" />
+
+            {/* Overlay pillar callouts (desktop only) */}
+            {pillars.map((p, i) => (
+              <motion.div
+                key={p.title}
+                initial={{ opacity: 0, y: -10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.25 + i * 0.1 }}
+                style={p.pos}
+                className={`hidden lg:block absolute w-[280px] xl:w-[300px] rounded-2xl bg-brand-base/85 backdrop-blur-md border border-brand-accent/25 p-4 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.6)]`}
+              >
+                <div className="flex items-start gap-2.5">
+                  <div className="h-9 w-9 shrink-0 rounded-xl bg-brand-accent/15 border border-brand-accent/30 flex items-center justify-center">
+                    <p.icon className="h-4 w-4 text-brand-accent" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-brand-primary font-semibold text-sm leading-tight">{p.title}</p>
+                    <p className="text-brand-secondary text-xs leading-relaxed mt-1.5">{p.body}</p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Mobile pillars stack below (desktop callouts already sit on the image) */}
+          <div className="lg:hidden divide-y divide-brand-border/60 border-t border-brand-border/60">
+            {pillars.map((p) => (
+              <div key={p.title} className="p-4 flex items-start gap-3">
+                <div className="h-9 w-9 shrink-0 rounded-xl bg-brand-accent/10 border border-brand-accent/20 flex items-center justify-center">
+                  <p.icon className="h-4 w-4 text-brand-accent" />
+                </div>
+                <div>
+                  <p className="text-brand-primary font-semibold text-sm">{p.title}</p>
+                  <p className="text-brand-secondary text-xs leading-relaxed mt-1">{p.body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Caption strip */}
+          <div className="px-5 sm:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3 border-t border-brand-border/60 bg-brand-surface/60">
+            <p className="text-brand-secondary text-xs sm:text-sm">
+              <b className="text-brand-primary">Farm → Receiving → QC → Cold-chain → Kitchen door.</b>
+              {' '}Every crate audited, every hand-off logged.
+            </p>
+            <a href="#departments" className="text-brand-accent text-xs font-semibold uppercase tracking-wider hover:text-brand-accent-hover">
+              See every step →
+            </a>
           </div>
         </motion.div>
       </div>
@@ -303,63 +353,60 @@ function Departments() {
             </motion.div>
           ))}
         </div>
-      </div>
-    </section>
-  );
-}
 
-function AISection() {
-  return (
-    <section id="ai" className="py-20 sm:py-28 border-t border-brand-border/60 relative overflow-hidden">
-      <div className="absolute inset-0 -z-10 pointer-events-none">
-        <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[500px] opacity-[0.06]"
-          style={{ background: 'radial-gradient(ellipse, #4EECD3 0%, transparent 70%)' }}
-        />
-      </div>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-2 gap-12 items-center">
-        <motion.div {...fadeUp}>
-          <div className="inline-flex items-center gap-2 rounded-full bg-brand-accent/10 border border-brand-accent/25 px-3 py-1 mb-4">
-            <Sparkles className="h-3 w-3 text-brand-accent" />
-            <span className="text-brand-accent text-[11px] font-semibold uppercase tracking-wider">AI Agent</span>
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-bold text-brand-primary tracking-tight leading-tight">
-            An intelligent copilot on every screen
-          </h2>
-          <p className="mt-4 text-brand-secondary text-base sm:text-lg">
-            Our AI agent doesn't just automate — it collaborates. It reads your inventory, watches
-            client patterns, flags weight anomalies, drafts buy lists, and answers questions across
-            every department in real time.
-          </p>
-          <ul className="mt-6 space-y-3">
-            {[
-              'Auto-drafts tomorrow\'s buy list from open orders + stock',
-              'Detects grade mismatches during receiving',
-              'Suggests substitutions when a supplier runs short',
-              'Turns handwritten delivery notes into structured records',
-            ].map((point) => (
-              <li key={point} className="flex items-start gap-2.5 text-sm text-brand-primary">
-                <CheckCircle2 className="h-4 w-4 text-brand-accent shrink-0 mt-0.5" />
-                <span>{point}</span>
-              </li>
-            ))}
-          </ul>
-        </motion.div>
+        {/* AI copilot — a subsection of the departments story ("and there's
+            an AI sitting inside every one of these workspaces"). Two-column
+            with the dashboard visual on the right. */}
+        <motion.div
+          id="ai"
+          {...fadeUp}
+          transition={{ ...fadeUp.transition, delay: 0.15 }}
+          className="mt-16 sm:mt-20 pt-12 sm:pt-16 border-t border-brand-border/60"
+        >
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-12 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full bg-brand-accent/10 border border-brand-accent/25 px-3 py-1 mb-4">
+                <Sparkles className="h-3 w-3 text-brand-accent" />
+                <span className="text-brand-accent text-[11px] font-semibold uppercase tracking-wider">
+                  + AI copilot on every screen
+                </span>
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-bold text-brand-primary tracking-tight leading-tight">
+                Every one of those workspaces has an AI beside it
+              </h3>
+              <p className="mt-3 text-brand-secondary text-sm sm:text-base leading-relaxed">
+                The copilot reads your inventory, watches client patterns, flags weight anomalies,
+                drafts buy lists, and answers questions across departments in real time — so the team
+                spends less time in spreadsheets and more time moving crates.
+              </p>
+              <ul className="mt-5 space-y-2.5">
+                {[
+                  'Auto-drafts tomorrow\'s buy list from open orders + stock',
+                  'Detects grade mismatches during receiving',
+                  'Suggests substitutions when a supplier runs short',
+                  'Turns handwritten delivery notes into structured records',
+                ].map((point) => (
+                  <li key={point} className="flex items-start gap-2.5 text-sm text-brand-primary">
+                    <CheckCircle2 className="h-4 w-4 text-brand-accent shrink-0 mt-0.5" />
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-        {/* Brand AI dashboard visual */}
-        <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.15 }}>
-          <div className="relative rounded-2xl border border-brand-border bg-brand-surface overflow-hidden shadow-2xl shadow-brand-accent/10">
-            <img
-              src={AI_DASHBOARD_IMG}
-              alt="Afood AI copilot dashboard showing live inventory + recommendations"
-              loading="lazy"
-              onError={brandOnError(AI_FALLBACK)}
-              className="w-full h-auto block"
-            />
-            {/* Subtle live indicator overlay */}
-            <div className="absolute top-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-brand-base/85 backdrop-blur-sm border border-brand-success/30 px-2 py-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-brand-success animate-pulse" />
-              <span className="text-brand-success text-[10px] font-semibold uppercase tracking-wider">Live</span>
+            {/* Brand AI dashboard visual */}
+            <div className="relative rounded-2xl border border-brand-border bg-brand-surface overflow-hidden shadow-2xl shadow-brand-accent/10">
+              <img
+                src={AI_DASHBOARD_IMG}
+                alt="Afood AI copilot dashboard showing live inventory + recommendations"
+                loading="lazy"
+                onError={brandOnError(AI_FALLBACK)}
+                className="w-full h-auto block"
+              />
+              <div className="absolute top-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-brand-base/85 backdrop-blur-sm border border-brand-success/30 px-2 py-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-brand-success animate-pulse" />
+                <span className="text-brand-success text-[10px] font-semibold uppercase tracking-wider">Live</span>
+              </div>
             </div>
           </div>
         </motion.div>
@@ -432,17 +479,16 @@ function ClientPortals() {
 function ConsumerSection() {
   return (
     <section id="b2c" className="py-24 sm:py-32 border-t border-brand-border/60 relative overflow-hidden isolate">
-      {/* Full-bleed produce backdrop with heavy dark overlay */}
+      {/* Subtle produce backdrop with heavy dark overlay */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <img
           src={B2C_IMG}
           alt=""
           aria-hidden
           loading="lazy"
-          className="w-full h-full object-cover object-center scale-105 opacity-50"
+          className="w-full h-full object-cover object-center scale-105 opacity-25"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-base/85 via-brand-base/70 to-brand-base/90" />
-        <div className="absolute inset-0 bg-gradient-to-t from-brand-base via-brand-base/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-base/90 via-brand-base/75 to-brand-base/95" />
       </div>
       <div className="absolute inset-0 z-[1] pointer-events-none opacity-40">
         <div
@@ -451,38 +497,52 @@ function ConsumerSection() {
         />
       </div>
 
-      {/* Produce crates cutout — floats bottom-left as a warm product prop */}
-      <img
-        src={CRATES_CUTOUT}
-        alt=""
-        aria-hidden
-        loading="lazy"
-        onError={(e) => { e.currentTarget.style.display = 'none'; }}
-        className="hidden lg:block absolute -bottom-10 -left-16 w-[420px] z-[2] pointer-events-none opacity-90 drop-shadow-[0_20px_40px_rgba(0,0,0,0.6)]"
-      />
+      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+          {/* Left column: text + CTA */}
+          <div>
+            <motion.div {...fadeUp} className="inline-flex items-center gap-2 rounded-full bg-brand-success/10 border border-brand-success/25 px-3 py-1 mb-5">
+              <Store className="h-3 w-3 text-brand-success" />
+              <span className="text-brand-success text-[11px] font-semibold uppercase tracking-wider">Coming soon</span>
+            </motion.div>
 
-      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <motion.div {...fadeUp} className="inline-flex items-center gap-2 rounded-full bg-brand-success/10 border border-brand-success/25 px-3 py-1 mb-5">
-          <Store className="h-3 w-3 text-brand-success" />
-          <span className="text-brand-success text-[11px] font-semibold uppercase tracking-wider">Coming soon</span>
-        </motion.div>
+            <motion.h2 {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.05 }} className="text-3xl sm:text-4xl lg:text-5xl font-bold text-brand-primary tracking-tight leading-tight">
+              Fresh produce, straight to your door.
+            </motion.h2>
+            <motion.p {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }} className="mt-5 text-brand-secondary text-base sm:text-lg">
+              We're bringing the same supply-chain rigor that serves top Beirut restaurants directly to Lebanese
+              households. Same-day delivery, transparent pricing, real quality grades. Launching later this year.
+            </motion.p>
 
-        <motion.h2 {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.05 }} className="text-3xl sm:text-4xl lg:text-5xl font-bold text-brand-primary tracking-tight leading-tight">
-          Fresh produce, straight to your door.
-        </motion.h2>
-        <motion.p {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }} className="mt-5 text-brand-secondary text-base sm:text-lg max-w-2xl mx-auto">
-          We're bringing the same supply-chain rigor that serves top Beirut restaurants directly to Lebanese
-          households. Same-day delivery, transparent pricing, real quality grades. Launching later this year.
-        </motion.p>
+            <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.15 }} className="mt-8">
+              <a
+                href="mailto:hello@afoodlebanon.com?subject=Waitlist%20me%20for%20Afood%20B2C"
+                className="inline-flex items-center gap-2 rounded-full bg-brand-accent/10 border border-brand-accent/25 hover:bg-brand-accent/15 px-4 py-2.5 text-sm text-brand-accent font-medium transition-colors"
+              >
+                Join the consumer waitlist <ArrowRight className="w-3.5 h-3.5" />
+              </a>
+            </motion.div>
+          </div>
 
-        <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.15 }} className="mt-8 max-w-md mx-auto">
-          <a
-            href="mailto:hello@afoodlebanon.com?subject=Waitlist%20me%20for%20Afood%20B2C"
-            className="inline-flex items-center gap-2 rounded-full bg-brand-accent/10 border border-brand-accent/25 hover:bg-brand-accent/15 px-4 py-2.5 text-sm text-brand-accent font-medium transition-colors"
-          >
-            Join the consumer waitlist <ArrowRight className="w-3.5 h-3.5" />
-          </a>
-        </motion.div>
+          {/* Right column: produce-crates cutout as the section's hero prop */}
+          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }} className="relative">
+            <div
+              className="absolute inset-0 -z-10"
+              style={{
+                background:
+                  'radial-gradient(ellipse at center, rgba(78,236,144,0.18), transparent 65%)',
+                filter: 'blur(20px)',
+              }}
+            />
+            <img
+              src={CRATES_CUTOUT}
+              alt="Boxes of fresh produce ready for delivery — lettuce, tomatoes, herbs, eggplant, carrots, lemons"
+              loading="lazy"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              className="w-full h-auto max-w-[560px] mx-auto drop-shadow-[0_30px_60px_rgba(0,0,0,0.55)]"
+            />
+          </motion.div>
+        </div>
       </div>
     </section>
   );
@@ -552,7 +612,6 @@ function Landing() {
       <Hero />
       <Platform />
       <Departments />
-      <AISection />
       <ClientPortals />
       <ConsumerSection />
       <FinalCTA />
