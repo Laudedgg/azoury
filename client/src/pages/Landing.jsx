@@ -16,9 +16,24 @@ const fadeUp = {
 };
 
 // Produce imagery — Unsplash CDN, dark-friendly, high-res
-const HERO_IMG = 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=2200&q=80&auto=format&fit=crop';
-const B2C_IMG  = 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=2200&q=80&auto=format&fit=crop';
-const CTA_IMG  = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=2200&q=80&auto=format&fit=crop';
+// Brand imagery — drop the PNGs in client/public/brand/ with these names.
+const HERO_IMG         = '/brand/hero-produce-command-center.png';
+const SUPPLY_CHAIN_IMG = '/brand/supply-chain-map-visual.png';
+const AI_DASHBOARD_IMG = '/brand/ai-agent-dashboard-visual.png';
+const CRATES_CUTOUT    = '/brand/produce-crates-cutout-alpha.png';
+
+// Fallback Unsplash photos in case a brand PNG hasn't been dropped in yet.
+// Each brand <img> is wrapped in an onError swap so the site never shows a
+// broken image during rollout.
+const HERO_FALLBACK    = 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=2200&q=80&auto=format&fit=crop';
+const SUPPLY_FALLBACK  = 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=2200&q=80&auto=format&fit=crop';
+const AI_FALLBACK      = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=2200&q=80&auto=format&fit=crop';
+const B2C_IMG          = 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=2200&q=80&auto=format&fit=crop';
+const CTA_IMG          = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=2200&q=80&auto=format&fit=crop';
+
+const brandOnError = (fallback) => (e) => {
+  if (e.currentTarget.src !== fallback) e.currentTarget.src = fallback;
+};
 
 
 const Logo = ({ size = 40 }) => (
@@ -88,17 +103,18 @@ function Nav() {
 function Hero() {
   return (
     <section className="relative pt-16 pb-24 sm:pt-24 sm:pb-32 overflow-hidden isolate">
-      {/* Fresh produce hero image (dimmed, gradient overlay for text legibility) */}
+      {/* Brand hero image — warehouse scene, gently dimmed for text legibility */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <img
           src={HERO_IMG}
           alt=""
           aria-hidden
           loading="eager"
-          className="w-full h-full object-cover object-center scale-110 opacity-45"
+          onError={brandOnError(HERO_FALLBACK)}
+          className="w-full h-full object-cover object-center scale-110 opacity-60"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-base/95 via-brand-base/80 to-brand-base/95" />
-        <div className="absolute inset-0 bg-gradient-to-t from-brand-base via-brand-base/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-base/85 via-brand-base/60 to-brand-base/85" />
+        <div className="absolute inset-0 bg-gradient-to-t from-brand-base via-brand-base/20 to-transparent" />
       </div>
 
       {/* Ambient gradient orbs */}
@@ -228,6 +244,28 @@ function Platform() {
             </motion.div>
           ))}
         </div>
+
+        {/* Supply chain map visual — the actual chain, at a glance */}
+        <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.25 }} className="mt-16">
+          <div className="rounded-2xl border border-brand-border bg-brand-surface/40 overflow-hidden">
+            <img
+              src={SUPPLY_CHAIN_IMG}
+              alt="Afood Lebanon supply chain: from farm to receiving to QC to delivery"
+              loading="lazy"
+              onError={brandOnError(SUPPLY_FALLBACK)}
+              className="w-full h-auto block"
+            />
+            <div className="px-5 sm:px-8 py-4 flex flex-wrap items-center justify-between gap-3 border-t border-brand-border/60">
+              <p className="text-brand-secondary text-xs sm:text-sm">
+                <b className="text-brand-primary">Farm → Receiving → QC → Cold-chain → Kitchen door.</b>
+                {' '}Every crate audited, every hand-off logged.
+              </p>
+              <a href="#departments" className="text-brand-accent text-xs font-semibold uppercase tracking-wider hover:text-brand-accent-hover">
+                See every step →
+              </a>
+            </div>
+          </div>
+        </motion.div>
       </div>
     </section>
   );
@@ -308,37 +346,20 @@ function AISection() {
           </ul>
         </motion.div>
 
-        {/* Mock chat card */}
+        {/* Brand AI dashboard visual */}
         <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.15 }}>
-          <div className="rounded-2xl border border-brand-border bg-brand-surface p-4 sm:p-5 shadow-xl shadow-brand-accent/5">
-            <div className="flex items-center gap-2 pb-3 mb-3 border-b border-brand-border/60">
-              <div className="h-7 w-7 rounded-lg bg-brand-accent/15 flex items-center justify-center">
-                <Sparkles className="h-3.5 w-3.5 text-brand-accent" />
-              </div>
-              <span className="text-brand-primary font-semibold text-sm">Afood AI</span>
-              <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-brand-success/10 text-brand-success font-semibold">Live</span>
-            </div>
-
-            <div className="space-y-3">
-              <div className="rounded-xl rounded-tl-sm bg-brand-elevated p-3 text-sm text-brand-primary max-w-[85%]">
-                What should I buy tomorrow for the Beirut route?
-              </div>
-              <div className="rounded-xl rounded-tr-sm bg-brand-accent/10 border border-brand-accent/20 p-3 text-sm text-brand-primary ml-auto max-w-[92%]">
-                <p className="text-brand-accent text-[11px] font-semibold uppercase tracking-wider mb-1.5">Draft buy list</p>
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between"><span>Tomatoes (A grade)</span><span className="mono text-brand-primary">48 kg</span></div>
-                  <div className="flex justify-between"><span>Lettuce (Extra)</span><span className="mono text-brand-primary">22 kg</span></div>
-                  <div className="flex justify-between"><span>Cucumbers</span><span className="mono text-brand-primary">30 kg</span></div>
-                  <div className="flex justify-between text-brand-warning"><span>Parsley (low stock)</span><span className="mono">+ 6 kg</span></div>
-                </div>
-                <p className="text-[11px] text-brand-secondary mt-2 pt-2 border-t border-brand-accent/10">
-                  Based on 7 open orders + a 24 h buffer. Al-Arz supplier has best Tomato pricing today.
-                </p>
-              </div>
-              <div className="flex items-center gap-2 text-[11px] text-brand-muted pt-1">
-                <Zap className="h-3 w-3 text-brand-accent" />
-                Generated from live inventory + order pipeline
-              </div>
+          <div className="relative rounded-2xl border border-brand-border bg-brand-surface overflow-hidden shadow-2xl shadow-brand-accent/10">
+            <img
+              src={AI_DASHBOARD_IMG}
+              alt="Afood AI copilot dashboard showing live inventory + recommendations"
+              loading="lazy"
+              onError={brandOnError(AI_FALLBACK)}
+              className="w-full h-auto block"
+            />
+            {/* Subtle live indicator overlay */}
+            <div className="absolute top-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-brand-base/85 backdrop-blur-sm border border-brand-success/30 px-2 py-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-brand-success animate-pulse" />
+              <span className="text-brand-success text-[10px] font-semibold uppercase tracking-wider">Live</span>
             </div>
           </div>
         </motion.div>
@@ -429,6 +450,17 @@ function ConsumerSection() {
           style={{ background: 'radial-gradient(ellipse, rgba(78,236,144,0.20) 0%, transparent 60%)' }}
         />
       </div>
+
+      {/* Produce crates cutout — floats bottom-left as a warm product prop */}
+      <img
+        src={CRATES_CUTOUT}
+        alt=""
+        aria-hidden
+        loading="lazy"
+        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+        className="hidden lg:block absolute -bottom-10 -left-16 w-[420px] z-[2] pointer-events-none opacity-90 drop-shadow-[0_20px_40px_rgba(0,0,0,0.6)]"
+      />
+
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <motion.div {...fadeUp} className="inline-flex items-center gap-2 rounded-full bg-brand-success/10 border border-brand-success/25 px-3 py-1 mb-5">
           <Store className="h-3 w-3 text-brand-success" />

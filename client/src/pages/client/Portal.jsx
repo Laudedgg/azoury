@@ -17,7 +17,11 @@ import { toast } from 'sonner';
 import { formatCurrency, formatDate } from '@/utils/helpers';
 import { stableProduceImage } from '@/utils/produceImages';
 
-const HERO_IMG = 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=1600&q=80&auto=format&fit=crop';
+// Brand hero image lives at client/public/brand/. Falls back to a produce
+// Unsplash photo if the file hasn't been dropped in yet — the <img> onError
+// swap below handles it so nothing looks broken during rollout.
+const HERO_IMG = '/brand/hero-produce-command-center.png';
+const HERO_FALLBACK = 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=1600&q=80&auto=format&fit=crop';
 
 const fadeInUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
 const stagger = { animate: { transition: { staggerChildren: 0.06 } } };
@@ -364,9 +368,15 @@ function Portal() {
       <motion.div variants={fadeInUp}>
         <Card className="relative overflow-hidden isolate border-brand-accent/25">
           <div className="absolute inset-0 z-0">
-            <img src={HERO_IMG} alt="" aria-hidden loading="eager"
-              className="w-full h-full object-cover opacity-25 scale-110" />
-            <div className="absolute inset-0 bg-gradient-to-br from-brand-base via-brand-base/75 to-brand-surface/50" />
+            <img
+              src={HERO_IMG}
+              alt=""
+              aria-hidden
+              loading="eager"
+              onError={(e) => { if (e.currentTarget.src !== HERO_FALLBACK) e.currentTarget.src = HERO_FALLBACK; }}
+              className="w-full h-full object-cover opacity-40 scale-110"
+            />
+            <div className="absolute inset-0 bg-gradient-to-br from-brand-base/90 via-brand-base/65 to-brand-surface/40" />
             <div className="absolute inset-0 bg-gradient-to-r from-brand-base/95 via-transparent to-transparent" />
           </div>
           <div className="relative z-10 p-5 sm:p-7 lg:p-8">
