@@ -159,6 +159,7 @@ function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.05 }}
           className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-brand-primary tracking-tight leading-[1.05] max-w-4xl mx-auto"
+          style={{ textShadow: '0 2px 20px rgba(11,30,30,0.6)' }}
         >
           Your command center for{' '}
           <span className="bg-gradient-to-r from-brand-accent to-brand-success bg-clip-text text-transparent">
@@ -170,7 +171,8 @@ function Hero() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="mt-6 text-base sm:text-lg lg:text-xl text-brand-secondary max-w-2xl mx-auto leading-relaxed"
+          className="mt-6 text-base sm:text-lg lg:text-xl text-brand-primary/95 max-w-2xl mx-auto leading-relaxed font-medium"
+          style={{ textShadow: '0 2px 14px rgba(11,30,30,0.85), 0 1px 3px rgba(11,30,30,0.9)' }}
         >
           Afood Lebanon tracks every step of the fruits & vegetables supply chain — from farmgate purchase to
           the restaurant door — with department-specific tools and an AI agent working alongside your team.
@@ -182,12 +184,18 @@ function Hero() {
           transition={{ duration: 0.5, delay: 0.15 }}
           className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3"
         >
-          <Button asChild size="lg" className="w-full sm:w-auto min-w-[180px]">
+          <Button asChild size="lg" className="w-full sm:w-auto min-w-[200px]">
             <Link to="/register">
               Get started free <ArrowRight className="w-4 h-4" />
             </Link>
           </Button>
-          <Button asChild variant="outline" size="lg" className="w-full sm:w-auto min-w-[180px]">
+          {/* Secondary CTA — opaque glass so it reads clearly over a bright hero */}
+          <Button
+            asChild
+            size="lg"
+            variant="outline"
+            className="w-full sm:w-auto min-w-[200px] bg-brand-base/70 backdrop-blur-md border-brand-primary/25 text-brand-primary hover:bg-brand-base/85 hover:border-brand-accent/50 hover:text-brand-accent"
+          >
             <Link to="/login">Sign in to your account</Link>
           </Button>
         </motion.div>
