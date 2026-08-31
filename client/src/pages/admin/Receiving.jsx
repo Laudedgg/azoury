@@ -28,25 +28,37 @@ const prettyUnit = (u) => UNIT_LABELS[u] || u || 'unit';
 const isWeight = (u) => u === 'kg';
 const quantityLabel = (u) => (isWeight(u) ? `Weight (${prettyUnit(u)})` : `Count (${prettyUnit(u)})`);
 
-const weighInColumns = [
-  { accessorKey: 'product', header: 'Product' },
-  {
-    accessorKey: 'quantity',
-    header: 'Received',
-    cell: ({ row }) => `${row.original.quantity} ${prettyUnit(row.original.unit)}`,
-  },
-  { accessorKey: 'supplier', header: 'Supplier', cell: ({ row }) => row.original.supplier || '—' },
-  { accessorKey: 'po', header: 'PO / Ref' },
-  { accessorKey: 'time', header: 'Time' },
-  { accessorKey: 'recordedBy', header: 'By' },
-  {
-    accessorKey: 'photo',
-    header: '📷',
-    cell: ({ row }) => row.original.photo
-      ? <a href={row.original.photo} target="_blank" rel="noopener noreferrer" className="text-brand-accent hover:underline text-xs">View</a>
-      : <span className="text-brand-muted text-xs">—</span>,
-  },
-];
+// Renders the supplier cell in the receiving log — name + a compact contact
+// strip (contact person, phone, email) so the whole record is at a glance.
+// Falls back to just the name if no matching supplier is found in the cache.
+function SupplierCell({ name, supplierIndex }) {
+  if (!name) return <span className="text-brand-muted">—</span>;
+  // Strip trailing "(1787...)" phone suffix used when we auto-embed phone
+  const cleanName = name.replace(/\s*\(\d[\d\s\-()+]*\)\s*$/, '').trim();
+  const match = supplierIndex?.get(cleanName.toLowerCase())
+             || supplierIndex?.get(name.toLowerCase());
+  if (!match) {
+    return <span className="text-brand-primary">{name}</span>;
+  }
+  return (
+    <div className="min-w-0">
+      <p className="text-brand-primary text-sm truncate">{match.name}</p>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-brand-muted mt-0.5">
+        {match.contactPerson && <span className="truncate">{match.contactPerson}</span>}
+        {match.phone && (
+          <a href={`tel:${match.phone}`} className="hover:text-brand-accent whitespace-nowrap">
+            📞 {match.phone}
+          </a>
+        )}
+        {match.email && (
+          <a href={`mailto:${match.email}`} className="hover:text-brand-accent whitespace-nowrap">
+            ✉ {match.email}
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function Receiving() {
   const { user } = useAuth();
@@ -61,6 +73,12 @@ function Receiving() {
   const [photoFile, setPhotoFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
+
+  // Archive date-range filter. Defaults to last 7 days on first open.
+  const _todayIso = (() => { const d = new Date(); d.setHours(0,0,0,0); return d.toISOString().split('T')[0]; })();
+  const _weekAgoIso = (() => { const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() - 7); return d.toISOString().split('T')[0]; })();
+  const [archiveFrom, setArchiveFrom] = useState(_weekAgoIso);
+  const [archiveTo, setArchiveTo] = useState(_todayIso);
 
   // Add supplier dialog
   const [addSupplierOpen, setAddSupplierOpen] = useState(false);
@@ -79,6 +97,40 @@ function Receiving() {
   const { data: poSentData, refetch: refetchPOsSent } = useFetch('/suppliers/purchase-orders?status=SENT');
   const { data: suppliersData, refetch: refetchSuppliers } = useFetch('/suppliers');
   const suppliers = suppliersData?.data || suppliersData || [];
+
+  // Lowercase-name → supplier record so the receiving log can show full
+  // contact info alongside every row's supplier name.
+  const supplierIndex = React.useMemo(() => {
+    const m = new Map();
+    for (const s of suppliers) {
+      if (s?.name) m.set(String(s.name).toLowerCase().trim(), s);
+    }
+    return m;
+  }, [suppliers]);
+
+  const weighInColumns = React.useMemo(() => ([
+    { accessorKey: 'product', header: 'Product' },
+    {
+      accessorKey: 'quantity',
+      header: 'Received',
+      cell: ({ row }) => `${row.original.quantity} ${prettyUnit(row.original.unit)}`,
+    },
+    {
+      accessorKey: 'supplier',
+      header: 'Supplier',
+      cell: ({ row }) => <SupplierCell name={row.original.supplier} supplierIndex={supplierIndex} />,
+    },
+    { accessorKey: 'po', header: 'PO / Ref' },
+    { accessorKey: 'time', header: 'Time' },
+    { accessorKey: 'recordedBy', header: 'By' },
+    {
+      accessorKey: 'photo',
+      header: '📷',
+      cell: ({ row }) => row.original.photo
+        ? <a href={row.original.photo} target="_blank" rel="noopener noreferrer" className="text-brand-accent hover:underline text-xs">View</a>
+        : <span className="text-brand-muted text-xs">—</span>,
+    },
+  ]), [supplierIndex]);
   const pendingPOs = [
     ...((poData?.data || []).map((p) => ({ ...p, _statusLabel: 'Draft' }))),
     ...((poSentData?.data || []).map((p) => ({ ...p, _statusLabel: 'Sent' }))),
@@ -182,6 +234,51 @@ function Receiving() {
   const startOfToday = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); })();
   const todayWeighIns = allWeighIns.filter((w) => w.createdAt && new Date(w.createdAt).getTime() >= startOfToday);
   const archiveWeighIns = allWeighIns.filter((w) => w.createdAt && new Date(w.createdAt).getTime() < startOfToday);
+
+  // Archive filtered by the from/to date pickers (inclusive of both ends).
+  const archiveFiltered = React.useMemo(() => {
+    const fromTs = archiveFrom ? new Date(archiveFrom).getTime() : -Infinity;
+    const toTs = archiveTo ? (new Date(archiveTo).getTime() + 24 * 60 * 60 * 1000) : Infinity; // include entire "to" day
+    return archiveWeighIns.filter((w) => {
+      const t = w.createdAt ? new Date(w.createdAt).getTime() : 0;
+      return t >= fromTs && t < toTs;
+    });
+  }, [archiveWeighIns, archiveFrom, archiveTo]);
+
+  const applyDatePreset = (days) => {
+    const to = new Date(); to.setHours(0,0,0,0);
+    const from = new Date(to); from.setDate(from.getDate() - days);
+    setArchiveFrom(from.toISOString().split('T')[0]);
+    setArchiveTo(to.toISOString().split('T')[0]);
+  };
+
+  const printArchive = () => {
+    const from = archiveFrom ? new Date(archiveFrom).toLocaleDateString() : '—';
+    const to = archiveTo ? new Date(archiveTo).toLocaleDateString() : '—';
+    printTable({
+      title: 'Receiving Archive',
+      subtitle: `${archiveFiltered.length} record${archiveFiltered.length === 1 ? '' : 's'} · ${from} → ${to}`,
+      columns: [
+        { key: 'dateFmt',    label: 'Date' },
+        { key: 'time',       label: 'Time' },
+        { key: 'product',    label: 'Product' },
+        { key: 'qtyFmt',     label: 'Received', align: 'right' },
+        { key: 'supplier',   label: 'Supplier' },
+        { key: 'po',         label: 'PO / Ref' },
+        { key: 'recordedBy', label: 'Recorded by' },
+      ],
+      rows: archiveFiltered
+        .slice()
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+        .map((w) => ({
+          ...w,
+          dateFmt: w.createdAt ? new Date(w.createdAt).toLocaleDateString() : '—',
+          qtyFmt: `${w.quantity} ${prettyUnit(w.unit)}`,
+          supplier: w.supplier || '—',
+          po: w.po || '—',
+        })),
+    });
+  };
 
   const handleRecordWeight = async () => {
     if (!selectedProduct || !selectedGradeId || !quantity) {
@@ -596,16 +693,54 @@ function Receiving() {
       {showArchive && archiveWeighIns.length > 0 && (
         <motion.div variants={fadeInUp}>
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2 mb-3">
-                <ClipboardList className="w-4 h-4 text-brand-muted" />
-                <p className="text-brand-primary font-semibold text-sm">Archive — older receipts</p>
-                <Badge variant="muted" className="text-[10px] ml-1">{archiveWeighIns.length}</Badge>
+            <CardContent className="p-6 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <ClipboardList className="w-4 h-4 text-brand-muted" />
+                  <p className="text-brand-primary font-semibold text-sm">Archive — older receipts</p>
+                  <Badge variant="muted" className="text-[10px] ml-1">
+                    {archiveFiltered.length} / {archiveWeighIns.length}
+                  </Badge>
+                </div>
+                <Button size="sm" variant="outline" onClick={printArchive} disabled={archiveFiltered.length === 0}>
+                  <Printer className="w-4 h-4" /> Download / Print PDF
+                </Button>
               </div>
+
+              {/* Date range picker + quick presets */}
+              <div className="rounded-lg border border-brand-border/60 bg-brand-elevated/30 p-3 flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <label className="text-brand-muted text-xs uppercase tracking-wider">From</label>
+                  <Input
+                    type="date"
+                    value={archiveFrom}
+                    max={archiveTo || undefined}
+                    onChange={(e) => setArchiveFrom(e.target.value)}
+                    className="h-9 w-auto"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-brand-muted text-xs uppercase tracking-wider">To</label>
+                  <Input
+                    type="date"
+                    value={archiveTo}
+                    min={archiveFrom || undefined}
+                    onChange={(e) => setArchiveTo(e.target.value)}
+                    className="h-9 w-auto"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 sm:ml-auto">
+                  <span className="text-brand-muted text-[11px] mr-1">Quick:</span>
+                  <Button size="xs" variant="ghost" onClick={() => applyDatePreset(7)}>7 days</Button>
+                  <Button size="xs" variant="ghost" onClick={() => applyDatePreset(30)}>30 days</Button>
+                  <Button size="xs" variant="ghost" onClick={() => applyDatePreset(90)}>90 days</Button>
+                </div>
+              </div>
+
               <DataTable
                 columns={weighInColumns}
-                data={archiveWeighIns}
-                searchPlaceholder="Search archive..."
+                data={archiveFiltered}
+                searchPlaceholder="Search within selected range..."
                 searchColumn="product"
               />
             </CardContent>
